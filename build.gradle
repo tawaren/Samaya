@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+    id 'scala'
+}
+
+group 'Samaya'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.scala-lang:scala-library:2.11.12'
+    testImplementation 'org.scalatest:scalatest_2.11:3.0.0'
+    testImplementation 'junit:junit:4.12'
+    compile group: 'com.rfksystems', name: 'blake2b', version: '1.0.0'
+    compile group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-macros_2.12', version: '0.48.3'
+    compile group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-core_2.12', version: '0.48.3'
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Test",
+  "locations": {
+    "interface": "test/inter",
+    "code": "test/code",
+    "source": "test/source"
+  },
+  "modules": [
+    "test"
+  ]
+}
