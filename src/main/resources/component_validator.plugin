@@ -1,0 +1,2 @@
+samaya.plugin.impl.validator.BasicComponentValidator
+samaya.plugin.impl.compiler.mandala.validate.MandalaValidator
