@@ -4,7 +4,7 @@ package samaya.structure.types
 //Needed as source id for Unpakcs in a switch branch
 // Reason: if different Branches would use the same SourceId then they would gen the same vals
 //         meaning if two unpacks use the same id for their fields they have the same val but thats not true
-class DerivedSourceId(val parent:SourceId, override val src: Region, val branch:Int) extends SourceId {
+class DerivedSourceId(val parent:SourceId, override val origin: Region, val branch:Int) extends SourceId {
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[DerivedSourceId]
 

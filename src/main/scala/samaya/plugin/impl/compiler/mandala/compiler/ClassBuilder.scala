@@ -1,8 +1,8 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
 import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
+import samaya.plugin.impl.compiler.mandala.MandalaParser
 import samaya.plugin.impl.compiler.mandala.components.clazz.{Class, MandalaFunClassCompilerOutput, MandalaSigClassCompilerOutput}
-import samaya.plugin.impl.compiler.simple.MandalaParser
 import samaya.structure.{Attribute, DataDef, FunctionDef, Generic, Module, ModuleEntry, Param, Result, SignatureDef}
 import samaya.structure.types.Accessibility.Global
 import samaya.structure.types.{Accessibility, Capability, CompLink, OpCode, Permission, SourceId}
@@ -22,18 +22,18 @@ trait ClassBuilder  extends CompilerToolbox{
     }
     withComponentBuilder(name) {
       withDefaultAccess(Global) {
-        withClassGenerics(generics){
+        withComponentGenerics(generics){
           ctx.classEntry().asScala.map(visitClassEntry)
         }
       }
-      val rawFunComponents = currentComponent._functions
-      val funComponent = funClass(name, generics, rawFunComponents)
       val src = sourceIdFromContext(ctx)
+      val rawFunComponents = currentComponent._functions
+      val funComponent = funClass(name, generics, rawFunComponents, src)
       val mode = if(ctx.SYSTEM != null) Module.Elevated else Module.Normal
       build(funComponent, src) match {
         case Some(funClsInter) =>
           val SigComponents = withComponentBuilder(name) {
-            sigClass(name, generics, rawFunComponents, currentComponent._dataTypes, funClsInter.link, mode)
+            sigClass(name, generics, rawFunComponents, funClsInter.link, mode, src)
           }
           build(SigComponents, src)
         case None => //Todo: Error???
@@ -45,7 +45,7 @@ trait ClassBuilder  extends CompilerToolbox{
     withFreshCounters { super.visitClassEntry(ctx) }
   }
 
-  private def funClass(name:String, generics: Seq[Generic], components: Seq[FunctionDef]): Class = {
+  private def funClass(name:String, generics: Seq[Generic], components: Seq[FunctionDef], sourceId: SourceId): Class = {
     val funs = components.map(fd => new FunctionDef {
         override val position: Int = fd.position
         override val src: SourceId = fd.src
@@ -66,10 +66,11 @@ trait ClassBuilder  extends CompilerToolbox{
       Module.Normal, //The Module Type will be set on the SigPart where it is relevant
       generics,
       funs,
+      sourceId
     )
   }
 
-  private def sigClass(name:String, generics: Seq[Generic], components: Seq[ModuleEntry], data:Seq[DataDef], clazzLink:CompLink, mode:Module.Mode): Class = {
+  private def sigClass(name:String, generics: Seq[Generic], components: Seq[ModuleEntry], clazzLink:CompLink, mode:Module.Mode, sourceId: SourceId): Class = {
     val sigs = components.flatMap {
       case fd:FunctionDef => Some(registerSignatureDef(new SignatureDef {
         override val position: Int = nextPosition()
@@ -91,8 +92,8 @@ trait ClassBuilder  extends CompilerToolbox{
       mode,
       clazzLink,
       generics,
-      data,
-      sigs
+      sigs,
+      sourceId
     )
   }
 

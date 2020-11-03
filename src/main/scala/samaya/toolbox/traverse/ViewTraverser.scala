@@ -1,5 +1,6 @@
 package samaya.toolbox.traverse
 
+import samaya.compilation.ErrorManager.{Info, LocatedMessage, PlainMessage, feedback}
 import samaya.structure.types._
 import samaya.toolbox.stack.SlotFrameStack
 
@@ -13,8 +14,8 @@ abstract class ViewTraverser extends Traverser {
 
   def traverse(): Unit = {
     val stack = initialState()
-    val expect = results.map(r => Id(r.name))
-    val provided = params.map(p => AttrId(Id(p.name), p.attributes))
+    val expect = results.map(r => Id(r.name, r.src))
+    val provided = params.map(p => AttrId(Id(p.name,p.src), p.attributes))
 
     val finalStack = if(code.nonEmpty) {
       val s = traverseBlockLocal(provided, code, expect, origin, stack, s => functionStart(params, origin, s))
@@ -79,10 +80,18 @@ abstract class ViewTraverser extends Traverser {
     }
 
     val branchStates = branches.zipWithIndex.map { case ((ctrName, (intro, code)), idx) =>
-      val caseId = origin.deriveSourceId(idx,ctrName.src.getOrElse(origin.src))
+      val caseId = origin.deriveSourceId(idx,ctrName.src.origin)
       traverseBlockLocal(intro, code, res.map(_.id), caseId, newState, state => caseStart(intro, src, ctrName, mode, caseId, state))
     }.toSeq
-    val fState = traverseJoin(res.map(_.id),origin,branchStates)
+
+    //traverseJoin has precondition of nonEmpty Branches
+    val fState = if(branchStates.nonEmpty) {
+      traverseJoin(res.map(_.id),origin,branchStates)
+    } else {
+      feedback(LocatedMessage("Empty branching detected", origin, Info));
+      newState
+    }
+
     if(mode.isDefined) {
       switchAfter(res, src, branches, mode.get, origin, fState)
     } else {
@@ -105,7 +114,6 @@ abstract class ViewTraverser extends Traverser {
       case Right(ref) => tryInvokeSigAfter(res, ref, params, succ, fail, origin, fState)
     }
   }
-
 }
 
 

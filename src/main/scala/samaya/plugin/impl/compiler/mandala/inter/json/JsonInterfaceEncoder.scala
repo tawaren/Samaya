@@ -5,17 +5,17 @@ import java.io.OutputStream
 import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, readFromStream, writeToStream}
 import samaya.compilation.ErrorManager.{PlainMessage, Warning, feedback, unexpected}
 import samaya.plugin.impl.compiler.mandala.MandalaCompiler
-import samaya.plugin.impl.compiler.mandala.components.{clazz, module}
-import JsonModel.{Alias, InstanceEntry, InterfaceFunClass, InterfaceInstance, InterfaceMandalaModule, InterfaceSigClass}
-import samaya.plugin.impl.compiler.mandala.components.clazz.{ClassInterface, FunClass, FunClassInterface, SigClass, SigClassInterface}
-import samaya.plugin.impl.compiler.mandala.components.instance.Instance.{LocalEntryRef, RemoteEntryRef}
-import samaya.plugin.impl.compiler.mandala.components.instance.{DefInstance, DefInstanceInterface, Instance, InstanceInterface}
+import samaya.plugin.impl.compiler.mandala.components.clazz
+import JsonModel.{Applied, Implement, InstanceEntry, InterfaceFunClass, InterfaceInstance, InterfaceMandalaModule, InterfaceSigClass, TypeAlias}
+import samaya.plugin.impl.compiler.mandala.components.clazz.{FunClass, FunClassInterface, SigClass, SigClassInterface}
+import samaya.plugin.impl.compiler.mandala.components.instance.{DefInstance, DefInstanceInterface}
 import samaya.plugin.impl.compiler.mandala.components.module.{MandalaModule, MandalaModuleInterface}
-import samaya.plugin.impl.inter.json.Serializer.{toDataTypeRepr, toFunctionRepr, toGenericRepr}
+import samaya.plugin.impl.compiler.mandala.entry
+import samaya.plugin.impl.compiler.mandala.entry.SigImplement
+import samaya.plugin.impl.inter.json.Serializer.{toDataTypeRepr, toFunctionRepr, toGenericRepr, toTypeRepr}
 import samaya.plugin.impl.inter.json.{JsonLocation, Serializer}
 import samaya.plugin.service.{InterfaceEncoder, Selectors}
-import samaya.structure.Module.Mode
-import samaya.structure.types.{CompLink, Hash}
+import samaya.structure.types.{AdtType, CompLink, DataType, Hash, ImplFunc, LitType, StdFunc}
 import samaya.structure.{Component, Interface, Meta}
 import samaya.types.InputSource
 
@@ -49,26 +49,33 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     }
   }
 
+
   private def serializeInstanceInterface(inst: DefInstance, hasError:Boolean, out: OutputStream): Boolean = {
+    val generics = inst.generics.map(toGenericRepr)
     val repr = InterfaceInstance(
       name = inst.name,
       hadError = hasError,
       language = inst.language,
       version = inst.version,
       classifier = inst.classifier,
+      generics = generics,
       classTarget = inst.classTarget match {
         case CompLink.ByCode(_) => unexpected("Class targets should refer to classes");
         case CompLink.ByInterface(hash) => hash.toString
       },
-      applies = inst.applies.map(Serializer.toTypeRepr),
-      funAliases = inst.funReferences.map{
-        case (name,RemoteEntryRef(module, offset)) => Alias(name, JsonModel.EntryRef(module.toString, offset))
-        case (_,LocalEntryRef(_)) => unexpected("Instances are not modules and can not have self references")
-      }.toSeq,
-      implAliases = inst.implReferences.map{
-        case (name,RemoteEntryRef(module, offset)) => Alias(name, JsonModel.EntryRef(module.toString, offset))
-        case (_,LocalEntryRef(_)) => unexpected("Instances are not modules and can not have self references")
-      }.toSeq
+      applies = inst.classApplies.map(Serializer.toTypeRepr),
+      implements = inst.implements.map{
+        case SigImplement(name, generics, funTarget, implTarget, _) =>
+          val fun = funTarget match {
+            case StdFunc.Remote(module, offset, applies) => Applied(Some(module.toString), offset, applies.map(toTypeRepr))
+            case StdFunc.Local(offset, applies) => Applied(None, offset, applies.map(toTypeRepr))
+          }
+          val impl = implTarget match {
+            case ImplFunc.Remote(module, offset, applies) => Applied(Some(module.toString), offset, applies.map(toTypeRepr))
+            case ImplFunc.Local(offset, applies) => Applied(None, offset, applies.map(toTypeRepr))
+          }
+          Implement(name,generics.map(toGenericRepr),fun,impl)
+      }
     )
     writeToStream[InterfaceInstance](repr, out, WriterConfig(indentionStep = 2))
     true
@@ -84,6 +91,11 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       case _ => unexpected("instances must point to classes")
     }.toSeq
 
+    val typeAlias = module.typeAlias.map{
+      case entry.TypeAlias(name, gens, target, _ ) =>
+        TypeAlias(name, gens.map(toGenericRepr), toTypeRepr(target))
+    }
+
     val repr = InterfaceMandalaModule(
       module.name,
       hadError = hasError,
@@ -96,6 +108,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       implements = implements,
       datatypes = datatypes,
       instances = instances,
+      typeAlias = typeAlias,
     )
     writeToStream[InterfaceMandalaModule](repr, out, WriterConfig(indentionStep = 2))
     true
@@ -112,7 +125,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       language = cls.language,
       version = cls.version,
       classifier = cls.classifier,
-      generics = cls.classGenerics.map(toGenericRepr),
+      generics = cls.generics.map(toGenericRepr),
       functions = functions,
     )
     writeToStream[InterfaceFunClass](repr, out, WriterConfig(indentionStep = 2))
@@ -122,7 +135,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
   private def serializeSigClass(cls: clazz.SigClass, codeHash:Option[Hash], hasError:Boolean, out: OutputStream): Boolean = {
     assert(cls.functions.isEmpty)
     assert(cls.implements.isEmpty)
-    val signatures = cls.functions.map(toFunctionRepr)
+    val signatures = cls.signatures.map(toFunctionRepr)
     val datatypes = cls.dataTypes.map(toDataTypeRepr)
 
     val repr = InterfaceSigClass(
@@ -133,7 +146,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       language = cls.language,
       version = cls.version,
       classifier = cls.classifier,
-      generics = cls.classGenerics.map(toGenericRepr),
+      generics = cls.generics.map(toGenericRepr),
       signatures = signatures,
       datatypes = datatypes,
       classTarget = cls.clazzLink match {
@@ -164,7 +177,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceInstance](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage("An interface was loaded that was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new DefInstanceInterfaceImpl(baseLoc, interfaceAst)
@@ -179,7 +192,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceFunClass](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage("An interface was loaded that was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new FunClassInterfaceImpl(baseLoc, interfaceAst)
@@ -194,7 +207,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceSigClass](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage("An interface was loaded that was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new SigClassInterfaceImpl(baseLoc, interfaceAst)
@@ -209,7 +222,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceMandalaModule](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage("An interface was loaded that was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new MandalaModuleInterfaceImpl(baseLoc, interfaceAst)

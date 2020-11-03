@@ -50,7 +50,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceModule](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage("An interface was loaded that was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new ModuleInterfaceImpl(baseLoc, interfaceAst)
@@ -71,7 +71,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceTransaction](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage("An interface was loaded that was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new TransactionInterfaceImpl(baseLoc, interfaceAst)

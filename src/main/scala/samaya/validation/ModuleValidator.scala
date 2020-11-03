@@ -37,7 +37,7 @@ object ModuleValidator {
     validateNamespace(module)
     //Check that their are no duplicates and that it is ordered and validate it
     processOrdered[FunctionSig](module.functions,module.function, f => validateFunction(f.src, f,context, "Function"), exact = false)
-    processOrdered[FunctionSig](module.implements,module.implement, i => validateFunction(i.src, i,context, "Implement"), exact = false)
+    processOrdered[FunctionSig](module.implements,module.implement, i => validateImplement(i.src, i,context), exact = false)
     processOrdered[FunctionSig](module.signatures,module.signature, s => validateFunction(s.src, s,context, "Signature", defineAllowed = true), exact = false)
     processOrdered[DataDef](module.dataTypes,module.dataType, d => validateDataType(d.src, d,context), exact = false)
 
@@ -48,13 +48,13 @@ object ModuleValidator {
 
     for(data <- module.dataTypes) {
       if(typNames.contains(data.name)) {
-        feedback(PlainMessage("type names in a module must be unique", Error))
+        feedback(LocatedMessage("type names in a module must be unique", data.src, Error))
       }
       typNames += data.name
     }
     for(sig <- module.signatures) {
       if(typNames.contains(sig.name)) {
-        feedback(PlainMessage("type names in a module must be unique", Error))
+        feedback(LocatedMessage("type names in a module must be unique", sig.src, Error))
       }
       typNames += sig.name
     }
@@ -62,13 +62,13 @@ object ModuleValidator {
     var callNames = Set.empty[String]
     for(fun <- module.functions) {
       if(callNames.contains(fun.name)) {
-        feedback(PlainMessage("function names in a module must be unique", Error))
+        feedback(LocatedMessage("function names in a module must be unique", fun.src, Error))
       }
       callNames += fun.name
     }
     for(impl <- module.implements) {
       if(callNames.contains(impl.name))  {
-        feedback(PlainMessage("function names in a module must be unique", Error))
+        feedback(LocatedMessage("function names in a module must be unique", impl.src, Error))
       }
       callNames += impl.name
     }
@@ -90,7 +90,7 @@ object ModuleValidator {
     processOrdered[Constructor](data.constructors,data.constructor, c => {
       processOrdered[Field](c.fields,c.field, field => {
         SignatureValidator.validateType(field.src, field.typ, data, context)
-        SignatureValidator.validateTypeConstraints(field.src, field.typ, data.capabilities, data, context, promoteGenerics = true)
+        SignatureValidator.validateTypeConstraints(field.typ, data.capabilities, data, context, promoteGenerics = true)
         field.typ match {
           case GenericType(_,pos) =>
             data.generic(pos) match {
@@ -119,6 +119,24 @@ object ModuleValidator {
 
     if(data.external.nonEmpty && data.constructors.nonEmpty){
       feedback(LocatedMessage("External data types can not have constructors", src, Error))
+    }
+
+  }
+
+  def validateImplement(src:SourceId, implement:FunctionSig, context: Context):Unit = {
+    validateFunction(src,implement, context, "Implement")
+    if(implement.results.size != 1) {
+      feedback(LocatedMessage("Implements need to return single value of the implemented signature", src, Error))
+    } else {
+      processOrdered[Param](implement.params,implement.param, p => {
+        val reqCaps = implement.result(0).get.typ.capabilities(context)
+        if(implement.transactional && !p.typ.hasCap(context, Capability.Drop)) {
+          feedback(LocatedMessage("Captured implement parameters for transactional signature must have a type with the Drop Capability", src, Error))
+        }
+        if(!reqCaps.subsetOf(p.typ.capabilities(context))){
+          feedback(LocatedMessage("Captured implement parameters must have all the Capabilities declared on the implemented Signature", src, Error))
+        }
+      })
     }
 
   }

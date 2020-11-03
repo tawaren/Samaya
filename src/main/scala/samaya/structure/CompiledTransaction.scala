@@ -20,7 +20,7 @@ object CompiledTransaction {
     override def transactional: Boolean = txt.transactional
     override def params: Seq[Param] = txt.params
     override def results: Seq[Result] = txt.results
-    override def src: SourceId = txt.src
+    override def src:SourceId = txt.src
 
 
   }

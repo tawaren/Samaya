@@ -229,10 +229,11 @@ object OwnershipTracker{
     def isUnknown:Boolean = false
   }
 
-  case object Consumed extends SlotStatus{override val isActive = false}
   case object Borrowed extends SlotStatus{override val isBorrowed = true}
   case object Owned extends SlotStatus
-  case class Locked(original:SlotStatus) extends SlotStatus {
+
+  case class Consumed(consumePos:Set[SourceId]) extends SlotStatus{override val isActive = false}
+  case class Locked(original:SlotStatus,lockPos:Set[SourceId]) extends SlotStatus {
     override val isActive = false
     override val isBorrowed:Boolean = original.isBorrowed
   }
@@ -243,10 +244,21 @@ object OwnershipTracker{
 
   object SlotStatusDomain extends SlotDomain[SlotStatus] {
     override def merge(vs: Seq[SlotStatus]): Option[SlotStatus] = {
-      if(vs.forall(_ == vs.head)) {
+      if(vs.size == 1) {
         Some(vs.head)
       } else {
-        Some(Unknown)
+        Some(vs.reduceLeft[SlotStatus]{
+          //Shortcuts
+          case (Unknown, _) => Unknown
+          case (_, Unknown) => Unknown
+          //Matches
+          case (Borrowed, Borrowed) => Borrowed
+          case (Owned, Owned) => Owned
+          case (Consumed(src1),Consumed(src2)) => Consumed(src1++src2)
+          case (Locked(orig1,src1),Locked(orig2, src2)) => merge(Seq(orig1,orig2)).map(Locked(_,src1++src2)).getOrElse(Unknown)
+          //Fail
+          case _ => Unknown
+        })
       }
     }
   }
@@ -257,21 +269,21 @@ object OwnershipTracker{
 
     def lock(v:Val): SlotFrameStack = {
       stack.readSlot(SlotStatusDomain,v) match {
-        case Some(x) =>  stack.updateSlot(SlotStatusDomain,v)(_ => Some(Locked(x)))
-        case x => stack
+        case Some(x) =>  stack.updateSlot(SlotStatusDomain,v)(_ => Some(Locked(x, Set(v.src))))
+        case _ => stack
       }
     }
 
     def unlock(v:Val): SlotFrameStack = {
       stack.readSlot(SlotStatusDomain,v) match {
-        case Some(Locked(x)) =>  stack.updateSlot(SlotStatusDomain,v)(_ => Some(x))
-        case x => stack
+        case Some(Locked(x,_)) =>  stack.updateSlot(SlotStatusDomain,v)(_ => Some(x))
+        case _ => stack
       }
     }
 
     def consume(v:Val): SlotFrameStack = {
       stack.readSlot(SlotStatusDomain,v) match {
-        case Some(Owned) =>  stack.updateSlot(SlotStatusDomain,v)(_ => Some(Consumed))
+        case Some(Owned) =>  stack.updateSlot(SlotStatusDomain,v)(_ => Some(Consumed(Set(v.src))))
         case _ => stack
       }
     }

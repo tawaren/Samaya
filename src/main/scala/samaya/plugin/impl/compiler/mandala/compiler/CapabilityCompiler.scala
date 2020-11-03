@@ -1,7 +1,7 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
 import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
-import samaya.plugin.impl.compiler.simple.MandalaParser
+import samaya.plugin.impl.compiler.mandala.MandalaParser
 import samaya.structure.types.Capability
 
 trait CapabilityCompiler extends CompilerToolbox {

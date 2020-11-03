@@ -3,10 +3,11 @@ package samaya.plugin.impl.compiler.mandala.asm.plain
 import java.io.{OutputStream, PrintStream}
 
 import samaya.plugin.impl.compiler.mandala.components.instance.{DefInstance, Instance}
+import samaya.plugin.impl.compiler.mandala.entry.SigImplement
 import samaya.plugin.service.{DebugAssembler, Selectors}
-import samaya.structure.CompiledTransaction.TransactionFunctionDef
 import samaya.structure.types._
-import samaya.structure.{CompiledTransaction, Component, FunctionDef, FunctionSig, ImplementDef, Module, Package, Transaction, TypeParameterized}
+import samaya.structure.{Component, Package, TypeParameterized}
+import samaya.types.Context
 
 class PlainInstanceDebugAssembler extends DebugAssembler {
 
@@ -42,51 +43,42 @@ class PlainInstanceDebugAssembler extends DebugAssembler {
       }
       printLine(s"CLASS: $clazz")
 
-      inst.applies
+      inst.classApplies
       printLine(s"PARAMS")
       indented{
-        for(typ <- inst.applies) {
-          printLine(s"PARAM: ${genTypeString(pkg, typ)}")
+        for(typ <- inst.classApplies) {
+          printLine(s"PARAM: ${genTypeString(pkg, inst, typ)}")
         }
       }
     }
 
-    printLine("ALIASES")
+    printLine("IMPLEMENTS")
     indented{
-      for((name, bind) <- inst.funReferences) {
-        val target = bind match {
-          case Instance.RemoteEntryRef(module, offset) =>
-            pkg.componentByLink(module).flatMap(_.asModule).flatMap(n => n.function(offset).map((n,_))) match {
-              case Some((m,fun)) => m.name+"."+fun.name
-              case None => bind.toString
+      for(si@SigImplement(name,gens,fun,impl,_) <- inst.implements) {
+        printLine(s"IMPLEMENT: $name");
+        indented{
+          printLine("GENERICS")
+          indented{
+            for(gen <- gens) {
+              printLine(s"GENERIC: ${gen.name}")
+              indented{
+                //  def attributes:Seq[GenericAttribute]
+                printLine(s"PHANTOM: ${gen.phantom}")
+                printLine(s"CAPABILITIES: ${gen.capabilities.foldLeft("")(_ +" "+ _)}")
+              }
             }
-          case Instance.LocalEntryRef(offset) => s"error-local($offset)"
+          }
+          printLine(s"FUN_TARGET: ${genFuncString(pkg,si,fun)}")
+          printLine(s"IMPL_TARGET: ${genFuncString(pkg,si,impl)}")
         }
-        printLine(s"ALIAS: $name => $target")
       }
     }
     printer.close()
 
   }
 
-  def genTypeString(pkg:Package, typ:Type):String = {
-    def lookup(comp:Component, offset:Int) = typ match {
-      case _: AdtType | _: LitType => comp match {
-        case module: Module => module.dataType(offset)
-        case _ => None
-      }
-      case _: SigType  => comp match {
-        case module: Module => module.signature(offset)
-        case _ => None
-      }
-    }
-
-    typ match {
-      case proj: Type.Projected => s"project ${genTypeString(pkg,proj.inner)}"
-      case remote: Type.RemoteLookup[_] => s"${pkg.componentByLink(remote.moduleRef).flatMap(lookup(_,remote.offset)).map(_.name).getOrElse("?")}[${typ.applies.map(genTypeString(pkg,_)).reduceLeftOption(_ +", "+ _).getOrElse("")}]"
-      case _  => "?"
-    }
-  }
+  def genTypeString(pkg:Package, genCtx:TypeParameterized,typ:Type):String = typ.prettyString(Context(None,pkg), genCtx.generics.map(_.name))
+  def genFuncString(pkg:Package, genCtx:TypeParameterized, func:Func):String = func.prettyString(Context(None,pkg), genCtx.generics.map(_.name))
 
   class PrintContext(out:PrintStream){
     var indent:Int = 0

@@ -3,30 +3,40 @@ package samaya.toolbox.process
 import samaya.compilation.ErrorManager.{Error, LocatedMessage, PlainMessage, feedback, producesErrorValue}
 import samaya.structure.types.OpCode.{VirtualOpcode, ZeroSrcOpcodes}
 import samaya.structure.types.{SourceId, _}
-import samaya.structure.{Param, _}
+import samaya.structure.{Param, types, _}
 import samaya.toolbox.track.{JoinType, TypeTracker}
-import samaya.toolbox.transform.{ComponentTransformer, TransformTraverser}
+import samaya.toolbox.transform.{EntryTransformer, TransformTraverser}
 import samaya.toolbox.traverse.ViewTraverser
 import samaya.types.Context
 
-object TypeInference extends ComponentTransformer {
+object TypeInference extends EntryTransformer {
 
   case class TypeHint(src: Ref, typ: Type, id: SourceId) extends VirtualOpcode with ZeroSrcOpcodes
 
-  class TypeVar extends Type.Unknown(Set.empty) {
-    override def equals(obj: Any): Boolean = {
-      if (!obj.isInstanceOf[TypeVar]) return false
-      this.eq(obj.asInstanceOf[AnyRef])
+  //forces compare by eq while preserving the ability to change meta
+  class TypeVarId
+  class TypeVar(val id:TypeVarId)(src:SourceId, attributes:Seq[Attribute] = Seq.empty) extends Type.Unknown(Set.empty)(src, attributes) {
+    override def canEqual(other: Any): Boolean = other.isInstanceOf[TypeVar]
+    //comparing / hashing only by id is on purpose as src & attributes are only meta information
+    override def equals(other: Any): Boolean = other match {
+      case that: TypeVar => (that canEqual this) && id.eq(that.id)
+      case _ => false
     }
+    override def hashCode(): Int = id.hashCode()
+    override def changeMeta(src: SourceId, attributes: Seq[Attribute]): TypeVar = new TypeVar(id)(src, attributes)
+  }
+
+  object TypeVar {
+    def apply(src:SourceId, attributes:Seq[Attribute] = Seq.empty) = new TypeVar(new TypeVarId())(src,attributes)
   }
 
   override def transformFunction(in: FunctionDef, context: Context): FunctionDef = {
     val analyzer = new TypeInference(Left(in), context)
     val result = analyzer.extract()
     val transformer = new TypeReplacing(result, Left(in), context)
-    val adapted = transformer.component.left.get
+    val adapted = transformer.entry.left.get
     new FunctionDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -46,9 +56,9 @@ object TypeInference extends ComponentTransformer {
     val analyzer = new TypeInference(Right(in), context)
     val result = analyzer.extract()
     val transformer = new TypeReplacing(result, Right(in), context)
-    val adapted = transformer.component.right.get
+    val adapted = transformer.entry.right.get
     new ImplementDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -76,16 +86,16 @@ object TypeInference extends ComponentTransformer {
     override val joins: Map[JoinType, Type]
   ) extends InferenceData
 
-  class TypeInference(override val component: Either[FunctionDef, ImplementDef], override val context: Context) extends ViewTraverser with TypeTracker {
-    protected var substitutions: Map[TypeVar, Type] = Map.empty
-    protected var joins: Map[JoinType, TypeVar] = Map.empty
+  class TypeInference(override val entry: Either[FunctionDef, ImplementDef], override val context: Context) extends ViewTraverser with TypeTracker {
+    private var substitutions: Map[TypeVar, Type] = Map.empty
+    private var joins: Map[JoinType, TypeVar] = Map.empty
 
     def resolveJoin(jt:JoinType):Type = {
       joins.get(jt) match {
         case Some(value) => value
         case None =>
           //we assosiate a typevar with each possible Join
-          val res = new TypeVar()
+          val res = TypeVar(jt.src)
           joins = joins.updated(jt,res)
           //we unify all instances with it
           jt.joined.foreach(unify(_,res))
@@ -99,17 +109,35 @@ object TypeInference extends ComponentTransformer {
       case t => t
     }
 
-    def unify(src: Type, trg: Type): Unit = {
-      (resolve(src), resolve(trg)) match {
+    def sameBase(src: Type, trg: Type):Boolean = {
+      (src, trg) match {
+        case (sll:DataType.LocalLookup,tll:DataType.LocalLookup) => sll.offset == tll.offset
+        case (sll:DataType.RemoteLookup,tll:DataType.RemoteLookup) => sll.moduleRef == tll.moduleRef && sll.offset == tll.offset
+        case (sll:SigType.Local,tll:SigType.Local) => sll.offset == tll.offset
+        case (sll:SigType.Remote,tll:SigType.Remote) => sll.moduleRef == tll.moduleRef && sll.offset == tll.offset
+
+        case _ => false
+      }
+    }
+
+    def unify(src: Type, trg: Type):Unit = {
+      val resS = resolve(src)
+      val resT = resolve(trg)
+      (resS, resT) match {
         case (s, t) if s == t =>
         case (s: TypeVar, t) => substitutions = substitutions.updated(s, t)
         case (s, t: TypeVar) => substitutions = substitutions.updated(t, s)
         case (s: Type.Projected, t: Type.Projected) => unify(s.inner, t.inner)
-        case (s, t) => s.applies.zip(t.applies).foreach(tt => unify(tt._1, tt._2))
+        case (s, t) if sameBase(s,t) => s.applies.zip(t.applies).foreach(tt => unify(tt._1, tt._2))
+        case _ =>
       }
     }
 
-    def finalizeType(t:Type):Type = resolve(t).replaceContainedTypes(finalizeType)
+    protected def analyzeType(t:Type):Unit = {}
+
+    protected def finalizeType(t:Type):Type = {
+      resolve(t).replaceContainedTypes(finalizeType)
+    }
 
     def extract(): InferenceData = {
       super.traverse()
@@ -170,10 +198,9 @@ object TypeInference extends ComponentTransformer {
       super.tryInvokeSigBefore(res, src, params, succ, fail, origin, stack)
     }
 
-
     override def virtual(code: VirtualOpcode, stack: Stack): Stack = {
       code match {
-        case TypeHint(src, typ, id) =>
+        case TypeHint(src, typ, _) =>
           unify(stack.getType(src), typ)
           super.virtual(code, stack)
         case _ => super.virtual(code, stack)
@@ -190,17 +217,20 @@ object TypeInference extends ComponentTransformer {
   }
 
   class TypeReplacing(lookup: InferenceData, prevComp: Either[FunctionDef, ImplementDef], override val context: Context) extends TransformTraverser with TypeTracker {
-
-    private def substituteType(t:Type):Type = t match {
+    protected def substituteType(t:Type):Type = t match {
+      //Joins do already have attributes changed during finalisation
       case jt:JoinType => lookup.joins.getOrElse(jt,{
-          feedback(PlainMessage(s"A type could not be inferred", Error))
-          Type.DefaultUnknown
+          //Todo: Where? we need src for types /type vars
+          feedback(LocatedMessage(s"A type could not be inferred", t.src, Error))
+          Type.Unknown(Set.empty)(jt.src)
       })
+      //Substitutions do already have attributes changed during finalisation
       case tv:TypeVar => lookup.substitutions.getOrElse(tv,{
-        feedback(PlainMessage(s"A type could not be inferred", Error))
-        Type.DefaultUnknown
+        //Todo: Where? we need src for types /type vars
+        feedback(LocatedMessage(s"A type could not be inferred", t.src, Error))
+        Type.Unknown(Set.empty)(tv.src)
       })
-      case p:Type.Projected => substituteType(p.inner).projected()
+      case p:Type.Projected => substituteType(p.inner).projected(p.src, p.attributes)
       case g:Type.GenericType => g
       case typ => typ.replaceContainedTypes(substituteType)
     }
@@ -224,9 +254,9 @@ object TypeInference extends ComponentTransformer {
       override def src: SourceId = r.src
     })
 
-    override lazy val component: Either[FunctionDef, ImplementDef] = prevComp match {
+    override lazy val entry: Either[FunctionDef, ImplementDef] = prevComp match {
       case Left(in) => Left(new FunctionDef {
-        override val src: SourceId = in.src
+        override val src:SourceId = in.src
         override val code: Seq[OpCode] = in.code
         override val external: Boolean = in.external
         override val index: Int = in.index
@@ -241,7 +271,7 @@ object TypeInference extends ComponentTransformer {
       })
 
       case Right(in) => Right(new ImplementDef {
-        override val src: SourceId = in.src
+        override val src:SourceId = in.src
         override val code: Seq[OpCode] = in.code
         override val external: Boolean = in.external
         override val index: Int = in.index
@@ -257,6 +287,8 @@ object TypeInference extends ComponentTransformer {
         override val transactional: Boolean = in.transactional
       })
     }
+
+
 
     override def transformLit(res: TypedId, value: Const, origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       val typ = substituteType(res.typ)
@@ -299,9 +331,9 @@ object TypeInference extends ComponentTransformer {
 
     override def transformVirtual(code:VirtualOpcode, stack: Stack): Option[Seq[OpCode]] = {
       code match {
-        case TypeHint(trg: Ref, typ: Type, origin: SourceId) =>
+        case TypeHint(trg: Ref, typ: Type, id: SourceId) =>
           substituteType(typ) match {
-            case _:Type.Unknown => feedback(LocatedMessage("Explicit type check failed",origin, Error))
+            case _:Type.Unknown => feedback(LocatedMessage("Explicit type check failed",id.origin, Error))
             case _ =>
           }
           //Eliminate Type Check

@@ -34,13 +34,13 @@ class RelativeLocationParser extends LocationResolver{
 
 
   //Not supported by this plugin on purpose
-  override def resolveLocation(parent: Location, path: Path): Option[Location] = ???
-  override def resolveSource(parent: Location, path: Path,  extensionFilter:Option[Set[String]] = None): Option[InputSource] = ???
+  override def resolveLocation(parent: Location, path: Path, create:Boolean): Option[Location] = ???
+  override def resolveSource(parent: Location, path: Path, extensionFilter:Option[Set[String]] = None): Option[InputSource] = ???
   override def resolveSink(parent: Location, ident: Identifier.Specific): Option[OutputTarget] = ???
   override def listSources(parent: Location): Set[Identifier] = ???
   override def listLocations(parent: Location): Set[Identifier] = ???
   override def provideDefault(): Option[Location] = ???
-  override def serialize(parent: Location, target: Location, resourceName:Option[String]): Option[String] = ???
+  override def serialize(parent: Option[Location], target: Location, resourceName:Option[String]): Option[String] = ???
 
 
 

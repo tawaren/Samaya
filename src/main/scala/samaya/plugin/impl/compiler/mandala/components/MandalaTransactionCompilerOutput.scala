@@ -10,7 +10,7 @@ class MandalaTransactionCompilerOutput(
                             override val params: Seq[Param],
                             override val results: Seq[Result],
                             override val code: Seq[OpCode],
-                            override val src: SourceId
+                            override val src:SourceId
 ) extends CompiledTransaction {
   override def language: String = MandalaCompiler.Language
   override def version: String = MandalaCompiler.Version

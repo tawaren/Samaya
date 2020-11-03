@@ -7,17 +7,17 @@ import samaya.plugin.impl.compiler.mandala.components.clazz.SigClass
 import samaya.structure.types._
 import samaya.structure._
 import samaya.toolbox.track.TypeTracker
-import samaya.toolbox.transform.{ComponentTransformer, TransformTraverser}
+import samaya.toolbox.transform.{EntryTransformer, TransformTraverser}
 import samaya.types.Context
 
 import scala.collection.immutable.ListMap
 
-class ImplicitInjector(instancesFinder:InstanceFinder)  extends ComponentTransformer{
+class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer{
 
   override def transformFunction(in: FunctionDef, context: Context): FunctionDef = {
     val transformer = new ImplicitInjector(Left(in), context)
     new FunctionDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -35,7 +35,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends ComponentTransfo
   override def transformImplement(in: ImplementDef, context: Context): ImplementDef = {
     val transformer = new ImplicitInjector(Right(in), context)
     new ImplementDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -52,13 +52,13 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends ComponentTransfo
     }
   }
 
-  class ImplicitInjector(override val component: Either[FunctionDef, ImplementDef], override val context: Context) extends TransformTraverser with TypeTracker {
+  class ImplicitInjector(override val entry: Either[FunctionDef, ImplementDef], override val context: Context) extends TransformTraverser with TypeTracker {
 
     var providedStack:Seq[Map[Type,Val]] = Seq(Map.empty)
     private def providedMap():Map[Type,Val] = providedStack.head
     private def record(typ:Type, place:Val): Unit = {
       if(providedStack.head.contains(typ)) {
-        feedback(LocatedMessage(s"The context value $place shadows previous context value ${providedStack.head(typ)} of the same type",place.origin,Warning))
+        feedback(LocatedMessage(s"The context value $place shadows previous context value ${providedStack.head(typ)} of the same type",place.src,Warning))
       }
       providedStack = providedStack.head.updated(typ, place) +: providedStack.tail
     }
@@ -195,31 +195,31 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends ComponentTransfo
                 typ match {
                   case sigType: SigType => (sigType.getComponent(context), sigType.getEntry(context)) match {
                     case (Some(cls:SigClass),Some(entry)) =>
-                      val (clsApplies,funApplies) = typ.applies.splitAt(cls.classGenerics.size)
+                      val (clsApplies,funApplies) = typ.applies.splitAt(cls.generics.size)
                       instancesFinder.findAndApplyImplementFunction(entry.name, cls.clazzLink, clsApplies, funApplies, context, p.src) match {
                         case Some(implement) =>
                           val (parmCodes, params) = resolveParams(Seq.empty, implement)
                           producingOpcodes = producingOpcodes ++ parmCodes
-                          val ret = Id()
+                          val ret = Id(p.src)
                           val code = OpCode.Invoke(Seq(AttrId(ret, Seq.empty)),implement,params, p.src)
                           producingOpcodes = producingOpcodes :+ code
                           ret
                         case None =>
                           feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",p.src,Error))
-                          Val.unknown()
+                          Val.unknown(p.name, p.src)
                       }
                     case _ =>
                       feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",p.src,Error))
-                      Val.unknown()
+                      Val.unknown(p.name, p.src)
                   }
                   case _ =>
                     feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",p.src,Error))
-                    Val.unknown()
+                    Val.unknown(p.name, p.src)
                 }
               }
             } else {
               feedback(LocatedMessage("Only implicit parameters are allowed to be missing",p.src,Error))
-              Val.unknown()
+              Val.unknown(p.name, p.src)
             }
         }
         case _ => params
@@ -256,7 +256,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends ComponentTransfo
 
     override def transformTryInvoke(res: Seq[AttrId], func: Func, param: Seq[(Boolean, Ref)], success: (Seq[AttrId], Seq[OpCode]), failure: (Seq[AttrId], Seq[OpCode]), origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       val (pCodes, nParams) = resolveParams(param.map(_._2), func)
-      val nFinParams = param.map(_._1).zipAll(nParams, false, Val.unknown())
+      val nFinParams = param.map(_._1).zipAll(nParams, false, Val.unknown("unknown",origin))
       Some(pCodes :+ OpCode.TryInvoke(res,func,nFinParams, success,failure,origin))
     }
 
@@ -270,7 +270,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends ComponentTransfo
       stack.getType(func) match {
         case sigFunc:SigType =>
           val (pCodes, nParams) = resolveParams(param.map(_._2), sigFunc)
-          val nFinParams = param.map(_._1).zipAll(nParams, false, Val.unknown())
+          val nFinParams = param.map(_._1).zipAll(nParams, false, Val.unknown("unknown",origin))
           Some(pCodes :+ OpCode.TryInvokeSig(res, func, nFinParams, success, failure, origin))
         case _ => None
       }

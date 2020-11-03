@@ -99,14 +99,14 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
         return None
     }
 
-    val codeLocation: Location = LocationResolver.resolveLocation(workspaceLocation,codeIdent)  match {
+    val codeLocation: Location = LocationResolver.resolveLocation(workspaceLocation,codeIdent, create = true)  match {
       case Some(loc) => loc
       case None =>
         ErrorManager.feedback(PlainMessage("Could not load code location", ErrorManager.Error))
         return None
     }
 
-    val interfaceLocation: Location = LocationResolver.resolveLocation(workspaceLocation,interfaceIdent)  match {
+    val interfaceLocation: Location = LocationResolver.resolveLocation(workspaceLocation,interfaceIdent, create = true)  match {
       case Some(loc) => loc
       case None =>
         ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error))

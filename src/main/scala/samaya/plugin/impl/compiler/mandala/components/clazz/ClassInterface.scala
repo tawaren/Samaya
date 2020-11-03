@@ -1,6 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.components.clazz
 
-import samaya.structure.types.CompLink
+import samaya.structure.types.{CompLink, SourceId}
 import samaya.structure._
 
 class ClassInterface(override val meta:Meta, private val cls: Class) extends Class with Interface[Class] {
@@ -9,7 +9,7 @@ class ClassInterface(override val meta:Meta, private val cls: Class) extends Cla
   override def language: String = cls.language
   override def version: String = cls.version
   override def classifier: Set[String] = cls.classifier
-  override def classGenerics: Seq[Generic] = cls.classGenerics
+  override def generics: Seq[Generic] = cls.generics
   override def mode: Module.Mode = cls.mode
   override def attributes: Seq[Attribute] = cls.attributes
   override def dataTypes: Seq[DataDef] = cls.dataTypes
@@ -18,4 +18,5 @@ class ClassInterface(override val meta:Meta, private val cls: Class) extends Cla
   override def implements: Seq[FunctionSig] = cls.implements
   override def toInterface(meta: Meta): Interface[Class] = new ClassInterface(meta, this)
   override def isVirtual: Boolean = cls.isVirtual
+  override def src:SourceId = cls.src
 }

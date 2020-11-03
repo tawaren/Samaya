@@ -1,8 +1,9 @@
 package samaya.structure.types
 
 import samaya.compilation.ErrorManager._
-import samaya.structure.types.Type.GenericType
-import samaya.structure.{Component, FunctionSig, Package, Module, ModuleEntry}
+import samaya.structure.types.Func.Unknown
+import samaya.structure.types.Type.{GenericType, Unknown}
+import samaya.structure.{Attribute, Component, FunctionSig, Generic, Module, ModuleEntry, Package}
 import samaya.types.Context
 
 trait Func {
@@ -16,6 +17,10 @@ trait Func {
   def replaceContainedTypes(f: Type => Type):Func
   def transactional(context:Context):Boolean
   def isUnknown = false
+  def src:SourceId
+  def attributes:Seq[Attribute]
+  def changeMeta(src:SourceId = src, attributes:Seq[Attribute] = attributes):Func
+
 
   def asStdFunc:Option[StdFunc] = this match {
     case stdFunc: StdFunc => Some(stdFunc)
@@ -55,15 +60,16 @@ sealed trait ImplFunc extends DefinedFunc[FunctionSig] {
 
 object Func {
 
-  object Unknown extends Func {
+  case class Unknown(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends Func {
     def replaceContainedTypes(f: Type => Type):this.type = this
     //ensure each instance is unique
     //is overwritten to make it clear in the code, that it is intended
     override def hashCode(): Int = System.identityHashCode(this)
     override def equals(obj: Any): Boolean = obj match {
-      case value :Unknown.type => this.eq(value)
+      case value: Unknown => this.eq(value)
       case _ => false
     }
+
     override def isUnknown = true
     override def hasPermission(context: Context, perm: Permission): Boolean = false
     override def isCurrentModule: Boolean = false
@@ -72,10 +78,18 @@ object Func {
     override def name(context: Context): String = "unknown"
     override def transactional(context: Context): Boolean = false
     override def prettyString(context: Context, genNames:Seq[String] = Seq.empty): String = "unknown"
-
+    override def changeMeta(src: SourceId = src, attributes: Seq[Attribute] = attributes): Unknown = Unknown(src, attributes)
   }
 
-  //todo: shared suprtype with Type
+  def globalizeLocals(localModule:CompLink, func:Func):Func = {
+    (func match {
+      case ImplFunc.Local(index, applies) => ImplFunc.Remote(localModule, index, applies)(func.src)
+      case StdFunc.Local(index, applies) => StdFunc.Remote(localModule, index, applies)(func.src)
+      case sigType: SigType => return Type.globalizeLocals(localModule, sigType).asInstanceOf[SigType]
+      case fun => fun
+    }).replaceContainedTypes(Type.globalizeLocals(localModule,_))
+  }
+
   trait LocalLookup[D <: ModuleEntry] extends DefinedFunc[D] {
     def offset:Int
     def select(module:Module, offset:Int):Option[D]
@@ -87,7 +101,7 @@ object Func {
       getEntry(context) match {
         case Some(func) => f(func, x => x)
         case None =>
-          feedback(PlainMessage(s"Can not find dependent data type with index: $offset in current module", Error))
+          feedback(LocatedMessage(s"Can not find associated data type with index: $offset in current module", src, Error))
           fallback
       }
     }
@@ -107,7 +121,7 @@ object Func {
       getEntry(context)  match {
         case Some(func) => f(func, adaptLocals)
         case None =>
-          feedback(PlainMessage(s"Can not find dependent module with hash: $moduleRef", Error))
+          feedback(LocatedMessage(s"Can not find dependent module with hash: $moduleRef", src, Error))
           fallback
       }
     }
@@ -149,12 +163,14 @@ object StdFunc {
 
   }
 
-  case class Local(override val offset: Int, override val applies: Seq[Type]) extends Declared with Func.LocalLookup[FunctionSig] {
-    override def replaceContainedTypes(f: Type => Type): StdFunc = Local(offset, this.applies.map(f))
+  case class Local(override val offset: Int, override val applies: Seq[Type])(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends Declared with Func.LocalLookup[FunctionSig] {
+    override def replaceContainedTypes(f: Type => Type): StdFunc = Local(offset, this.applies.map(f))(src,attributes)
+    override def changeMeta(src: SourceId = src, attributes: Seq[Attribute] = attributes): Local = Local(offset,applies)(src, attributes)
   }
 
-  case class Remote(override val moduleRef:CompLink, override val offset:Int, override val applies:Seq[Type]) extends Declared with Func.RemoteLookup[FunctionSig] {
-    override def replaceContainedTypes(f: Type => Type): StdFunc = Remote(moduleRef,offset, this.applies.map(f))
+  case class Remote(override val moduleRef:CompLink, override val offset:Int, override val applies:Seq[Type])(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends Declared with Func.RemoteLookup[FunctionSig] {
+    override def replaceContainedTypes(f: Type => Type): StdFunc = Remote(moduleRef,offset, this.applies.map(f))(src,attributes)
+    override def changeMeta(src: SourceId = src, attributes: Seq[Attribute] = attributes): Remote = Remote(moduleRef, offset,applies)(src, attributes)
   }
 }
 
@@ -193,11 +209,13 @@ object ImplFunc {
     })
   }
 
-  case class Local(override val offset: Int, override val applies: Seq[Type]) extends Declared with Func.LocalLookup[FunctionSig] {
-    override def replaceContainedTypes(f: Type => Type): ImplFunc = Local(offset, this.applies.map(f))
+  case class Local(override val offset: Int, override val applies: Seq[Type])(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends Declared with Func.LocalLookup[FunctionSig] {
+    override def replaceContainedTypes(f: Type => Type): ImplFunc = Local(offset, this.applies.map(f))(src,attributes)
+    override def changeMeta(src: SourceId = src, attributes: Seq[Attribute] = attributes): Local = Local(offset,applies)(src, attributes)
   }
 
-  case class Remote(override val moduleRef:CompLink, override val offset:Int, override val applies:Seq[Type]) extends Declared with Func.RemoteLookup[FunctionSig] {
-    override def replaceContainedTypes(f: Type => Type): ImplFunc = Remote(moduleRef,offset, this.applies.map(f))
+  case class Remote(override val moduleRef:CompLink, override val offset:Int, override val applies:Seq[Type])(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends Declared with Func.RemoteLookup[FunctionSig] {
+    override def replaceContainedTypes(f: Type => Type): ImplFunc = Remote(moduleRef,offset, this.applies.map(f))(src,attributes)
+    override def changeMeta(src: SourceId = src, attributes: Seq[Attribute] = attributes): Remote = Remote(moduleRef, offset,applies)(src, attributes)
   }
 }

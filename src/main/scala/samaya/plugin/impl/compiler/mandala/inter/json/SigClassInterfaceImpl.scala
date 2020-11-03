@@ -7,7 +7,7 @@ import samaya.structure._
 import samaya.structure.types.{CompLink, Hash}
 
 class SigClassInterfaceImpl(override val location: JsonLocation, input:JsonModel.InterfaceSigClass) extends SigClass with JsonSource {
-  override def classGenerics: Seq[Generic] = {
+  override def generics: Seq[Generic] = {
     val genLoc = location.descendProperty("generics")
     input.generics.zipWithIndex.map(gi => GenericImpl(genLoc.descendProperty(gi._1.name), gi._1,gi._2))
   }

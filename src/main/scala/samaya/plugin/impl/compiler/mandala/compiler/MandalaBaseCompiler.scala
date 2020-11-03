@@ -1,9 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
-import samaya.plugin.impl.compiler.mandala.Environment
-import samaya.plugin.impl.compiler.mandala.components.InstInfo
-import samaya.plugin.impl.compiler.simple.MandalaParser
-import samaya.structure.{Component, Interface, Package}
+import samaya.plugin.impl.compiler.mandala.{Environment, MandalaParser}
 
 import scala.collection.JavaConverters._
 

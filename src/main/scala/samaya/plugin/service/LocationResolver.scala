@@ -14,7 +14,7 @@ trait LocationResolver extends Plugin{
 
 
   //generates a new location from a parent location and the sub location name
-  def resolveLocation(parent:Location, path:Path):Option[Location]
+  def resolveLocation(parent:Location, path:Path, create:Boolean = false):Option[Location]
   //finds a source in a location
   def resolveSource(parent:Location, path:Path, extensionFilter:Option[Set[String]] = None):Option[InputSource]
   //finds a output in a location
@@ -26,7 +26,7 @@ trait LocationResolver extends Plugin{
   //parse
   def parsePath(ident:String):Option[Path]
   //serialize
-  def serialize(parent:Location, target:Location, resourceName:Option[String]):Option[String]
+  def serialize(parent:Option[Location], target:Location, resourceName:Option[String]):Option[String]
   //provide a default location
   def provideDefault():Option[Location]
 }
@@ -44,8 +44,8 @@ object LocationResolver extends LocationResolver with PluginProxy{
     select(Selectors.Default).flatMap(r => r.provideDefault())
   }
 
-  def resolveLocation(parent:Location, path:Path):Option[Location] = {
-    select(Selectors.Lookup(parent, path) ).flatMap(r => r.resolveLocation(parent, path))
+  def resolveLocation(parent:Location, path:Path, create:Boolean = false):Option[Location] = {
+    select(Selectors.Lookup(parent, path) ).flatMap(r => r.resolveLocation(parent, path, create))
   }
 
   def resolveSource(parent:Location, path:Path, extensionFilter:Option[Set[String]] = None):Option[InputSource] = {
@@ -68,7 +68,7 @@ object LocationResolver extends LocationResolver with PluginProxy{
     select(Selectors.Parse(ident)).flatMap(r => r.parsePath(ident))
   }
 
-  override def serialize(parent: Location, target: Location, resourceName:Option[String]): Option[String] = {
+  override def serialize(parent:Option[Location], target: Location, resourceName:Option[String]): Option[String] = {
     select(Selectors.Serialize(parent,target)).flatMap(r => r.serialize(parent,target,resourceName))
   }
 }

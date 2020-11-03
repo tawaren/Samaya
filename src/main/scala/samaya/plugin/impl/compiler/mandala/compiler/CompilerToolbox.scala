@@ -2,11 +2,8 @@ package samaya.plugin.impl.compiler.mandala.compiler
 
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
-import samaya.plugin.impl.compiler.mandala.Environment
-import samaya.plugin.impl.compiler.mandala.components.instance.DefInstance
-import samaya.plugin.impl.compiler.mandala.entry.instance.LocalInstanceEntry
-import samaya.plugin.impl.compiler.simple.{MandalaBaseVisitor, MandalaParser}
-import samaya.structure.{Component, Interface, Package}
+import samaya.plugin.impl.compiler.mandala.{Environment, MandalaBaseVisitor, MandalaParser}
+import samaya.structure.{Component, Interface}
 import samaya.structure.types._
 
 trait CompilerToolbox extends MandalaBaseVisitor[Any] {
@@ -53,7 +50,7 @@ trait CompilerToolbox extends MandalaBaseVisitor[Any] {
 
   def freshIdFromContext(p:ParserRuleContext):Id = {
     idCounter+=1
-    Id(idCounter,regionFromContext(p))
+    Id(idCounter,sourceIdFromContext(p))
   }
 
   private def freshName():String = {
@@ -76,7 +73,7 @@ trait CompilerToolbox extends MandalaBaseVisitor[Any] {
   }
 
 
-  def idFromToken(t:Token):Id = Id(t.getText,regionFromToken(t))
+  def idFromToken(t:Token):Id = Id(t.getText,new InputSourceId(regionFromToken(t)))
 
   private def regionFromToken(t:Token):Region = Region(
     start = locationFromToken(t, isEnd = false),
@@ -98,5 +95,4 @@ trait CompilerToolbox extends MandalaBaseVisitor[Any] {
       ctx.keywords().id
     }
   }
-
 }

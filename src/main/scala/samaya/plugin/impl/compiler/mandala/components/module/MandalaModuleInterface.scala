@@ -1,8 +1,9 @@
 package samaya.plugin.impl.compiler.mandala.components.module
 
+import samaya.plugin.impl.compiler.mandala.entry.TypeAlias
 import samaya.structure.Module.Mode
 import samaya.structure._
-import samaya.structure.types.CompLink
+import samaya.structure.types.{CompLink, SourceId}
 
 class MandalaModuleInterface(override val meta:Meta, private val module: MandalaModule) extends MandalaModule with Interface[MandalaModule] {
   override def link: CompLink = meta.link
@@ -17,6 +18,8 @@ class MandalaModuleInterface(override val meta:Meta, private val module: Mandala
   override def implements: Seq[FunctionSig] = module.implements
   override def dataTypes: Seq[DataDef] = module.dataTypes
   override def instances: Map[CompLink,Seq[String]] = module.instances
+  override def typeAlias: Seq[TypeAlias] = module.typeAlias
   override def toInterface(meta: Meta): Interface[MandalaModule] = new MandalaModuleInterface(meta,module)
   override def isVirtual: Boolean = module.isVirtual
+  override def src:SourceId = module.src
 }

@@ -1,8 +1,8 @@
 package samaya.plugin.impl.compiler.mandala
 
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
-import samaya.plugin.impl.compiler.simple.{MandalaBaseVisitor, MandalaParser}
-import samaya.plugin.impl.compiler.simple.MandalaParser.PathContext
+import samaya.plugin.impl.compiler.mandala.MandalaParser.{InstanceContext, InstanceDefContext, PathContext}
+import samaya.plugin.impl.compiler.mandala.components.instance.Instance
 import samaya.structure.types.{InputSourceId, Location, Region, SourceId}
 
 import scala.collection.JavaConverters._
@@ -49,67 +49,44 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   }
 
   private var availableGenerics = Set.empty[String]
-  private var availableComponents = Set.empty[String]
+  private var availableEntries = Set.empty[String]
   private var availableModules = Set.empty[String]
   private var componentGenerics = Set.empty[String]
 
   override def visitTransaction(ctx: MandalaParser.TransactionContext): Map[Seq[String], Seq[SourceId]] = {
-    val res = super.visitTransaction(ctx)
-    availableComponents = Set.empty[String]
     availableGenerics = Set.empty[String]
     componentGenerics = Set.empty[String]
+    availableEntries = Set.empty[String]
+    val res = super.visitTransaction(ctx)
     availableModules = availableModules + getName(ctx.name()).getText
     res
   }
 
   override def visitModule(ctx: MandalaParser.ModuleContext): Map[Seq[String], Seq[SourceId]] = {
-    val res = super.visitModule(ctx)
-    availableComponents = Set.empty[String]
+    availableEntries = Set.empty[String]
     availableGenerics = Set.empty[String]
     componentGenerics = Set.empty[String]
+    val res = super.visitModule(ctx)
     availableModules = availableModules +  getName(ctx.name()).getText
     res
   }
 
   override def visitClass_(ctx: MandalaParser.Class_Context): Map[Seq[String], Seq[SourceId]] = {
-    val res = super.visitClass_(ctx)
-    availableComponents = Set.empty[String]
+    availableEntries = Set.empty[String]
     availableGenerics = Set.empty[String]
     componentGenerics = extractGenericArgs(ctx.genericArgs())
+    val res = super.visitClass_(ctx)
     availableModules = availableModules +  getName(ctx.name()).getText
     res
   }
 
-  override def visitData(ctx: MandalaParser.DataContext): Map[Seq[String], Seq[SourceId]]  = {
-    availableGenerics = componentGenerics ++ extractGenericArgs(ctx.genericArgs())
-    val res = super.visitData(ctx)
-    if(ctx != null && ctx.name != null) {
-      availableComponents += getName(ctx.name).getText
-    }
+  override def visitTopInstance(ctx: MandalaParser.TopInstanceContext): Map[Seq[String], Seq[SourceId]] = {
+    availableEntries = Set.empty[String]
+    availableGenerics = Set.empty[String]
+    val res = super.visitTopInstance(ctx)
+    availableModules = availableModules +  getName(ctx.instanceDef().asInstanceOf[InstanceContext].name()).getText
     res
   }
-
-  /*
-   override def visitImplement(ctx: MandalaParser.ImplementContext): Set[Seq[String]]  = {
-    val bodyBindings = ctx.captures.p.asScala.map(n => getName(n.name).getText) ++ ctx.paramBindings.i.asScala.map(b => getName(b.name()).getText)
-    withBindings(bodyBindings.toSet) {
-      availableGenerics = componentGenerics ++ extractGenericArgs(ctx.genericArgs())
-      val res = super.visitImplement(ctx)
-      if (ctx != null && ctx.name != null) {
-        availableComponents += getName(ctx.name).getText
-      }
-      res
-    }
-  }
-
-  override def visitSig(ctx: MandalaParser.SigContext): Set[Seq[String]]  = {
-    availableGenerics = componentGenerics ++ extractGenericArgs(ctx.genericArgs())
-    val res = super.visitSig(ctx)
-    if(ctx != null && ctx.name != null) {
-      availableComponents += getName(ctx.name).getText
-    }
-    res
-  }*/
 
   private def withBindings[T](bindings:Set[String])(body: => T):T = {
     val old = availableBindings
@@ -119,7 +96,14 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
     res
   }
 
-
+  override def visitData(ctx: MandalaParser.DataContext): Map[Seq[String], Seq[SourceId]]  = {
+    availableGenerics = componentGenerics ++ extractGenericArgs(ctx.genericArgs())
+    val res = super.visitData(ctx)
+    if(ctx != null && ctx.name != null) {
+      availableEntries += getName(ctx.name).getText
+    }
+    res
+  }
 
   override def visitFunction(ctx: MandalaParser.FunctionContext): Map[Seq[String], Seq[SourceId]] = {
     val bodyBindings = ctx.params().p.asScala.map(n => getName(n.name).getText).toSet
@@ -127,10 +111,36 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
       availableGenerics = componentGenerics ++ extractGenericArgs(ctx.genericArgs())
       val res = super.visitFunction(ctx)
       if(ctx != null && ctx.name != null) {
-        availableComponents += getName(ctx.name).getText
+        availableEntries += getName(ctx.name).getText
       }
       res
     }
+  }
+
+  override def visitInstance(ctx: InstanceContext): Map[Seq[String], Seq[SourceId]] = {
+    val old = componentGenerics
+    componentGenerics = extractGenericArgs(ctx.genericArgs())
+    val res = aggregateResult(
+      visitRef(ctx.baseRef().path().part.asScala.map(getName(_).getText), sourceIdFromContext(ctx), isComp = true),
+      //visits the ref again but is no problem as worst case results in a package which then is ignored by builder (if it exists)
+      super.visitInstance(ctx)
+    )
+    componentGenerics = old
+    res
+  }
+
+  override def visitAliasDef(ctx: MandalaParser.AliasDefContext): Map[Seq[String], Seq[SourceId]] = {
+    availableGenerics = componentGenerics ++ extractGenericArgs(ctx.genericArgs())
+    val res = super.visitAliasDef(ctx)
+    res
+  }
+
+  override def visitTypeAliasDef(ctx: MandalaParser.TypeAliasDefContext): Map[Seq[String], Seq[SourceId]] = {
+    val res = super.visitTypeAliasDef(ctx)
+    if(ctx != null && ctx.name != null) {
+      availableEntries += getName(ctx.name).getText
+    }
+    res
   }
 
   private def extractGenericArgs(ctx: MandalaParser.GenericArgsContext): Set[String] = {
@@ -139,8 +149,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
     ctx.generics.asScala.map(n => getName(n.name).getText).toSet
   }
 
-  private def visitRef(parts:Seq[String], sourceId: SourceId): Map[Seq[String], Seq[SourceId]] = {
-
+  private def visitRef(parts:Seq[String], sourceId: SourceId, isComp: Boolean): Map[Seq[String], Seq[SourceId]] = {
     val start = parts.head
     //If it is just a name not a path it can refer to local declarations
     if(parts.size == 1) {
@@ -150,7 +159,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
       }
 
       //May be from this modules scope
-      if(availableComponents.contains(start)){
+      if(availableEntries.contains(start)){
         return Map.empty
       }
     }
@@ -160,19 +169,18 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
       //It refers to something in same file - no need to compile separately
       Seq.empty
     } else if(imports.contains(start)) {
-      if(parts.tail.isEmpty) {
-        //this is a ref to a fully qualified import
-        //last is componentName
-        imports(start).init
-      } else {
-        //this is a composed import, parts in the import parts in the ref
-        imports(start) ++ parts.tail.init //last is componentName
-      }
+      imports(start) ++ parts.tail
     } else {
-      parts.init //last is entryName
+      parts //last is entryName
     }
 
-    if(dep.isEmpty) {
+    val cleanedDep = if(isComp || dep.isEmpty){
+      dep
+    } else {
+      dep.init
+    }
+
+    if(cleanedDep.isEmpty) {
       Map.empty
     } else {
       Map(dep -> Seq(sourceId))
@@ -183,7 +191,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
     val extracts = if(ctx == null || ctx.extracts() == null) {
       Set.empty[String]
     } else {
-      ctx.extracts().p.asScala.map(n => getName(n.name()).getText).toSet
+      ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
     }
     withBindings(extracts) {
       super.visitBranch(ctx)
@@ -192,7 +200,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
 
   override def visitSucc(ctx: MandalaParser.SuccContext): Map[Seq[String], Seq[SourceId]] = {
     val extracts = if(ctx.extracts() != null) {
-      ctx.extracts().p.asScala.map(n => getName(n.name()).getText).toSet
+      ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
     } else {
       Set.empty[String]
     }
@@ -203,7 +211,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
 
   override def visitFail(ctx: MandalaParser.FailContext): Map[Seq[String], Seq[SourceId]] = {
     val extracts = if(ctx.extracts() != null) {
-      ctx.extracts().p.asScala.map(n => getName(n.name()).getText).toSet
+      ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
     } else {
       Set.empty[String]
     }
@@ -241,7 +249,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   override def visitLet(ctx: MandalaParser.LetContext): Map[Seq[String], Seq[SourceId]] = {
     val bindImports = visit(ctx.bind)
     val assigImports = visitAssigs(ctx.assigs())
-    val extracts = ctx.assigs().`val`.asScala.map(n => getName(n.name()).getText).toSet
+    val extracts = ctx.assigs().`val`.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
     val execImports = withBindings(extracts) {
       visit(ctx.exec)
     }
@@ -251,7 +259,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   override def visitUnpack(ctx: MandalaParser.UnpackContext): Map[Seq[String], Seq[SourceId]] = {
     val bindImports = visit(ctx.bind)
     val extractImports = visitExtracts(ctx.extracts())
-    val extracts = ctx.extracts().p.asScala.map(n => getName(n.name()).getText).toSet
+    val extracts = ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
     val execImports = withBindings(extracts) {
       visit(ctx.exec)
     }
@@ -259,7 +267,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   }
 
   override def visitPath(ctx: PathContext): Map[Seq[String], Seq[SourceId]] = {
-    visitRef(ctx.part.asScala.map(getName(_).getText), sourceIdFromContext(ctx))
+    visitRef(ctx.part.asScala.map(getName(_).getText), sourceIdFromContext(ctx), isComp = false)
   }
 
   def getName(ctx: MandalaParser.NameContext): Token = {

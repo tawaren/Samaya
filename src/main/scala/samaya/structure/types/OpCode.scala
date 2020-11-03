@@ -6,7 +6,7 @@ import samaya.compilation.ErrorManager.unexpected
 
 sealed trait OpCode {
   def id:SourceId
-  def origin:Region = id.src
+  def origin:Region = id.origin
   def params:Seq[Ref]
   def rets:Seq[AttrId]
   def retVal(index:Int):Val = Val(rets(index).id,id,index)
@@ -51,8 +51,8 @@ object OpCode {
   case class DiscardMany(params:Seq[Ref], id:SourceId) extends OpCode with ZeroResOpcodes
   case class Unpack(rets:Seq[AttrId], override val src:Ref, mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes
   case class Field(override val ret:AttrId, override val src:Ref, pos:Id, mode:FetchMode, id:SourceId) extends OpCode with SingleResOpcodes with SingleSourceOpcodes
-  case class Switch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes
-  case class Inspect(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], id:SourceId) extends OpCode with SingleSourceOpcodes
+  case class Switch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
+  case class Inspect(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
   case class Pack(override val ret:TypedId, params:Seq[Ref], tag:Id, mode:FetchMode, id:SourceId) extends OpCode with SingleTypedResOpcodes
   case class Invoke(rets:Seq[AttrId], func:Func, params:Seq[Ref], id:SourceId) extends OpCode
   case class TryInvoke(rets:Seq[AttrId], func:Func, override val essentialParams:Seq[(Boolean,Ref)], success:(Seq[AttrId],Seq[OpCode]), failure:(Seq[AttrId],Seq[OpCode]), id:SourceId) extends OpCode with EssentialSourceOpcodes

@@ -22,7 +22,7 @@ object ComponentBuilder {
         ComponentValidator.validateComponent(cmp, partialPkg)
       }
 
-      //todo: only when debug output enabled
+
       produceAsm(codeLoc,cmp,partialPkg)
 
       val buildRes = if(!invalid) {

@@ -25,8 +25,9 @@ class MandalaValidator extends ComponentValidator {
     cmp match {
       case inst: DefInstance => InstanceValidator.validateDefInstance(inst, pkg)
       case inst: ImplInstance => InstanceValidator.validateInstance(inst, pkg)
-      case module: CompiledModule with MandalaModule => ModuleValidator.validateCompiledModule(module)
-      case module: MandalaModule => ModuleValidator.validateModule(module)
+      case module: CompiledModule with MandalaModule => ModuleValidator.validateCompiledModule(module,pkg)
+      case module: MandalaModule => ModuleValidator.validateModule(module,pkg)
+      //Todo: Validate SigClass matches FunClass
     }
   }
 

@@ -53,8 +53,8 @@ case class SlotFrameStack(
 
   def resolveAll(ids:Seq[Ref]):Seq[Val] = stack.resolveAll(ids)
   def resolveAll(ids:Set[Id]):Set[Val] = stack.resolveAll(ids)
-  def resolve(id:Ref):Val = stack.resolve(id).getOrElse(Val.unknown())
-  def resolve(aid:AttrId):Val = stack.resolve(aid.id).getOrElse(Val.unknown())
+  def resolve(id:Ref):Val = stack.resolve(id).getOrElse(Val.unknown(id.name, id.src)).withAdaptedSource(id.src)
+  def resolve(aid:AttrId):Val = stack.resolve(aid.id).getOrElse(Val.unknown(aid.name, aid.src)).withAdaptedSource(aid.src)
 
   def exists(key:Val):Boolean = stack.exists(key)
 

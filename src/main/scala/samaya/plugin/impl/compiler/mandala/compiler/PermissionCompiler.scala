@@ -1,7 +1,7 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
 import samaya.compilation.ErrorManager.{LocatedMessage, Warning, feedback}
-import samaya.plugin.impl.compiler.simple.MandalaParser
+import samaya.plugin.impl.compiler.mandala.MandalaParser
 import samaya.structure.types.Accessibility.{Global, Guarded, Local}
 import samaya.structure.types.Permission.{Call, Consume, Create, Define, Inspect}
 import samaya.structure.types.{Accessibility, Permission}

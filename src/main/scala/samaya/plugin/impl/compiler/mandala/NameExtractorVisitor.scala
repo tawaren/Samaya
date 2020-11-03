@@ -1,9 +1,8 @@
 package samaya.plugin.impl.compiler.mandala
 
 import org.antlr.v4.runtime.Token
+import samaya.plugin.impl.compiler.mandala.MandalaParser.InstanceContext
 import samaya.plugin.impl.compiler.mandala.components.instance.Instance
-import samaya.plugin.impl.compiler.simple.{MandalaBaseVisitor, MandalaParser}
-import samaya.plugin.impl.compiler.simple.MandalaParser.{InstanceContext, ModuleContext}
 
 import scala.collection.JavaConverters._
 

@@ -6,9 +6,10 @@ import com.rfksystems.blake2b.security.Blake2bProvider
 import samaya.build.desc.Dependency
 import samaya.plugin.service.{LanguageCompiler, LocationResolver, PackageEncoder, WorkspaceEncoder}
 import samaya.structure.LinkablePackage
-import samaya.types.{InputSource, Location, Workspace}
+import samaya.types.{Identifier, InputSource, Location, Path, Workspace}
 import samaya.validation.WorkspaceValidator
 import samaya.compilation.ErrorManager.{Error, LocatedMessage, PlainMessage, Warning, feedback, unexpected}
+import samaya.plugin.impl.wp.json.WorkspaceImpl
 
 
 object BuildTool {
@@ -28,7 +29,10 @@ object BuildTool {
     }
 
     val wp = LocationResolver.resolveSource(parent,ident, Some(Set(WorkspaceEncoder.workspaceExtensionPrefix))) match {
-      case None => throw new Exception("Workspace file not found");//todo: error
+      case None => LocationResolver.resolveLocation(parent, ident) match {
+        case None => throw new Exception("Workspace not found"); //todo: error
+        case Some(workFolder) => implicitWorkspace(workFolder)
+      }
       case Some(input) => WorkspaceEncoder.deserializeWorkspace(input) match {
         case Some(value) =>
           WorkspaceValidator.validateWorkspace(value)
@@ -39,6 +43,75 @@ object BuildTool {
     val res = compileWorkspace(wp)
     println(s"compilation of workspace ${wp.name} finished in ${System.currentTimeMillis()-t0} ms" )
     res
+  }
+
+  def implicitWorkspace(workFolder:Location): Workspace = {
+      var includes = Set.empty[Workspace]
+      var wspList = Set.empty[String]
+      var preDeps = Map.empty[String,InputSource]
+      var explicits = Set.empty[Location]
+      var comps = Set.empty[Path]
+      val sources = LocationResolver.listSources(workFolder)
+
+      for(source <- sources) {
+        source.extension match {
+          case None =>
+            //Todo: add deps files as dependencies unless their is a workspaceFile as well
+          case Some(ext) if ext.startsWith(WorkspaceEncoder.workspaceExtensionPrefix) =>
+            val input = LocationResolver.resolveSource(workFolder, Path(source)) match {
+              case None => throw new Exception("Workspace could not be loaded");//todo: error (inclusive position)
+              case Some(input) => input
+            }
+            WorkspaceEncoder.deserializeWorkspace(input) match {
+              case Some(value) =>
+                WorkspaceValidator.validateWorkspace(value)
+                explicits = explicits + value.workspaceLocation
+                wspList = wspList + source.name
+                includes = includes + value;
+              case None => throw new Exception("Workspace could not be loaded");//todo: error
+            }
+          case Some(ext) if ext.startsWith(PackageEncoder.packageExtensionPrefix) =>
+              val input = LocationResolver.resolveSource(workFolder, Path(source)) match {
+                case None => throw new Exception("Workspace could not be loaded");//todo: error (inclusive position)
+                case Some(input) => input
+              }
+              preDeps = preDeps.updated(source.name, input)
+          //Todo: Ask compilers for valid source extensions & check it is one
+          case Some(_) => comps = comps + Path(source)
+        }
+      }
+      val folders = LocationResolver.listLocations(workFolder);
+      for(folder <- folders) {
+        if(folder.name != "out" && folder.name != "abi") {
+          LocationResolver.resolveLocation(workFolder, Path(folder)) match {
+            case Some(newWorkFolder) if !explicits.contains(newWorkFolder) =>
+              includes = includes + implicitWorkspace(newWorkFolder)
+            case _ =>
+          }
+        }
+      }
+
+      val dependencies = preDeps
+        .filter(kv => !wspList.contains(kv._1))
+        .values
+        .filter(pkg => pkg.location != workFolder && pkg.identifier.name == workFolder.name)
+        .flatMap(PackageEncoder.deserializePackage)
+        .toSet
+
+      //todo: allow to specify a root dir and build a parallel tree
+      val out =  LocationResolver.resolveLocation(workFolder,Path(Identifier("out")), create = true)
+      val inter = LocationResolver.resolveLocation(workFolder,Path(Identifier("abi")), create = true)
+
+      new WorkspaceImpl(
+        workFolder.name,
+        workFolder,
+        Some(includes),
+        Some(dependencies),
+        Some(comps),
+        workFolder,
+        out.get,
+        inter.get
+      )
   }
 
   private case class Job(source:InputSource, dependencies:Set[Dependency])
@@ -152,8 +225,6 @@ object BuildTool {
               }
             case None => feedback(LocatedMessage(s"Workspace or Package $pkgName is missing", sources ,Warning))
           }
-
-
         }
       }
       partialPkg = ComponentBuilder.build(nextValue.source, code, interface, partialPkg)

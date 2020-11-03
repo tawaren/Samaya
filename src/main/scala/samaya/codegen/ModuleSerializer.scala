@@ -51,7 +51,7 @@ object ModuleSerializer {
         typ match {
           case Type.GenericType(_,_) =>
             //todo: is this already checked elsewhere if not do so and remove
-            if(perm.isDefined) feedback(PlainMessage("A Generic Type can not be refered by a permission", Warning))
+            if(perm.isDefined) feedback(LocatedMessage("A Generic Type can not be referred by a permission", typ.src, Warning))
             //We do not handle generics as we can get offset from type, no need to enter into map and complicate generic offset logic
             return
           case remote: Type.RemoteLookup[_] => addModule(remote.moduleRef)
@@ -496,14 +496,14 @@ object ModuleSerializer {
       val (caseIdx, mod, off) = fun match {
         // Function{
         //link:FuncLink
-        case StdFunc.Local(offset, _ ) => (0.toByte, 0.toByte, offset)
+        case StdFunc.Local(offset, _) => (0.toByte, 0.toByte, offset)
         case StdFunc.Remote(moduleHash, offset, _) => (0.toByte, imports.modIndex(moduleHash), offset)
         // Implement{
         // link:ImplLink
-        case ImplFunc.Local(offset, _ ) => (1.toByte, 0.toByte, offset)
+        case ImplFunc.Local(offset, _) => (1.toByte, 0.toByte, offset)
         case ImplFunc.Remote(moduleHash, offset, _) => (1.toByte, imports.modIndex(moduleHash), offset)
 
-        case Func.Unknown => unexpected("Unknown Function Reached Serializer")
+        case _:Func.Unknown => unexpected("Unknown Function Reached Serializer")
       }
       out.writeByte(caseIdx)
       //  pub module:ModRef

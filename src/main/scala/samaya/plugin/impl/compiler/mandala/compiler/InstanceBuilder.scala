@@ -1,25 +1,30 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback, unexpected}
+import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
+import samaya.plugin.impl.compiler.mandala.{MandalaCompiler, MandalaParser}
+import samaya.plugin.impl.compiler.mandala.MandalaParser.InstanceContext
 import samaya.plugin.impl.compiler.mandala.components.instance.{ImplInstance, Instance, MandalaDefInstanceCompilerOutput, MandalaImplInstanceCompilerOutput}
 import samaya.plugin.impl.compiler.mandala.components.clazz.{FunClass, SigClass}
-import samaya.plugin.impl.compiler.mandala.components.instance.Instance.{EntryRef, LocalEntryRef, RemoteEntryRef}
-import samaya.plugin.impl.compiler.mandala.entry.instance.LocalInstanceEntry
-import samaya.plugin.impl.compiler.simple.MandalaParser
-import samaya.plugin.impl.compiler.simple.MandalaParser.InstanceContext
-import samaya.structure.{Attribute, Module, Binding, Component, Generic, ImplementDef, Interface, Param, Result}
-import samaya.structure.types.{Accessibility, AttrId, Capability, CompLink, Id, OpCode, Permission, SigType, SourceId, StdFunc, Type}
+import samaya.plugin.impl.compiler.mandala.entry.{LocalInstanceEntry, SigImplement}
+import samaya.structure.{Attribute, Binding, Component, Generic, ImplementDef, Interface, Module, Param, Result}
+import samaya.structure.types.{Accessibility, AttrId, CompLink, Func, Id, ImplFunc, OpCode, Permission, SigType, SourceId, StdFunc, Type}
 
 import scala.collection.JavaConverters._
 
 trait InstanceBuilder extends CompilerToolbox{
   self: ComponentResolver with ComponentBuilder with CapabilityCompiler with PermissionCompiler with SigCompiler =>
 
-  private def resolveLinks(ctx:InstanceContext):Option[(CompLink, CompLink)] = {
+  private def resolveLinks(ctx:InstanceContext):Option[(Map[String,Int], CompLink, CompLink)] = {
     val parts = ctx.baseRef().path().part.asScala.map(visitName)
     val (path,targets) = resolveImport(parts, isEntryPath = false)
     val funLinks = targets.flatMap{
-      case cls:FunClass => Some(cls.link)
+      case cls:FunClass =>
+        val paramCounts = cls.functions.map(
+          f => (f.name, f.params.count(
+            p => !p.attributes.exists( a => a.name == MandalaCompiler.Implicit_Attribute_Name)
+          ))
+        ).toMap
+        Some((paramCounts,cls.link))
       case _ => None
     }
     val sigLinks = targets.flatMap{
@@ -35,113 +40,147 @@ trait InstanceBuilder extends CompilerToolbox{
       }
       None
     } else {
-      Some(funLinks.head, sigLinks.head)
+      val head = funLinks.head
+      Some((head._1, head._2, sigLinks.head))
     }
+  }
+
+  var argCount:Map[String, Int] = Map.empty
+  def withArgCount[T](argCount:Map[String, Int])(body: => T):T = {
+    val oldArgCount = argCount
+    this.argCount = argCount
+    val res = body
+    this.argCount = oldArgCount
+    res
   }
 
   override def visitTopInstance(wrapperCtx: MandalaParser.TopInstanceContext): Unit = {
     val ctx = wrapperCtx.instanceDef().asInstanceOf[InstanceContext]
+    val localGenerics = withDefaultCaps(genericFunCapsDefault){
+      visitGenericArgs(ctx.genericArgs())
+    }
+
     val name = visitName(ctx.name)
     val sourceId = sourceIdFromContext(ctx)
     val mode = if(wrapperCtx.SYSTEM != null) Module.Elevated else Module.Normal
     resolveLinks(ctx) match {
-      case Some((funLink, sigLink)) => withComponentBuilder(name) {
-        val applies = visitTypeRefArgs(ctx.baseRef().typeRefArgs())
-        val funAliases = ctx.instanceEntry().asScala.flatMap(visitInstanceEntry)
-        if (funAliases.map(_._1).distinct.size != funAliases.size) {
-          feedback(LocatedMessage("Alias defined multiple times", sourceId, Error))
+      case Some((argCount, funClassLink, sigClassLink)) => withComponentBuilder(name) {
+        val classApplies = withGenerics(localGenerics) {
+          visitTypeRefArgs(ctx.baseRef().typeRefArgs())
         }
-        val (impl, implMapping) = implInstance(name, sigLink, mode, applies, funAliases, sourceId)
+        withComponentGenerics(localGenerics){
+          val implementInfos = withArgCount(argCount) {
+            ctx.instanceEntry().asScala.flatMap(visitInstanceEntry)
+          }
+          if (implementInfos.map(_._1).distinct.size != implementInfos.size) {
+            feedback(LocatedMessage("Alias defined multiple times", sourceId, Error))
+          }
+          val (impl, implMapping) = implInstance(name, localGenerics, sigClassLink, mode, classApplies, implementInfos, sourceId)
 
-        build(impl, sourceId) match {
-          case Some(implBuild) =>
-            val implAliases = funAliases.flatMap{
-              case (name, _, _) => implMapping.get(name).map{ index =>
-                (name, RemoteEntryRef(implBuild.link, index):EntryRef)
+          build(impl, sourceId) match {
+            case Some(implBuild) =>
+              val implements = implementInfos.flatMap{
+                case (name,gen,fun,src) => implMapping.get(name).map{ index =>
+                  SigImplement(name,gen,fun, ImplFunc.Remote(implBuild.link, index, gen.map(_.asType(src)))(src), src)
+                }
               }
-            }
-            val inst = defInstance(
-              name,
-              funLink,
-              applies,
-              funAliases.map(e => (e._1, e._2)).toMap,
-              implAliases.toMap
-            )
-            build(inst,sourceId)
-          case None =>
+              val inst = defInstance(
+                name,
+                localGenerics,
+                funClassLink,
+                classApplies,
+                implements,
+                sourceId
+              )
+              build(inst,sourceId)
+            case None =>
+          }
         }
       }
       case None =>
     }
+
   }
 
   override def visitInstance(ctx: MandalaParser.InstanceContext):Unit = {
     val sourceId = sourceIdFromContext(ctx)
-    val name = visitName(ctx.name())
+    val instName = visitName(ctx.name())
+    val localGenerics = withDefaultCaps(genericFunCapsDefault){
+      visitGenericArgs(ctx.genericArgs())
+    }
     resolveLinks(ctx) match {
-      case Some((clazzLink, sigLink)) =>
-        val applies = visitTypeRefArgs(ctx.baseRef().typeRefArgs())
-        val funAliases = ctx.instanceEntry().asScala.flatMap(visitInstanceEntry)
-        if (funAliases.map(_._1).distinct.size != funAliases.size) {
-          feedback(LocatedMessage("Alias defined multiple times", sourceId, Error))
+      case Some((argCount, clazzLink, sigLink)) =>
+        val classApplies = withGenerics(localGenerics) {
+          visitTypeRefArgs(ctx.baseRef().typeRefArgs())
         }
-
-        val implMapping:Map[String,Int] = env.pkg.componentByLink(sigLink) match {
-          case Some(targComp:SigClass) =>
-            funAliases.flatMap {
-              case (implName, compRef, sourceId) => generateImplement(name, implName,targComp, applies, compRef, sourceId).map(impl => (implName,impl.index))
-            }.toMap
-          case _ =>
-            //todo: can this happen or is this an unexpected
-            //  Try to provoke
-            feedback(LocatedMessage("Can not resolve implemented signature",sourceId,Error))
-            Map.empty
-        }
-
-        val funRefs = funAliases.map(e => (e._1, e._2)).toMap
-        val implRefs = funRefs.flatMap{
-          case (name, _) => implMapping.get(name).map{ index =>
-            (name, LocalEntryRef(index):EntryRef)
+        withComponentGenerics(localGenerics){
+          val implementInfos = withArgCount(argCount) {
+            ctx.instanceEntry().asScala.flatMap(visitInstanceEntry)
           }
-        }
+          if (implementInfos.map(_._1).distinct.size != implementInfos.size) {
+            feedback(LocatedMessage("Alias defined multiple times", sourceId, Error))
+          }
 
-        registerInstanceEntry(LocalInstanceEntry(name,clazzLink, funRefs, implRefs, applies, sourceId))
+          val implMapping:Map[String,Int] = env.pkg.componentByLink(sigLink) match {
+            case Some(targComp:SigClass) =>
+              implementInfos.flatMap {
+                case (implName, implGenerics, target, sourceId) => generateImplement(instName, classApplies, implName, implGenerics, target, targComp, sourceId).map(impl => (implName,impl.index))
+              }.toMap
+            case _ =>
+              //todo: can this happen or is this an unexpected
+              //  Try to provoke
+              feedback(LocatedMessage("Can not resolve implemented signature",sourceId,Error))
+              Map.empty
+          }
+
+          val implements = implementInfos.flatMap{
+            case (name,gen,fun,src) => implMapping.get(name).map{ index =>
+              SigImplement(name,gen,fun, ImplFunc.Local(index, gen.map(_.asType(src)))(src), src)
+            }
+          }
+          registerInstanceEntry(LocalInstanceEntry(instName,localGenerics, clazzLink, implements, classApplies, sourceId))
+        }
       case None =>
     }
 
   }
 
-  override def visitInstanceEntry(ctx: MandalaParser.InstanceEntryContext): Option[(String, Instance.EntryRef, SourceId)] = {
+  override def visitInstanceEntry(ctx: MandalaParser.InstanceEntryContext): Option[(String, Seq[Generic], StdFunc, SourceId)] = {
     withFreshCounters {
-      super.visitInstanceEntry(ctx).asInstanceOf[Option[(String,Instance.EntryRef, SourceId)]]
+      super.visitInstanceEntry(ctx).asInstanceOf[Option[(String, Seq[Generic], StdFunc, SourceId)]]
     }
   }
 
-  override def visitAliasDef(ctx: MandalaParser.AliasDefContext): Option[(String, Instance.EntryRef, SourceId)] = {
+  override def visitAliasDef(ctx: MandalaParser.AliasDefContext): Option[(String, Seq[Generic], StdFunc, SourceId)] = {
     val name = visitName(ctx.name())
-    val elems = ctx.path().part.asScala.map(visitName)
-    val src = sourceIdFromContext(ctx)
-    resolveAliasTarget(elems, src).map((name, _, src))
+    val localGenerics = withDefaultCaps(genericFunCapsDefault){
+      visitGenericArgs(ctx.genericArgs())
+    }
+    val target = withGenerics(localGenerics) {
+      visitFunRef(ctx.baseRef(), argCount.get(name))
+    }
+    target.asStdFunc.map((name, localGenerics, _, sourceIdFromContext(ctx)))
   }
 
-  def defInstance(name:String, classTarget:CompLink, applies:Seq[Type], funAliases:Map[String, Instance.EntryRef], implAliases:Map[String, Instance.EntryRef]): Instance = {
+  def defInstance(name:String, instanceGenerics:Seq[Generic], classTarget:CompLink, classApplies:Seq[Type], sigImplements:Seq[SigImplement], sourceId: SourceId): Instance = {
     val res = new MandalaDefInstanceCompilerOutput(
       name,
+      instanceGenerics,
       classTarget,
-      applies,
-      funAliases,
-      implAliases,
+      classApplies,
+      sigImplements,
+      sourceId,
     )
     env.instRec(res, isLocal = false)
     res
   }
 
-  private def implInstance(name:String, sigTarget:CompLink, mode:Module.Mode, applies:Seq[Type], funAliases:Seq[(String, Instance.EntryRef, SourceId)], srcId:SourceId): (ImplInstance, Map[String,Int]) = {
-    withComponentBuilder(name){
+  private def implInstance(instName:String, generics:Seq[Generic], sigTarget:CompLink, mode:Module.Mode, classApplies:Seq[Type], implementInfos:Seq[(String, Seq[Generic], Func, SourceId)], srcId:SourceId): (ImplInstance, Map[String,Int]) = {
+    withComponentBuilder(instName){
       val mapping:Map[String,Int] = env.pkg.componentByLink(sigTarget) match {
         case Some(targComp:SigClass) =>
-          funAliases.flatMap {
-            case (implName, compRef, sourceId) => generateImplement(name, implName,targComp, applies, compRef, sourceId).map(impl => (implName,impl.index))
+          implementInfos.flatMap {
+            case (implName, implGenerics, target, sourceId) => generateImplement(instName, classApplies, implName, implGenerics, target, targComp, sourceId).map(impl => (implName,impl.index))
           }.toMap
         case _ =>
           //todo: can this happen or is this an unexpected
@@ -150,43 +189,30 @@ trait InstanceBuilder extends CompilerToolbox{
           Map.empty
       }
       (new MandalaImplInstanceCompilerOutput(
-        name,
+        instName,
         mode,
+        generics,
         sigTarget,
-        applies,
-        currentComponent._implements
+        classApplies,
+        currentComponent._implements,
+        srcId
       ), mapping)
     }
 
   }
 
-  def generateImplement(instName:String, implName:String, sigTarget:Interface[Component] with SigClass, applies:Seq[Type], compRef:Instance.EntryRef, srcId:SourceId): Option[ImplementDef] = {
-    val implFunRes = compRef match {
-      case RemoteEntryRef(module, offset) => env.pkg.componentByLink(module).flatMap(_.asModule).map(cmp => cmp.functions(offset))
-      case LocalEntryRef(offset) => context.module.map(cmp => cmp.functions(offset))
-    }
-
-    val implSigRes = sigTarget.signatures.find(f => f.name == implName)
-    (implFunRes, implSigRes) match {
+  def generateImplement(instName:String, classApplies:Seq[Type], implName:String, implGenerics:Seq[Generic], targetFun:Func, sigTarget:Interface[Component] with SigClass, srcId:SourceId): Option[ImplementDef] = {
+    (targetFun.asStdFunc.flatMap(_.getEntry(context)),sigTarget.signatures.find(f => f.name == implName)) match {
       case (Some(implFun), Some(implSig)) =>
-
-        val cleanedGenerics = withFreshIndex(implSig.generics.drop(applies.size).map(g => new Generic {
-          override val name: String = g.name
-          override val index: Int = nextIndex()
-          override val phantom: Boolean = g.phantom
-          override val capabilities: Set[Capability] = g.capabilities
-          override val attributes: Seq[Attribute] = g.attributes
-          override val src: SourceId = srcId
-        }))
-
-        val genTypes = cleanedGenerics.map{g => Type.GenericType (g.capabilities,g.index)}
+        val implParams = implFun.params.drop(implSig.params.size)
+        val genTypes = implGenerics.drop(componentGenerics.size).map(_.asType(srcId))
         Some(registerImplementDef(new ImplementDef {
           override val name: String = Instance.deriveTopName(instName,implName)
           override val index: Int = nextImplIndex()
           override val position: Int = nextPosition()
           override val external: Boolean = false
           override val attributes: Seq[Attribute] = Seq.empty
-          override val generics: Seq[Generic] = cleanedGenerics
+          override val generics: Seq[Generic] = implGenerics
           override val accessibility: Map[Permission, Accessibility] = Map(Permission.Call -> Accessibility.Global)
           override val transactional: Boolean = implSig.transactional
 
@@ -204,7 +230,7 @@ trait InstanceBuilder extends CompilerToolbox{
             override val src: SourceId = srcId
           })
 
-          override val params: Seq[Param] = withFreshIndex(implFun.params.drop(implSig.params.size).map{ p => new Param {
+          override val params: Seq[Param] = withFreshIndex(implParams.map{ p => new Param {
             override val name: String = p.name
             override val index: Int = nextIndex()
             override val typ: Type = p.typ
@@ -217,22 +243,17 @@ trait InstanceBuilder extends CompilerToolbox{
           override val results: Seq[Result] = Seq(new Result {
             override val name: String = implName
             override val index: Int = 0
-            override val typ: Type = SigType.Remote(sigTarget.link, implSig.index, applies ++ genTypes)
+            override val typ: Type = SigType.Remote(sigTarget.link, implSig.index, classApplies ++ genTypes)(srcId)
             override val attributes: Seq[Attribute] = Seq.empty
             override val src: SourceId = srcId
           })
+
           override val code: Seq[OpCode] = {
-            val res = implSig.results.map(r => AttrId(Id(r.name), Seq.empty))
-            val implParam = implFun.params.drop(implSig.params.size).map(r => Id(r.name))
-            val sigParams = implSig.params.map(p => Id(p.name))
-            val fun = compRef match {
-              case RemoteEntryRef(module, offset) => StdFunc.Remote(module, offset, genTypes)
-              case LocalEntryRef(offset) => StdFunc.Local(offset, genTypes)
-            }
-            val params = sigParams ++ implParam
-            Seq(OpCode.Invoke(res, fun,params,srcId))
+            val res = implSig.results.map(r => AttrId(Id(r.name, r.src), Seq.empty))
+            val params = implSig.params.map(p => Id(p.name, p.src)) ++ implParams.map(r => Id(r.name, r.src))
+            Seq(OpCode.Invoke(res, targetFun, params, srcId))
           }
-          override val src: SourceId = srcId
+          override val src:SourceId = srcId
         }))
       case _ =>
         //todo: can this happen or is this an unexpected

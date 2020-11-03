@@ -14,7 +14,7 @@ class TransactionInterface(override val meta:Meta, private val txt: Transaction)
   override def transactional: Boolean = txt.transactional
   override def params: Seq[Param] = txt.params
   override def results: Seq[Result] = txt.results
-  override def src: SourceId = txt.src
+  override def src:SourceId = txt.src
   override def isVirtual: Boolean = txt.isVirtual
 
 }

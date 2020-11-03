@@ -1,11 +1,14 @@
 package samaya.structure
 
+import samaya.structure.types.SourceId
+
 trait Component {
     def name: String
     def language: String
     def version: String
     def classifier: Set[String]
     def isVirtual:Boolean
+    def src:SourceId
 
     def toInterface(meta: Meta): Interface[Component]
 

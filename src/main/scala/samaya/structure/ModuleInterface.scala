@@ -1,6 +1,6 @@
 package samaya.structure
 
-import samaya.structure.types.CompLink
+import samaya.structure.types.{CompLink, SourceId}
 
 class ModuleInterface(override val meta:Meta, private val module: Module) extends Module with Interface[Module] {
   override def toInterface(meta: Meta): Interface[Module] = new ModuleInterface(meta,module)
@@ -16,4 +16,5 @@ class ModuleInterface(override val meta:Meta, private val module: Module) extend
   override def implements: Seq[FunctionSig] = module.implements
   override def dataTypes: Seq[DataDef] = module.dataTypes
   override def isVirtual: Boolean = module.isVirtual
+  override def src:SourceId = module.src
 }

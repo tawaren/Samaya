@@ -29,7 +29,7 @@ class FileLocationResolver extends LocationResolver{
     case _ => false
   }
 
-  override def resolveLocation(parent:Location, path: Path): Option[FileLocation] = {
+  override def resolveLocation(parent:Location, path: Path, create:Boolean): Option[FileLocation] = {
     if(path.elements.isEmpty) {
       return parent match {
         case location: FileLocation => Some(location)
@@ -55,6 +55,7 @@ class FileLocationResolver extends LocationResolver{
     }.reduce((left, right) => left+File.separator+right)
 
     val file = new File(pathString)
+    if(create && !file.exists()) file.mkdirs()
     if(!file.exists() || !file.isDirectory) {
       None
     } else {
@@ -158,10 +159,10 @@ class FileLocationResolver extends LocationResolver{
 
   private def absolutePath(target: FileLocation): String =  FileLocationResolver.prefix + target.file.getCanonicalPath
 
-  override def serialize(parent: Location, target: Location, resourceName:Option[String]): Option[String] = {
+  override def serialize(parent:Option[Location], target: Location, resourceName:Option[String]): Option[String] = {
     val t = target.asInstanceOf[FileLocation]
     val parentPath = parent match {
-      case p: FileLocation =>
+      case Some(p: FileLocation) =>
         if (t.path.startsWith(p.path)) {
           relativePath(p,t)
         } else {

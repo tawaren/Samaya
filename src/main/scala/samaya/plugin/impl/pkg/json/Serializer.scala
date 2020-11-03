@@ -9,11 +9,13 @@ import samaya.types.{Identifier, Workspace}
 object Serializer {
 
   def toPackageRepr(pkg: structure.LinkablePackage, workspace: Workspace): JsonModel.Package = {
-    val dependencies = pkg.dependencies.map(d => LocationResolver.serialize(pkg.location, d.location, Some(d.name)))
+    val basePath = LocationResolver.serialize(None, pkg.location, None)
+    val dependencies = pkg.dependencies.map(d => LocationResolver.serialize(Some(pkg.location), d.location, Some(d.name)))
     JsonModel.Package(
       name = pkg.name,
       hash = pkg.hash.toString,
       components = pkg.components.map(toCompRepr),
+      path = basePath,
       locations = toLocationsRepl(workspace),
       dependencies = dependencies.map(l => l.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")))
     )
@@ -48,9 +50,9 @@ object Serializer {
   }
 
   def toLocationsRepl(workspace: Workspace): JsonModel.Locations = {
-    val interface = LocationResolver.serialize(workspace.workspaceLocation, workspace.interfaceLocation, None)
-    val code = LocationResolver.serialize(workspace.workspaceLocation, workspace.codeLocation, None)
-    val source = LocationResolver.serialize(workspace.workspaceLocation, workspace.sourceLocation, None)
+    val interface = LocationResolver.serialize(Some(workspace.workspaceLocation), workspace.interfaceLocation, None)
+    val code = LocationResolver.serialize(Some(workspace.workspaceLocation), workspace.codeLocation, None)
+    val source = LocationResolver.serialize(Some(workspace.workspaceLocation), workspace.sourceLocation, None)
     JsonModel.Locations(
       interface = interface.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),
       code = code.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),

@@ -39,11 +39,14 @@ trait ValueTracker extends Traverser {
   //Frame managing methods
   override def traverseBlockStart(input: Seq[AttrId], result: Seq[Id], code: Seq[OpCode], origin: SourceId, stack: Stack): Stack = stack.openFrame()
   override def traverseBlockEnd(assigns: Seq[Id], origin: SourceId, stack: State): State = stack.closeFrame(assigns.size,origin)
-  override def traverseJoin(rets:Seq[Id], origin:SourceId, stacks: Seq[Stack]): Stack = SlotFrameStack.joinFrames(rets,origin,stacks)
+  override def traverseJoin(rets:Seq[Id], origin:SourceId, stacks: Seq[Stack]): Stack = {
+    assert(stacks.nonEmpty)
+    SlotFrameStack.joinFrames(rets,origin,stacks)
+  }
 
   //Block field introductions
   override def functionStart(params:Seq[Param], origin: SourceId, stack: Stack): Stack = {
-    val values = params.map(p => AttrId(Id(p.name),p.attributes))
+    val values = params.map(p => AttrId(Id(p.name, p.src),p.attributes))
     val nStack = pushMany(values, origin, stack)
     paramMapping = nStack.frameValues.reverse //the stackmis last first but param index is first first, that is why reverse is needed
     nStack

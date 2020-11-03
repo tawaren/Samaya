@@ -39,8 +39,8 @@ case class FrameStack(
 
   def stackSize():Int = parentSize+stack.size
 
-  def resolveAll(ids:Seq[Ref]):Seq[Val] = ids.map(id => resolve(id).getOrElse(Val.unknown()))
-  def resolveAll(ids:Set[Id]):Set[Val] = ids.map(id => resolve(id).getOrElse(Val.unknown()))
+  def resolveAll(ids:Seq[Ref]):Seq[Val] = ids.map(id => resolve(id).getOrElse(Val.unknown(id.name, id.src)))
+  def resolveAll(ids:Set[Id]):Set[Val] = ids.map(id => resolve(id).getOrElse(Val.unknown(id.name, id.src)))
 
   def exists(key:Val):Boolean = {
     if(stack.contains(key)){

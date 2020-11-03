@@ -6,14 +6,14 @@ import samaya.plugin.impl.inter.json.JsonModel._
 import samaya.structure
 
 object JsonModel {
-  case class EntryRef(module:String, componentIndex:Int)
-  case class Alias(name:String, target:EntryRef)
+  case class Applied(module:Option[String], entryIndex:Int, applies:Seq[Type])
+  case class Implement(name:String, generics:Seq[Generic], fun:Applied, impl:Applied)
+  case class TypeAlias(name:String, generics:Seq[Generic], typ:Type)
   case class InstanceEntry(clazz:String, instances:Seq[String])
-  case class InterfaceInstance(name:String, hadError:Boolean,  language:String, version:String, classifier:Set[String], classTarget:String, applies:Seq[Type], funAliases: Seq[Alias], implAliases: Seq[Alias])
+  case class InterfaceInstance(name:String, hadError:Boolean, language:String, version:String, classifier:Set[String], generics:Seq[Generic], classTarget:String, applies:Seq[Type], implements: Seq[Implement])
   case class InterfaceSigClass(name:String, hadError:Boolean,  link: Option[String], mode:structure.Module.Mode, language:String, version:String, classifier:Set[String], generics:Seq[Generic], signatures: Seq[FunctionSignature], datatypes: Seq[DataSignature], classTarget:String)
   case class InterfaceFunClass(name:String, hadError:Boolean,  language:String, version:String, classifier:Set[String], generics:Seq[Generic], functions: Seq[FunctionSignature])
-  case class InterfaceMandalaModule(name:String, link: Option[String], mode:structure.Module.Mode, hadError:Boolean, language:String, version:String, classifier:Set[String], functions: Seq[FunctionSignature], implements: Seq[FunctionSignature], datatypes: Seq[DataSignature], instances:Seq[InstanceEntry])
-
+  case class InterfaceMandalaModule(name:String, link: Option[String], mode:structure.Module.Mode, hadError:Boolean, language:String, version:String, classifier:Set[String], functions: Seq[FunctionSignature], implements: Seq[FunctionSignature], datatypes: Seq[DataSignature], instances:Seq[InstanceEntry], typeAlias:Seq[TypeAlias])
 
   implicit val modCodec: JsonValueCodec[InterfaceMandalaModule] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))
   implicit val instanceCodec: JsonValueCodec[InterfaceInstance] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))

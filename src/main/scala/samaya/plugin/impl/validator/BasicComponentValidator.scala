@@ -12,7 +12,7 @@ class BasicComponentValidator extends ComponentValidator {
 
   def validateComponent(cmp: Component, pkg: Package): Unit = {
     if(cmp.name.length == 0 || cmp.name.charAt(0).isLower) {
-      feedback(PlainMessage(s"Component name ${pkg.name}.${cmp.name} must start with an uppercase Character", Error))
+      feedback(LocatedMessage(s"Component name ${pkg.name}.${cmp.name} must start with an uppercase Character", cmp.src, Error))
     }
     cmp match {
       case cModule: CompiledModule => validateCompiledModule(cModule, pkg)

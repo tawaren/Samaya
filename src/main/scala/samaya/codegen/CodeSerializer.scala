@@ -19,7 +19,7 @@ object CodeSerializer {
     new DependencyCollector(imports, comp, context).traverse()
   }
 
-  private class DependencyCollector(imports: ImportCollector, override val component:Either[FunctionDef,ImplementDef], override val context: Context) extends ViewTraverser with TypeTracker {
+  private class DependencyCollector(imports: ImportCollector, override val entry:Either[FunctionDef,ImplementDef], override val context: Context) extends ViewTraverser with TypeTracker {
     override def lit(res: TypedId, value: Const, origin: SourceId, stack: Stack): Stack = {
       imports.addType(res.typ, Some(Permission.Create))
       super.lit(res, value, origin, stack)
@@ -84,7 +84,7 @@ object CodeSerializer {
     }
 
     override def project(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {
-      imports.addType(stack.getType(src).projected())
+      imports.addType(stack.getType(src).projected(origin))
       super.project(res, src, origin, stack)
     }
 
@@ -102,7 +102,7 @@ object CodeSerializer {
   }
 
   //todo: position tracking
-  private class CodeSerializer(out:DataOutputStream, imports: ImportCollector, override val component: Either[FunctionDef, ImplementDef], override val context: Context) extends ViewTraverser with PositionTracker with TypeTracker {
+  private class CodeSerializer(out:DataOutputStream, imports: ImportCollector, override val entry: Either[FunctionDef, ImplementDef], override val context: Context) extends ViewTraverser with PositionTracker with TypeTracker {
 
     //#[derive(Debug, Parsable, Serializable)]
     //pub struct Exp(
@@ -333,11 +333,13 @@ object CodeSerializer {
     }
     //)
 
-    //[20]Project(
+    //TODO: Repeat & TryRepeat
+
+    //[22]Project(
     override def project(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(20)
+      out.writeByte(22)
       //TypeRef
-      out.writeByte(imports.typeIndex(stack.getType(src).projected()))
+      out.writeByte(imports.typeIndex(stack.getType(src).projected(origin)))
       //ValueRef
       //todo: assert size & better error handling
       out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
@@ -345,9 +347,9 @@ object CodeSerializer {
     }
     //)
 
-    //[21]UnProject(
+    //[23]UnProject(
     override def unproject(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(21)
+      out.writeByte(23)
       //TypeRef
       stack.getType(src) match {
         case p:Type.Projected => out.writeByte(imports.typeIndex(p.inner))
@@ -360,9 +362,9 @@ object CodeSerializer {
     }
     //)
 
-    //[22]RollBack(
+    //[24]RollBack(
     override def rollback(res: Seq[AttrId], resTypes: Seq[Type], params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(22)
+      out.writeByte(24)
       //Vec<ValueRef>
       out.writeByte(params.length)
       params.foreach(src => out.writeShort(stack.getRef(src).get.asInstanceOf[Short]))

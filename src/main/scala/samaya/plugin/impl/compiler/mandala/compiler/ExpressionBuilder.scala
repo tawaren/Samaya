@@ -3,7 +3,7 @@ package samaya.plugin.impl.compiler.mandala.compiler
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.ParseTree
 import samaya.compilation.ErrorManager._
-import samaya.plugin.impl.compiler.simple.MandalaParser
+import samaya.plugin.impl.compiler.mandala.MandalaParser
 import samaya.structure.Attribute
 import samaya.structure.types._
 import samaya.toolbox.process.TypeInference
@@ -36,6 +36,7 @@ trait ExpressionBuilder extends CompilerToolbox{
     res
   }
 
+  private def adaptSource(src: SourceId)(id:Id):Id = Id(id.name, src)
 
   def processBody(ctx: MandalaParser.FunBodyContext, bindings:Set[String]) : Option[Seq[OpCode]] = {
     if(ctx == null) return None
@@ -54,20 +55,23 @@ trait ExpressionBuilder extends CompilerToolbox{
 
   private def idAttr(id: Id): AttrId = AttrId(id, Seq.empty)
 
+
   private def getExpReturn(ctx:ParserRuleContext):Id = {
-    getExpReturns(ctx, 1).head
+    adaptSource(sourceIdFromContext(ctx))(getExpReturns(ctx, 1).head)
   }
 
   private def getExpReturns(ctx:ParserRuleContext, amount:Int):Seq[Id] = {
+    val src = sourceIdFromContext(ctx)
     returnIds match {
       case Some(ids) =>
+        val adaptedIds = ids.map(adaptSource(src))
         if(ids.size != amount) {
-          feedback(LocatedMessage("Expression produced wrong amount of results",sourceIdFromContext(ctx),Error))
+          feedback(LocatedMessage(s"Expression produced $amount results but ${ids.size} results were expected",src,Error))
           val missing = Math.max(amount - ids.size,0)
           val padding = Seq.fill(missing)(freshIdFromContext(ctx))
-          ids ++ padding
+          adaptedIds ++ padding
         } else {
-          ids
+          adaptedIds
         }
       case None => Seq.fill(amount)(freshIdFromContext(ctx))
     }
@@ -78,7 +82,8 @@ trait ExpressionBuilder extends CompilerToolbox{
     if(!func.isUnknown) {
       getExpReturns(ctx, func.returnInfo(context).size)
     } else {
-      returnIds.getOrElse(Seq.empty)
+      val src = sourceIdFromContext(ctx)
+      returnIds.getOrElse(Seq.empty).map(adaptSource(src))
     }
   }
 
@@ -100,25 +105,25 @@ trait ExpressionBuilder extends CompilerToolbox{
   override def visitLiteral(ctx: MandalaParser.LiteralContext): (Seq[Ref], Seq[OpCode]) = {
     val lit = visit(ctx.lit()).asInstanceOf[Lit]
     val ret = getExpReturn(ctx)
-
+    val src = sourceIdFromContext(ctx)
     //todo: make checker that enforces lit size
     //todo: make transformer (or add to inferenzer) that pads lits
-    (Seq(ret), Seq(OpCode.Lit(TypedId(ret, Seq.empty, new TypeVar()),lit,sourceIdFromContext(ctx))))
+    (Seq(ret), Seq(OpCode.Lit(TypedId(ret, Seq.empty, TypeVar(src)),lit,src)))
   }
 
-  override def visitBinding(ctx: MandalaParser.BindingContext): (AttrId, Option[OpCode]) = {
-    val attr = if(ctx.CONTEXT() != null) Seq(Attribute("context", Map.empty)) else Seq.empty
-    if(ctx.name() == null) {
-      val id = freshIdFromContext(ctx)
-      (AttrId(id,attr), Some(OpCode.Discard(id,sourceIdFromContext(ctx))))
+  override def visitBinding(ctx: MandalaParser.BindingContext): (AttrId, Seq[OpCode]) = {
+    val attr = if(ctx.CONTEXT() != null) Seq(Attribute("context", Attribute.Unit)) else Seq.empty
+    val id =  if(ctx.name() == null) {
+      freshIdFromContext(ctx)
     } else {
-      val id = idFromToken(visitToken(ctx.name()))
-      if(ctx.typeHint() != null){
-        val typ = visitTypeRef(ctx.typeHint().typeRef())
-        (AttrId(id,attr), Some(TypeInference.TypeHint(id,typ,sourceIdFromContext(ctx))))
-      } else {
-        (AttrId(id,attr), None)
-      }
+      idFromToken(visitToken(ctx.name()))
+    }
+
+    if(ctx.typeHint() != null){
+      val typ = visitTypeRef(ctx.typeHint().typeRef())
+      (AttrId(id,attr), Seq(TypeInference.TypeHint(id,typ,sourceIdFromContext(ctx))))
+    } else {
+      (AttrId(id,attr), Seq.empty)
     }
   }
 
@@ -135,34 +140,60 @@ trait ExpressionBuilder extends CompilerToolbox{
     }
   }
 
+  var isTailExp = false
+  private def withIsTailExp[T](value:Boolean)(body: =>T)={
+    val oldIsTailExp = isTailExp
+    isTailExp = value
+    val res = body
+    isTailExp = oldIsTailExp
+    res
+  }
+
+  override def visitArgTailExp(ctx: MandalaParser.ArgTailExpContext): (Seq[Ref], Seq[OpCode])  = {
+    withIsTailExp(true){
+      super.visitArgTailExp(ctx).asInstanceOf[(Seq[Ref], Seq[OpCode]) ]
+    }
+  }
+
+  override def visitArgExp(ctx: MandalaParser.ArgExpContext): (Seq[Ref], Seq[OpCode])  = {
+    withIsTailExp(false){
+      super.visitArgExp(ctx).asInstanceOf[(Seq[Ref], Seq[OpCode]) ]
+    }
+  }
+
+
   private def createOpCall(name:String, args:Seq[Ref], ctx:ParserRuleContext): (Seq[Ref], OpCode)  = {
     // make normal function call
     val sourceId = sourceIdFromContext(ctx)
     val parts = Seq(name)
-    val addFun = resolveFunc(parts, None,sourceId)
+    val addFun = resolveFunc(parts, None, Some(args.length), sourceId)
     val rets = getExpReturns(ctx, addFun)
     (rets, OpCode.Invoke(rets.map(idAttr), addFun, args, sourceId))
   }
 
 
   private def visitBinOpExp(name:String, exp1: => (Seq[Ref], Seq[OpCode]), exp2: => (Seq[Ref], Seq[OpCode]), ctx:ParserRuleContext): (Seq[Ref], Seq[OpCode]) = {
-    val op1Id = freshIdFromContext(ctx)
-    val op2Id = freshIdFromContext(ctx)
+    withIsTailExp(false) {
+      val op1Id = freshIdFromContext(ctx)
+      val op2Id = freshIdFromContext(ctx)
 
-    val (res1,producingCodes1) = withDefaultReturns(Seq(op1Id)){ exp1 }
-    val (res2,producingCodes2) = withDefaultReturns(Seq(op2Id)){ exp2 }
-    val args = Seq(res1.headOption.getOrElse(op1Id), res2.headOption.getOrElse(op2Id))
-    val producers = producingCodes1 ++ producingCodes2
-    val (rets, code) =  createOpCall(name, args, ctx)
-    (rets, producers :+ code)
+      val (res1,producingCodes1) = withDefaultReturns(Seq(op1Id)){ exp1 }
+      val (res2,producingCodes2) = withDefaultReturns(Seq(op2Id)){ exp2 }
+      val args = Seq(res1.headOption.getOrElse(op1Id), res2.headOption.getOrElse(op2Id))
+      val producers = producingCodes1 ++ producingCodes2
+      val (rets, code) =  createOpCall(name, args, ctx)
+      (rets, producers :+ code)
+    }
   }
 
   private def visitUnOpExp(name:String, exp1: => (Seq[Ref], Seq[OpCode]), ctx:ParserRuleContext): (Seq[Ref], Seq[OpCode]) = {
-    val op1Id = freshIdFromContext(ctx)
-    val (res1,producers) = withDefaultReturns(Seq(op1Id)){ exp1 }
-    val args = Seq(res1.headOption.getOrElse(op1Id))
-    val (rets, code) =  createOpCall(name, args, ctx)
-    (rets, producers :+ code)
+    withIsTailExp(false) {
+      val op1Id = freshIdFromContext(ctx)
+      val (res1,producers) = withDefaultReturns(Seq(op1Id)){ exp1 }
+      val args = Seq(res1.headOption.getOrElse(op1Id))
+      val (rets, code) =  createOpCall(name, args, ctx)
+      (rets, producers :+ code)
+    }
   }
 
   override def visitOrExp(ctx: MandalaParser.OrExpContext): (Seq[Ref], Seq[OpCode]) = {
@@ -195,9 +226,9 @@ trait ExpressionBuilder extends CompilerToolbox{
 
   override def visitEQExp(ctx: MandalaParser.EQExpContext): (Seq[Ref], Seq[OpCode]) = {
     if(ctx.BANG() != null) {
-      visitUnOpExp("not", visitBinOpExp("equal", visitExp(ctx.op1), visitExp(ctx.op2), ctx), ctx);
+      visitUnOpExp("not", visitBinOpExp("eq", visitExp(ctx.op1), visitExp(ctx.op2), ctx), ctx);
     } else {
-      visitBinOpExp("equal", visitExp(ctx.op1), visitExp(ctx.op2), ctx)
+      visitBinOpExp("eq", visitExp(ctx.op1), visitExp(ctx.op2), ctx)
     }
   }
 
@@ -265,12 +296,12 @@ trait ExpressionBuilder extends CompilerToolbox{
 
   override def visitSymbol(ctx: MandalaParser.SymbolContext): (Seq[Ref], Seq[OpCode]) = {
     val id = idFromToken(visitToken(ctx.name()))
-    (Seq(id), Seq.empty)
-  }
-
-  override def visitFetch(ctx: MandalaParser.FetchContext): (Seq[Ref], Seq[OpCode]) = {
-    val ret = getExpReturn(ctx)
-    (Seq(ret), Seq(OpCode.Fetch(idAttr(ret),idFromToken(visitToken(ctx.name())),FetchMode.Infer, sourceIdFromContext(ctx))))
+    if(!isTailExp) {
+      (Seq(id), Seq.empty)
+    } else {
+      val ret = getExpReturn(ctx)
+      (Seq(ret), Seq(OpCode.Fetch(idAttr(ret),id,FetchMode.Infer, sourceIdFromContext(ctx))))
+    }
   }
 
   //todo: later extend to support fancy mutli arg spreading etc
@@ -313,13 +344,13 @@ trait ExpressionBuilder extends CompilerToolbox{
 
   override def visitRollback(ctx: MandalaParser.RollbackContext):  (Seq[Ref], Seq[OpCode])  = {
     val (args, producers) = visitArgs(ctx.args())
+    val sourceId = sourceIdFromContext(ctx)
     val retTypes = if(ctx.typeRefArgs() != null) {
       ctx.typeRefArgs().targs.asScala.map(visitTypeRef)
     } else {
       returnIds match {
-        case Some(retIds) => Seq.fill(retIds.size)(new TypeVar())
+        case Some(retIds) => Seq.fill(retIds.size)(TypeVar(sourceId))
         case None =>
-          val sourceId = sourceIdFromContext(ctx)
           feedback(LocatedMessage("Can not infere number of returns for rollback",sourceId,Error))
           Seq.empty
       }
@@ -340,8 +371,9 @@ trait ExpressionBuilder extends CompilerToolbox{
       typ.asAdtType match {
         case Some(adtType) =>
           val ctrs = adtType.ctrs(context)
+          assert(ctrs.nonEmpty)
           if(ctrs.size != 1) feedback(LocatedMessage("A Pack for a type with multiple constructors must specify the constructor to use",srcId,Error))
-          Id(ctrs.head._1)
+          Id(ctrs.head._1,srcId)
         case None =>
           feedback(LocatedMessage("No constructor available for the specified type",srcId,Error))
           return (Seq(ret), producers)
@@ -379,49 +411,53 @@ trait ExpressionBuilder extends CompilerToolbox{
     (Seq(ret), producers :+ OpCode.UnProject(idAttr(ret),arg, sourceIdFromContext(ctx)))
   }
 
-  override def visitTypedId(ctx: MandalaParser.TypedIdContext): (Seq[Ref], Seq[OpCode]) = {
+  /*override def visitTypedId(ctx: MandalaParser.TypedIdContext): (Seq[Ref], Seq[OpCode]) = {
     val typ = visitTypeHint(ctx.typeHint())
     val id = idFromToken(visitToken(ctx.name()))
     (Seq(id), Seq(TypeInference.TypeHint(id, typ, sourceIdFromContext(ctx))))
-  }
+  }*/
 
   override def visitTyped(ctx: MandalaParser.TypedContext): (Seq[Ref], Seq[OpCode]) = {
-    val ret = getExpReturn(ctx)
-    val typ = visitTypeHint(ctx.typeHint())
-    val (args, producers) =  withDefaultReturns(Seq(ret)) {
-      visitExp(ctx.exp())
-    }
+    withIsTailExp(false) {
+      val ret = getExpReturn(ctx)
+      val typ = visitTypeHint(ctx.typeHint())
+      val (args, producers) =  withDefaultReturns(Seq(ret)) {
+        visitExp(ctx.exp())
+      }
 
-    if(args.size != 1) {
-      feedback(LocatedMessage(s"A Type Check opcode takes exactly one value", sourceIdFromContext(ctx), Error))
-    }
+      if(args.size != 1) {
+        feedback(LocatedMessage(s"A Type Check opcode takes exactly one value", sourceIdFromContext(ctx), Error))
+      }
 
-    val arg = args.headOption.getOrElse(freshIdFromContext(ctx))
-    (args, producers :+ TypeInference.TypeHint(arg, typ, sourceIdFromContext(ctx)))
+      val arg = args.headOption.getOrElse(freshIdFromContext(ctx))
+      (args, producers :+ TypeInference.TypeHint(arg, typ, sourceIdFromContext(ctx)))
+    }
   }
 
-  override def visitGetId(ctx: MandalaParser.GetIdContext): (Seq[Ref], Seq[OpCode]) = {
+  /*override def visitGetId(ctx: MandalaParser.GetIdContext): (Seq[Ref], Seq[OpCode]) = {
     val arg = idFromToken(visitToken(ctx.trg))
     val ret = getExpReturn(ctx)
     val field = idFromToken(visitToken(ctx.select))
     (Seq(ret), Seq(OpCode.Field(idAttr(ret),arg,field,FetchMode.Infer, sourceIdFromContext(ctx))))
-  }
+  }*/
 
   override def visitGet(ctx: MandalaParser.GetContext): (Seq[Ref], Seq[OpCode]) = {
-    val id = freshIdFromContext(ctx)
-    val (args, producers) = withDefaultReturns(Seq(id)) {
-      visitExp(ctx.exp())
+    withIsTailExp(false) {
+      val id = freshIdFromContext(ctx)
+      val (args, producers) = withDefaultReturns(Seq(id)) {
+        visitExp(ctx.exp())
+      }
+
+      if(args.size != 1) {
+        feedback(LocatedMessage(s"A Field get opcode takes exactly one value", sourceIdFromContext(ctx), Error))
+      }
+
+      val ret = getExpReturn(ctx)
+      val arg = args.headOption.getOrElse(freshIdFromContext(ctx))
+      val field = idFromToken(visitToken(ctx.name()))
+
+      (Seq(ret), producers :+ OpCode.Field(idAttr(ret),arg,field,FetchMode.Infer, sourceIdFromContext(ctx)))
     }
-
-    if(args.size != 1) {
-      feedback(LocatedMessage(s"A Field get opcode takes exactly one value", sourceIdFromContext(ctx), Error))
-    }
-
-    val ret = getExpReturn(ctx)
-    val arg = args.headOption.getOrElse(freshIdFromContext(ctx))
-    val field = idFromToken(visitToken(ctx.name()))
-
-    (Seq(ret), producers :+ OpCode.Field(idAttr(ret),arg,field,FetchMode.Infer, sourceIdFromContext(ctx)))
   }
 
   private def visitCase(eCtx: MandalaParser.ExtractsContext, cCtx: MandalaParser.TailExpContext): (Seq[AttrId], Seq[Ref], Seq[OpCode]) = {
@@ -483,6 +519,7 @@ trait ExpressionBuilder extends CompilerToolbox{
   //We need special exception here as baseRef can refer to a value
   //Sadly: name is a valid baseRef and as such we can not differentiate in the grammar
   override def visitInvoke(ctx: MandalaParser.InvokeContext): (Seq[Ref], Seq[OpCode]) = {
+    val sourceId = sourceIdFromContext(ctx)
     val (args, producers) = visitArgs(ctx.args())
     //Check if this calls a function pointer
     val parts = ctx.baseRef().path().part
@@ -493,9 +530,9 @@ trait ExpressionBuilder extends CompilerToolbox{
         //it is a value / function pointer, and then we use the invoke sig
         returnIds match {
           case Some(retIds) =>
-            return (retIds, producers :+ OpCode.InvokeSig(retIds.map(idAttr), idFromToken(visitToken(parts.get(0))),args, sourceIdFromContext(ctx)))
+            val adaptedIds = retIds.map(adaptSource(sourceId))
+            return (adaptedIds, producers :+ OpCode.InvokeSig(adaptedIds.map(idAttr), idFromToken(visitToken(parts.get(0))),args, sourceId))
           case None =>
-            val sourceId = sourceIdFromContext(ctx)
             feedback(LocatedMessage("Calling function pointer without syntactically known number of returns is not supported",sourceId,Error))
             return (Seq.empty, producers :+ OpCode.InvokeSig(Seq.empty, idFromToken(visitToken(parts.get(0))),args, sourceId))
         }
@@ -503,7 +540,7 @@ trait ExpressionBuilder extends CompilerToolbox{
     }
 
     // make normal function call
-    val fun = visitFunRef(ctx.baseRef())
+    val fun = visitFunRef(ctx.baseRef(), Some(args.length))
     val rets = getExpReturns(ctx, fun)
     (rets, producers :+ OpCode.Invoke(rets.map(idAttr), fun, args, sourceIdFromContext(ctx)))
   }
@@ -531,7 +568,7 @@ trait ExpressionBuilder extends CompilerToolbox{
     }
 
     // make normal function call
-    val fun = visitFunRef(ctx.baseRef())
+    val fun = visitFunRef(ctx.baseRef(), Some(args.length))
     val rets = getExpReturns(ctx, fun)
     (rets, producers :+ OpCode.TryInvoke(rets.map(idAttr), fun, args, succ, fail, sourceIdFromContext(ctx)))
   }

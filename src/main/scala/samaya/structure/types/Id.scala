@@ -2,10 +2,7 @@ package samaya.structure.types
 
 import samaya.structure.Attribute
 
-class Id private (override val name:String, override val src:Option[Region]) extends Ref {
-
-  override def id: Id = this
-
+class Id private (override val name:String)(override val src:SourceId) extends Ref {
   def canEqual(other: Any): Boolean = other.isInstanceOf[Id]
 
   //comparing / hashing only by name is on purpose as src is only met information
@@ -28,13 +25,11 @@ object Id {
    counter
   }
 
-  def apply():Id = new Id("$#"+nextNo(),None)
-  def apply(num:Int):Id = new Id("$"+num,None)
-  def apply(num:Int, reg:Region):Id = new Id("$"+num, Some(reg))
+  def apply(src:SourceId):Id = new Id("$#"+nextNo())(src)
+  def apply(num:Int,src:SourceId):Id = new Id("$"+num)(src)
 
-  def apply(name:String):Id = new Id(name.replaceAllLiterally("$","$$"),None)
-  def apply(name:String, reg:Region):Id = new Id(name.replaceAllLiterally("$","$$"), Some(reg))
-  def apply(id:Id):Id = new Id(s"${id.name}#${nextNo()}", id.src)
+  def apply(name:String,src:SourceId):Id = new Id(name.replaceAllLiterally("$","$$"))(src)
+  def apply(id:Id):Id = new Id(s"${id.name}#${nextNo()}")(id.src)
 
 }
 

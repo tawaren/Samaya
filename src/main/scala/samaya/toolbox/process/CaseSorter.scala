@@ -5,19 +5,19 @@ import samaya.structure.types.{SourceId, _}
 import samaya.structure.{Param, _}
 import samaya.toolbox.process.TypeInference.{TypeInference, TypeReplacing}
 import samaya.toolbox.track.TypeTracker
-import samaya.toolbox.transform.{ComponentTransformer, TransformTraverser}
+import samaya.toolbox.transform.{EntryTransformer, TransformTraverser}
 import samaya.types.Context
 
 import scala.collection.immutable.ListMap
 
-object CaseSorter extends ComponentTransformer {
+object CaseSorter extends EntryTransformer {
 
   case class TypeHint(src: Ref, typ: Type, id: SourceId) extends VirtualOpcode with ZeroSrcOpcodes
 
   override def transformFunction(in: FunctionDef, context: Context): FunctionDef = {
     val transformer = new CaseSorter(Left(in), context)
     new FunctionDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -35,7 +35,7 @@ object CaseSorter extends ComponentTransformer {
   override def transformImplement(in: ImplementDef, context: Context): ImplementDef = {
     val transformer = new CaseSorter(Right(in), context)
     new ImplementDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -53,27 +53,34 @@ object CaseSorter extends ComponentTransformer {
   }
 
 
-  class CaseSorter(override val component: Either[FunctionDef, ImplementDef], override val context: Context) extends TransformTraverser with TypeTracker {
+  class CaseSorter(override val entry: Either[FunctionDef, ImplementDef], override val context: Context) extends TransformTraverser with TypeTracker {
     override def transformSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       val branches = stack.getType(src) match {
         case adt:AdtType =>
           var builder = ListMap.newBuilder[Id,  (Seq[AttrId], Seq[OpCode])]
-          for((key,_) <- adt.ctrs(context); idKey = Id(key); value <- bodies.get(Id(key))) {
+          //todo: fix the UnknownSourceId -- We need the original from bodies
+          for((key,_) <- adt.ctrs(context); idKey = Id(key, UnknownSourceId); value <- bodies.get(idKey)) {
             builder += ((idKey, value))
           }
-          builder.result()
+          val newBodies = builder.result()
+          //check that we do not loose anything and if so just add it at the end
+          newBodies ++ bodies.filter(kv => !newBodies.contains(kv._1))
         case _ => bodies
       }
       Some(List(OpCode.Switch(res,src,branches,mode, origin)))
     }
+
     override def transformInspect(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       val branches = stack.getType(src) match {
         case adt:AdtType =>
           var builder = ListMap.newBuilder[Id,  (Seq[AttrId], Seq[OpCode])]
-          for((key,_) <- adt.ctrs(context); idKey = Id(key); value <- bodies.get(idKey)) {
+          //todo: fix the UnknownSourceId -- We need the original from bodies
+          for((key,_) <- adt.ctrs(context); idKey = Id(key, UnknownSourceId); value <- bodies.get(idKey)) {
             builder += ((idKey, value))
           }
-          builder.result()
+          val newBodies = builder.result()
+          //check that we do not loose anything and if so just add it at the end
+          newBodies ++ bodies.filter(kv => !newBodies.contains(kv._1))
         case _ => bodies
       }
       Some(List(OpCode.Inspect(res,src,branches, origin)))

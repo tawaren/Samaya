@@ -1,12 +1,13 @@
 package samaya.plugin.impl.compiler.mandala.components
 
-import samaya.plugin.impl.compiler.mandala.components.instance.Instance.EntryRef
+import samaya.plugin.impl.compiler.mandala.entry.SigImplement
+import samaya.structure.Generic
 import samaya.structure.types.{CompLink, Type}
 
 trait InstInfo {
   def name:String
+  def generics: Seq[Generic]
   def classTarget: CompLink
-  def applies: Seq[Type]
-  def funReferences: Map[String, EntryRef]
-  def implReferences: Map[String, EntryRef]
+  def classApplies: Seq[Type]
+  def implements: Seq[SigImplement]
 }

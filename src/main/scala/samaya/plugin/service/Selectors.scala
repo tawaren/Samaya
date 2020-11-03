@@ -35,7 +35,7 @@ object Selectors {
   //A Location resolution Task description intended for selecting the appropriate plugin
   case class Lookup(parent:Location, path:Path) extends LocationSelector
   case class List(parent:Location) extends LocationSelector
-  case class Serialize(parent:Location, target: Location) extends LocationSelector
+  case class Serialize(parent:Option[Location], target: Location) extends LocationSelector
   case class Parse(name:String) extends LocationSelector
 
   case object Default extends LocationSelector

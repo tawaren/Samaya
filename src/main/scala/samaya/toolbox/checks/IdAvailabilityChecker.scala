@@ -9,14 +9,15 @@ import scala.collection.immutable.ListMap
 
 trait IdAvailabilityChecker extends ValueTracker{
 
+  private def useInfo(src:Set[SourceId]):String = {
+    src.map(_.origin.start.localRefString).mkString(",")
+  }
+
   implicit class IdChecker(stack:Stack) {
     def checkId(id:Ref):Unit = {
-      if(stack.exists(stack.resolve(id))){
-        id.src match {
-          case None => feedback(PlainMessage("Can not find id in Scope",Error))
-          case Some(origin) => feedback(LocatedMessage("Can not find id in Scope", new InputSourceId(origin), Error))
-        }
 
+      if(!stack.exists(stack.resolve(id))){
+        feedback(LocatedMessage(s"No value is bound to the name ${id.name} in the current scope", id.src, Error))
       }
     }
 
@@ -24,8 +25,11 @@ trait IdAvailabilityChecker extends ValueTracker{
   }
 
   private def checkDuplicates(src:SourceId, res:Seq[AttrId]): Unit ={
-    if(res.map(_.name).distinct.size != res.size) {
-      feedback(LocatedMessage("OpCode results must be assigned to bindings with different names", src, Error))
+    val ids = res.map(_.id)
+    if(ids.distinct.size != res.size) {
+      ids.groupBy(v => v).filter(_._2.size >= 2).map(_._2.map(_.src).toSet).foreach{ vs =>
+        feedback(LocatedMessage(s"Name is used twice (${useInfo(vs)}) as an OpCode return binding", src, Error))
+      }
     }
   }
 

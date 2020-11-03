@@ -11,17 +11,17 @@ import scala.collection.immutable.ListMap
 trait Traverser{
   type State
   def context:Context
-  def component:Either[FunctionDef,ImplementDef]
+  def entry:Either[FunctionDef,ImplementDef]
 
   //todo: seperate trait extending traverser?
   //Universal view on the different components
   // is internal meaning interpreted from the body and not from a caller
-  lazy val name:String = component match {
+  lazy val name:String = entry match {
     case Left(func) => func.name
     case Right(impl) => impl.name
   }
 
-  lazy val params:Seq[Param] = component match {
+  lazy val params:Seq[Param] = entry match {
     case Left(func) => func.params
     case Right(impl) => impl.params ++ impl.implements.paramInfo(context).zip(impl.sigParamBindings).map( p => new Param {
       override val name: String = p._2.name
@@ -33,7 +33,7 @@ trait Traverser{
     })
   }
 
-  lazy val results:Seq[Result] = component match {
+  lazy val results:Seq[Result] = entry match {
     case Left(func) => func.results
     case Right(impl) => impl.implements.returnInfo(context).zip(impl.sigResultBindings).map( p => new Result {
       override val name: String = p._2.name
@@ -44,12 +44,12 @@ trait Traverser{
     })
   }
 
-  lazy val code:Seq[OpCode] = component match {
+  lazy val code:Seq[OpCode] = entry match {
     case Left(func) => func.code
     case Right(impl) => impl.code
   }
 
-  lazy val origin:SourceId = component match {
+  lazy val origin:SourceId = entry match {
     case Left(func) => func.src
     case Right(impl) => impl.src
   }

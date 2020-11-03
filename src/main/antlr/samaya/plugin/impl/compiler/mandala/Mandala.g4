@@ -3,14 +3,15 @@
 grammar Mandala;
 
 @header {
-    package samaya.plugin.impl.compiler.simple;
+    package samaya.plugin.impl.compiler.mandala;
 }
 
 file: header* component+;
 component: module | transaction | class_ | topInstance;
 header: import_;
-import_: IMPORT path wildcard? ;
-use: USE path;
+import_: IMPORT path wildcard
+       | IMPORT path (AS name)?
+       ;
 
 wildcard: DOT '_' ;
 
@@ -24,30 +25,30 @@ moduleEntry : dataDef
             //| implementDef  //Deprecated
             | functionDef
             | instanceDef
+            | typeAliasDef
             ;
 
-classEntry : dataDef
-           | functionDef
-           ;
+classEntry : functionDef;
 
 instanceEntry: aliasDef;
 
 dataDef : accessibilities TOP? ext? capabilities DATA name generics=genericArgs? ctrs? #Data;
 //signatureDef : accessibilities TRANSACTIONAL? capabilities SIGNATURE name generics=genericArgs? params rets #Sig;
 //implementDef : accessibilities EXTERNAL? IMPLEMENT name generics=genericArgs? captures=simpleParams FOR baseRef paramBindings=bindings (':' retBindings=ids)? funBody? #Implement;
-functionDef : accessibilities TRANSACTIONAL? EXTERNAL? FUNCTION name generics=genericArgs? params rets? funBody? #Function;
-instanceDef : INSTANCE name FOR baseRef '{' entry=instanceEntry* '}' #Instance;
-aliasDef: IMPLEMENT name WITH path ;
+functionDef : accessibilities OVERLOADED? TRANSACTIONAL? EXTERNAL? FUNCTION name generics=genericArgs? params rets? funBody? #Function;
+instanceDef : INSTANCE name generics=genericArgs? FOR baseRef '{' entry=instanceEntry* '}' #Instance;
+aliasDef: IMPLEMENT name generics=genericArgs? WITH baseRef;
+typeAliasDef: TYPE name generics=genericArgs? EQ typeRef;
 
 //Accessibility
 accessibilities: accessibility*; //Helper rule so visitor is generated
-accessibility : GLOBAL                                                                                #Global
-             | GLOBAL '(' (p+=permission) (COMMA p+=permission)* ')'                                  #Global
-             | LOCAL                                                                                  #Local
-             | LOCAL '(' (p+=permission) (COMMA p+=permission)* ')'                                   #Local
-             | GUARDED '[' (g+=name) (COMMA g+=name)* ']'                                                 #Guarded
-             | GUARDED '[' (g+=name) (COMMA g+=name)* ']' '(' (p+=permission) (COMMA p+=permission)* ')'  #Guarded
-             ;
+accessibility : GLOBAL                                                                                      #Global
+              | GLOBAL '(' (p+=permission) (COMMA p+=permission)* ')'                                       #Global
+              | LOCAL                                                                                       #Local
+              | LOCAL '(' (p+=permission) (COMMA p+=permission)* ')'                                        #Local
+              | GUARDED '[' (g+=name) (COMMA g+=name)* ']'                                                  #Guarded
+              | GUARDED '[' (g+=name) (COMMA g+=name)* ']' '(' (p+=permission) (COMMA p+=permission)* ')'   #Guarded
+              ;
 
 permission : CREATE | CONSUME | INSPECT | CALL | DEFINE ;
 
@@ -72,9 +73,11 @@ system : SYSTEM '(' id=NUM ')'
 
 //Todo: use | syntax like merge
 ctrs: '{' (c+=ctr)* '}'
-    | fields ;
-
+    | fields
+    | '(' ')'
+    ;
 ctr: name fields? ;
+
 fields: '(' (f+=field) (COMMA f+=field)* ')' ;
 field: name ':' typeRef ;
 
@@ -119,13 +122,13 @@ funBody: '{' tailExp '}'
 //todo: have a record return
 //      (name:exp, test:exp)
 
-tailExp: '(' tailExp ')' #TailGrouped
-       | name            #Fetch
-       | args            #Return
-       | argExp          #ArgTailExp
+tailExp: args            #Return
+       | prio8           #ArgTailExp
        ;
 
-argExp: op1=argExp OR op2=prio7                       #OrExp
+argExp: prio8 ;
+
+prio8: op1=prio8 OR op2=prio7                         #OrExp
      | prio7                                          #Prio7Exp
      ;
 
@@ -137,7 +140,7 @@ prio6: op1=prio6 AMP op2=prio5                        #AndExp
      | prio5                                          #Prio5Exp
      ;
 
-prio5: op1=prio5 (EQ | BANG EQ) op2=prio4             #EQExp
+prio5: op1=prio5 (EQ EQ | BANG EQ) op2=prio4          #EQExp
      | prio4                                          #Prio4Exp
      ;
 
@@ -156,32 +159,27 @@ prio1: (BANG | INV) op1=prio1     #UnExp
      | prio0                      #Prio0Exp
      ;
 
-prio0: exp                        #CommonExp
-     | name                       #Symbol
-     | '(' argExp ')'             #ArgGrouped
+prio0: exp
+     | '(' prio8 ')'
      ;
 
 exp: lit                                            #Literal
     | LET assigs bind=tailExp IN exec=tailExp       #Let
     | LET extracts '@' bind=argExp IN exec=tailExp  #Unpack
-    //These two would be ambigous if we make the # optional
-    | typeRef '#' (ctrName=name)? args?             #Pack
-    | baseRef args                                  #Invoke
-
+    | MATCH argExp WITH branches                    #Switch
+    | INSPECT argExp WITH branches                  #Inspect
+    | TRY baseRef tryArgs WITH OR? succ OR fail     #TryInvoke
+    | TRY baseRef tryArgs WITH OR? fail OR succ     #TryInvoke
     //Todo: can we have operator for that
     | PROJECT argExp                                #Project
     | UNPROJECT argExp                              #Unproject
-    //todo: can we have a rollback that automatically finds out what to produce & consume?
+    //These two would be ambigous if we make the # optional
+    | typeRef '#' (ctrName=name)? args?             #Pack
+    | baseRef args                                  #Invoke
     | ROLLBACK args? (':' typeRefArgs)?             #Rollback
-    | name typeHint                                 #TypedId
+    | name                                          #Symbol
     | exp typeHint                                  #Typed
-    //Todo: Make try variant
-    | TRY baseRef tryArgs WITH OR? succ OR fail     #TryInvoke
-    | TRY baseRef tryArgs WITH OR? fail OR succ     #TryInvoke
-    | trg=name DOT select=name                      #GetId
     | exp DOT name                                  #Get
-    | MATCH argExp WITH branches                    #Switch
-    | INSPECT argExp WITH branches                  #Inspect
     ;
 
 
@@ -200,7 +198,7 @@ extracts: p+=binding
         | '(' ')' ;
 
 binding: CONTEXT? name typeHint?
-     | '_'
+     | '_' typeHint?
      ;
 
 typeHint: ':' typeRef;
@@ -242,7 +240,9 @@ keywords : id=TOP | id=TRANSACTIONAL | id=FOR | id=MODULE | id=TRANSACTION | id=
          | id=EXTERNAL | id=SYSTEM | id=LET | id=IN | id=RETURN | id=ROLLBACK | id=MATCH | id=WITH | id=TRY | id=PHANTOM | id=DROP
          | id=COPY | id=PERSIST | id=PRIMITIVE | id=VALUE | id=UNBOUND | id=INSPECT | id=CONSUME | id=IMPLICIT | id=CALL | id=DEFINE
          | id=PROJECT | id=UNPROJECT | id=CASE | id=IMPORT | id=SUCCESS | id=FAILURE | id=CREATE | id=GLOBAL | id=LOCAL | id=GUARDED
-         | id=VOITAILE | id=STANDARD | id=RELEVANT | id=AFFINE | id=LINEAR | id=PERSISTED | id=TEMPORARY | id=BOUNDED | id=UNBOUNDED;
+         | id=VOITAILE | id=STANDARD | id=RELEVANT | id=AFFINE | id=LINEAR | id=PERSISTED | id=TEMPORARY | id=BOUNDED | id=UNBOUNDED
+         | id=AS | id=TYPE | id=OVERLOADED
+         ;
 
 BLOCK_COMMENT : '/*' .*? ( '*/' | EOF ) -> channel(HIDDEN) ;
 LINE_COMMENT: '//' ~[\r\n]* -> channel(HIDDEN) ;
@@ -269,6 +269,7 @@ NUM : SIGN? INT;
 
 TOP: 'top';
 TRANSACTIONAL: 'transactional';
+OVERLOADED: 'overloaded';
 FOR: 'for';
 
 
@@ -277,6 +278,7 @@ TRANSACTION: 'transaction';
 CLASS_ : 'class';
 INSTANCE : 'instance';
 DATA : 'data';
+TYPE : 'type';
 FUNCTION : 'function';
 SIGNATURE: 'signature';
 IMPLEMENT: 'implement';
@@ -310,6 +312,7 @@ UNPROJECT: 'unproject';
 CASE: 'case';
 IMPORT: 'import';
 USE: 'use';
+AS: 'as';
 SUCCESS: 'success';
 FAILURE: 'failure';
 CREATE: 'create';

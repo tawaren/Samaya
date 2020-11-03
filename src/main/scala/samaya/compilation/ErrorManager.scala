@@ -1,6 +1,7 @@
 package samaya.compilation
 
-import samaya.structure.types.SourceId
+import javax.lang.model.util.Elements.Origin
+import samaya.structure.types.{Region, SourceId}
 
 import scala.util.DynamicVariable
 
@@ -43,12 +44,13 @@ object ErrorManager {
     override def toString: String = level +": "+ msg
   }
 
-  case class LocatedMessage(msg:String, source:SourceId, level:ErrorLevel) extends Message {
-    override def toString: String = s"$level: ${source.src.start} $msg"
+  case class LocatedMessage(msg:String, origin:Region, level:ErrorLevel) extends Message {
+    override def toString: String = s"$level: ${origin.start} $msg"
   }
 
   object LocatedMessage {
     def apply(msg:String, sources:Seq[SourceId], level:ErrorLevel):Seq[LocatedMessage] = sources.map(LocatedMessage(msg, _,  level))
+    def apply(msg:String, source:SourceId, level:ErrorLevel):LocatedMessage = LocatedMessage(msg, source.origin,  level)
   }
 
   private case class UnexpectedErrorException(err:String) extends RuntimeException(err)

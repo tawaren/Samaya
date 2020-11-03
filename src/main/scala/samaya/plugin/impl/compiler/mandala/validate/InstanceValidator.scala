@@ -2,75 +2,98 @@ package samaya.plugin.impl.compiler.mandala.validate
 
 import samaya.compilation.ErrorManager._
 import samaya.plugin.impl.compiler.mandala.MandalaCompiler
-import samaya.plugin.impl.compiler.mandala.components.clazz.Class
+import samaya.plugin.impl.compiler.mandala.components.clazz.{Class, SigClass}
 import samaya.plugin.impl.compiler.mandala.components.instance.{DefInstance, Instance}
-import samaya.plugin.service.{ComponentValidator, Selectors}
-import samaya.structure.types.{CompLink, Func, ImplFunc, StdFunc, Type}
-import samaya.structure.types.Type.GenericType
-import samaya.structure.{FunctionSig, Package}
+import samaya.plugin.impl.compiler.mandala.entry.SigImplement
+import samaya.structure.types.{Func, SigType, SourceId, StdFunc}
+import samaya.structure.{FunctionSig, Generic, Package}
 import samaya.types.Context
-
+import samaya.validation.SignatureValidator
 
 object InstanceValidator {
   def validateInstance(inst: Instance, pkg: Package): Unit = {
-    inst.applies.filter(_.isUnknown).foreach{ _ =>
-      feedback(PlainMessage("Class apply type is unknown",Error))
+    inst.classApplies.filter(_.isUnknown).foreach{ ca =>
+      feedback(LocatedMessage("Class apply type is unknown", ca.src, Error))
     }
   }
 
 
   def validateDefInstance(inst: DefInstance, pkg: Package): Unit = {
     validateInstance(inst,pkg)
+    val defContext = Context(pkg)
     pkg.componentByLink(inst.classTarget) match {
       case Some(cls:Class) =>
         val clsContext = Context(cls,pkg)
-        if(cls.classGenerics.size != inst.applies.size){
-          feedback(PlainMessage("Wrong number of class applies",Error))
+        if(cls.generics.size != inst.classApplies.size){
+          feedback(LocatedMessage("Wrong number of class applies",inst.src,Error))
         }
 
-        for((gen,typ) <- cls.classGenerics.zip(inst.applies)){
+        for((gen,typ) <- cls.generics.zip(inst.classApplies)){
           if(!gen.capabilities.subsetOf(typ.capabilities(clsContext))){
-            feedback(PlainMessage("Class applies do not full fill capability constraints",Error))
+            feedback(LocatedMessage("Class applies do not full fill capability constraints",typ.src,Error))
           }
         }
 
-        //todo: add checks for implReferences
-        if(cls.functions.size + cls.implements.size != inst.funReferences.size) {
-          feedback(PlainMessage("Number of instance entries does not much number of class components",Error))
+        if(cls.functions.size != inst.implements.size) {
+          feedback(LocatedMessage("Number of instance entries does not match number of class components", inst.src, Error))
+        }
+        val names = inst.implements.map(_.name)
+        if(names.size != names.distinct.size) {
+          feedback(LocatedMessage("Instance implementations must have unique names", inst.src, Error))
         }
 
-        for(alias <- inst.funReferences) {
-          alias._2 match {
-            case Instance.RemoteEntryRef(module, offset) => pkg.componentByLink(module).flatMap(_.asModule) match {
-              case Some(instModule) =>
-                val instContext = Context(instModule,pkg)
-                cls.functions.find(_.name == alias._1) match {
-                  case Some(fun) =>
-                    val gens = fun.generics.drop(cls.classGenerics.size).zipWithIndex.map {
-                      case (g, index) => GenericType(g.capabilities, index)
-                    }
-                    val instFunc = StdFunc.Remote(module, offset, gens)
-                    val clsFunc = StdFunc.Remote(cls.link, fun.index, inst.applies ++ gens)
-                    compareFuncs(instFunc, instContext, clsFunc, clsContext)
-                    instModule.function(offset) match {
-                      case Some(trgFun) => compareSignatures(inst.applies, trgFun, fun)
-                      case None => feedback(PlainMessage("Cold not resolve Alias target", Error))
-                    }
-                  case None => feedback(PlainMessage("Alias can not be associated to a unique class function", Error))
+        for(si@SigImplement(name, generics, funTarget, implTarget, src) <- inst.implements) {
+          SignatureValidator.validateFunction(funTarget, si, defContext)
+          SignatureValidator.validateFunction(implTarget, si, defContext)
+
+          if(generics.take(inst.generics.size) != inst.generics) {
+            feedback(LocatedMessage("Generics on implementation must start with the same generics as the instance", src, Error))
+          }
+
+          //This is ok for now, as an instance never has locals
+          val plainContext = Context(pkg)
+
+          val implRets = implTarget.returnInfo(plainContext)
+          if(implRets.size != 1){
+            feedback(LocatedMessage("Instance implements must return a single signature", implTarget.src, Error))
+          } else {
+            implRets.head match {
+              case sig:SigType =>
+                sig.getEntry(plainContext) match {
+                  case Some(sigDef) if sigDef.name == name  =>
+                  case None => feedback(LocatedMessage("Instance implements must return a signature with the same name aas the implement",sig.src,Error))
                 }
-              case None => feedback(PlainMessage("Cold not resolve Alias target", Error))
+                sig.getComponent(plainContext) match {
+                  case Some(sigCls:SigClass) => if(sigCls.clazzLink != inst.classTarget){
+                    feedback(LocatedMessage("Instance implements must return a signature from the implemented class",sig.src,Error))
+                  }
+                  case _ => feedback(LocatedMessage("Instance implements must return a signature from a Signature class",sig.src,Error))
+                }
+              case _ => feedback(LocatedMessage("Instance implements must return a single signature",implTarget.src, Error))
             }
-            case Instance.LocalEntryRef(_) => unexpected("Instances are not modules and can not have Local Links")
+          }
+
+          cls.functions.find(_.name == name) match {
+            case None =>
+            case Some(fun) =>
+              val genTypes = generics.drop(inst.generics.size).map(_.asType(fun.src))
+              val clsFunc = StdFunc.Remote(cls.link, fun.index, inst.classApplies ++ genTypes)(fun.src)
+              compareFuncs(funTarget, plainContext, clsFunc, clsContext)
+              compareGenerics(inst.generics.size, generics, cls.generics.size, fun.generics, src)
+              funTarget.getEntry(plainContext) match {
+                case Some(trgFun) => checkParamSizes(trgFun, fun, src)
+                case None => feedback(LocatedMessage("Cold not resolve target definition", src, Error))
+              }
           }
         }
       case _ =>
-        feedback(PlainMessage("Can not find class",Error))
+        feedback(LocatedMessage("Can not find class", inst.src, Error))
     }
   }
 
   private def compareFuncs(instFunc:Func, istCtx:Context, classFunc:Func, clsCtx:Context ): Unit = {
     if(instFunc.transactional(istCtx) && !classFunc.transactional(clsCtx)) {
-      feedback(PlainMessage("class component instantiation has incompatible transactional declaration",Error))
+      feedback(LocatedMessage("class component instantiation has incompatible transactional declaration",instFunc.src,Error))
     }
 
     val instParams = instFunc.paramInfo(istCtx)
@@ -79,10 +102,10 @@ object InstanceValidator {
     //Note Param sizes are checked in signatures as superflous params are allowed as long as they are implicit
     for(((instType,instConsume), (clsType,clsConsume)) <- instParams.zip(clsParams)){
       if(instConsume != clsConsume){
-        feedback(PlainMessage("class component instantiation parameter has wrong consume attribute",Error))
+        feedback(LocatedMessage("class component instantiation parameter has wrong consume attribute",instType.src,Error))
       }
       if(instType != clsType) {
-        feedback(PlainMessage("class component instantiation parameter has wrong type",Error))
+        feedback(LocatedMessage("class component instantiation parameter has wrong type",instType.src,Error))
       }
     }
 
@@ -90,36 +113,39 @@ object InstanceValidator {
     val clsRets = classFunc.returnInfo(clsCtx)
 
     if(instRets.size != clsRets.size) {
-      feedback(PlainMessage("class component instantiation has wrong number of parameters",Error))
+      feedback(LocatedMessage("class component instantiation has wrong number of parameters",instFunc.src,Error))
     }
 
     for((instType, clsType) <- instRets.zip(clsRets)){
       if(instType != clsType) {
-        feedback(PlainMessage("class component instantiation parameter has wrong type",Error))
+        feedback(LocatedMessage("class component instantiation parameter has wrong type", instType.src, Error))
       }
     }
-
   }
 
+  private def compareGenerics(numInstGenerics:Int, implGenerics:Seq[Generic], numClassGenerics:Int, clsFunGenerics:Seq[Generic], src:SourceId): Unit = {
+    val exclusiveImplGenerics = implGenerics.drop(numInstGenerics)
+    val exclusiveClassFunGenerics = clsFunGenerics.drop(numClassGenerics)
 
-  private def compareSignatures(classGenerics:Seq[Type], instSig:FunctionSig, classSig:FunctionSig): Unit = {
-    if(instSig.generics.size + classGenerics.size != classSig.generics.size) {
-      feedback(PlainMessage("class component instantiation has mismatching amount of generics",Error))
+    if(exclusiveImplGenerics != exclusiveClassFunGenerics) {
+      feedback(LocatedMessage("class component instantiation has mismatching amount of generics",src,Error))
     }
 
-    for((instGen, clzGen) <- instSig.generics.zip(classSig.generics.drop(classGenerics.size))) {
+    for((instGen, clzGen) <- exclusiveImplGenerics.zip(exclusiveClassFunGenerics)) {
       if(!instGen.capabilities.subsetOf(clzGen.capabilities)){
-        feedback(PlainMessage("class component instantiation has stronger capability constraints than allowed",Error))
+        feedback(LocatedMessage("class component instantiation has stronger capability constraints than allowed",instGen.src,Error))
       }
     }
+  }
 
+  private def checkParamSizes(instSig:FunctionSig, classSig:FunctionSig, src:SourceId): Unit = {
     if(instSig.params.size != classSig.params.size) {
       if(instSig.params.size > classSig.params.size) {
         if(!instSig.params.drop(classSig.params.size).forall(p => p.attributes.exists(a => a.name == MandalaCompiler.Implicit_Attribute_Name))){
-          feedback(PlainMessage("additional class component instantiation parameter must be implicit",Error))
+          feedback(LocatedMessage("additional class component instantiation parameter must be implicit",src,Error))
         }
       } else {
-        feedback(PlainMessage("class component instantiation has wrong number of parameters",Error))
+        feedback(LocatedMessage("class component instantiation has wrong number of parameters",src,Error))
       }
     }
   }

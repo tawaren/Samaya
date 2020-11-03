@@ -29,9 +29,21 @@ class JsonPackageEncoder extends PackageEncoder {
   //todo: use error handler
   //todo: Make more stuff Optional in Module Meta
   def deserializePackage(file: InputSource): Option[structure.LinkablePackage] = {
-
     //parse the package with Package as description
     val pkg = readFromStream[Package](file.content)
+    //base path
+    val pkgFolder = pkg.path match {
+      case Some(path) =>
+        LocationResolver.parsePath(path) match {
+          case Some(parsedPath) => LocationResolver.resolveLocation(file.location,parsedPath) match {
+            case Some(base) => base
+            case None => return None
+          }
+          case None => return None
+        }
+      case None => file.location
+    }
+
     //parse the paths
     val codeIdent = LocationResolver.parsePath(pkg.locations.code) match {
       case Some(f) => f
@@ -49,19 +61,19 @@ class JsonPackageEncoder extends PackageEncoder {
     }
 
     //find the location where the byte code files for the package are/shpuld be stored
-    val codeLoc = LocationResolver.resolveLocation(file.location,codeIdent) match {
+    val codeLoc = LocationResolver.resolveLocation(pkgFolder,codeIdent) match {
       case Some(f) => f
       case None => return None
     }
 
     //find the location where the module interface files for the package are/shpuld be stored
-    val interfaceLoc = LocationResolver.resolveLocation(file.location,interfaceIdent) match {
+    val interfaceLoc = LocationResolver.resolveLocation(pkgFolder,interfaceIdent) match {
       case Some(f) => f
       case None => return None
     }
 
     //find the location where the source files for the package are stored
-    val sourceLoc = LocationResolver.resolveLocation(file.location,sourceIdent) match {
+    val sourceLoc = LocationResolver.resolveLocation(pkgFolder,sourceIdent) match {
       case Some(f) => f
       case None => return None
     }
@@ -76,7 +88,7 @@ class JsonPackageEncoder extends PackageEncoder {
       }
 
       //find the location of the dependency
-      val dependecyFile = LocationResolver.resolveSource(file.location,depIdent,Some(Set(PackageEncoder.packageExtensionPrefix))) match {
+      val dependecyFile = LocationResolver.resolveSource(pkgFolder,depIdent,Some(Set(PackageEncoder.packageExtensionPrefix))) match {
         case Some(f) => f
         case None =>
           return None
@@ -110,7 +122,7 @@ class JsonPackageEncoder extends PackageEncoder {
 
     val newPkg = new LinkablePackage(
       true,
-      file.location,
+      pkgFolder,
       Hash.fromString(pkg.hash),
       pkg.name,
       components,

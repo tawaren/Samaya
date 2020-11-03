@@ -24,13 +24,13 @@ object JsonModel {
   }
 
   object TypeKinds {
-    case object Adt extends TypeKinds {override val  name = "adt"}
-    case object Lit extends TypeKinds {override val  name = "lit"}
-    case object Sig extends TypeKinds {override val  name = "sig"}
-    case object Param extends TypeKinds {override val  name = "param"}
+    case object Adt extends TypeKinds {override val name = "adt"}
+    case object Lit extends TypeKinds {override val name = "lit"}
+    case object Sig extends TypeKinds {override val name = "sig"}
+    case object Param extends TypeKinds {override val name = "param"}
   }
 
-  case class Type(module:String = TypeEncodings.Generic.name, componentIndex:Option[(String, Int)], applies:Seq[Type])
+  case class Type(module:String = TypeEncodings.Generic.name, componentIndex:Option[(String, Int)], applies:Seq[Type], attributes:Seq[Attribute])
   case class Field(name:String, attributes:Seq[Attribute], typ:Type)
   case class Return(name:String, attributes:Seq[Attribute], typ:Type)
   case class Param(name:String, attributes:Seq[Attribute], typ:Type, isConsumed:Boolean)

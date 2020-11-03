@@ -1,10 +1,10 @@
 package samaya.plugin.impl.compiler.mandala.components.clazz
 
-import samaya.structure.{Attribute, DataDef, FunctionSig, Generic, Interface, Meta, Module}
+import samaya.structure.{Attribute, FunctionSig, Generic, Interface, Meta, Module, TypeParameterized}
 
-trait Class extends Module {
-  def classGenerics: Seq[Generic]
+trait Class extends Module with TypeParameterized {
   override def attributes: Seq[Attribute] = Seq.empty
   override def implements: Seq[FunctionSig] = Seq.empty
+  def generic(index:Int):Option[Generic] = generics.find(gi => gi.index == index)
   def toInterface(meta: Meta): Interface[Class]
 }

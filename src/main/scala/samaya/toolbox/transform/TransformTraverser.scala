@@ -1,5 +1,6 @@
 package samaya.toolbox.transform
 
+import samaya.compilation.ErrorManager.{Info, LocatedMessage, PlainMessage, feedback}
 import samaya.structure.types._
 
 import scala.collection.immutable.ListMap
@@ -9,8 +10,8 @@ abstract class TransformTraverser extends Transformer {
 
   def transform(): Seq[OpCode] = {
     val stack = initialState()
-    val expect = results.map(r => Id(r.name))
-    val provided = params.map(p => AttrId(Id(p.name), p.attributes))
+    val expect = results.map(r => Id(r.name, r.src))
+    val provided = params.map(p => AttrId(Id(p.name, p.src), p.attributes))
 
     val (nCode,finalStack) = if(code.nonEmpty) {
       val (nCode, s) = transformBlockLocal(provided, code, expect, origin, stack, s => functionStart(params, origin, s))
@@ -80,7 +81,7 @@ abstract class TransformTraverser extends Transformer {
     }
 
     val branchStates = branches.zipWithIndex.map { case ((ctrName, (intro, code)), idx) =>
-      val caseId = origin.deriveSourceId(idx,ctrName.src.getOrElse(origin.src))
+      val caseId = origin.deriveSourceId(idx,ctrName.src.origin)
       transformBlockLocal(intro, code, res.map(_.id), caseId, newState, state => caseStart(intro, src, ctrName, mode, caseId, state))
     }.toSeq
 
@@ -88,7 +89,14 @@ abstract class TransformTraverser extends Transformer {
       case ((ctr,(param, _)),block) => (ctr,(param, block))
     }
 
-    val fState = traverseJoin(res.map(_.id),origin,branchStates.map(_._2))
+    //traverseJoin is only defined for non empty branches
+    val fState = if(branchStates.nonEmpty) {
+      traverseJoin(res.map(_.id), origin, branchStates.map(_._2))
+    } else {
+      feedback(LocatedMessage("Empty branching detected", origin, Info))
+      newState
+    }
+
     if(!isInspect) {
       (OpCode.Switch(res, src, nBranches, mode.get, origin), switchAfter(res, src, nBranches, mode.get, origin, fState))
     } else {

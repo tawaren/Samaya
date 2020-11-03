@@ -2,7 +2,7 @@ package samaya.plugin.impl.inter.json
 
 import samaya.plugin.impl.inter.json.JsonModel.{TypeEncodings, TypeKinds}
 import samaya.structure.Generic
-import samaya.structure.types.{AdtType, CompLink, Hash, LitType, SigType, Type}
+import samaya.structure.types.{AdtType, CompLink, Hash, InputSourceId, LitType, Region, SigType, SourceId, Type}
 
 import scala.util.DynamicVariable
 
@@ -16,35 +16,35 @@ object TypeBuilder {
     context.withValue(caps)(body)
   }
 
-  def toType(jtyp:JsonModel.Type):Type = {
+  def toType(jtyp:JsonModel.Type, loc:JsonLocation):Type = toType(jtyp, new InputSourceId(Region(loc,loc)))
 
+  def toType(jtyp:JsonModel.Type, src:SourceId):Type = {
+    val attrs = jtyp.attributes
     //Todo: Add warnings?? when unknown parse (or even explizit error exept real unknown)
     jtyp.module match {
       case TypeEncodings.Generic() => jtyp.componentIndex match {
-        case None => Type.DefaultUnknown
-        case Some((_,offset)) => Type.GenericType(context.value(offset).capabilities, offset)
+        case None => Type.Unknown(Set.empty)(src, attrs)
+        case Some((_,offset)) => Type.GenericType(context.value(offset).capabilities, offset)(src, attrs)
       }
       case TypeEncodings.Projection() => jtyp.applies.headOption match {
-        case None => Type.DefaultUnknown
-        case Some(innerType) => toType(innerType).projected()
+        case None => Type.Unknown(Set.empty)(src, attrs)
+        case Some(innerType) => toType(innerType, src).projected(src, attrs)
       }
-      case TypeEncodings.Unknown() => Type.DefaultUnknown
+      case TypeEncodings.Unknown() => Type.Unknown(Set.empty)(src, attrs)
       case TypeEncodings.Local() => jtyp.componentIndex match {
-        case Some((TypeKinds.Adt(), offset)) => AdtType.Local(offset, jtyp.applies.map(toType))
-        case Some((TypeKinds.Lit(), offset)) => LitType.Local(offset, jtyp.applies.map(toType))
-        case Some((TypeKinds.Sig(), offset)) => SigType.Local(offset, jtyp.applies.map(toType))
-        case _ => Type.DefaultUnknown
+        case Some((TypeKinds.Adt(), offset)) => AdtType.Local(offset, jtyp.applies.map(toType(_,src)))(src, attrs)
+        case Some((TypeKinds.Lit(), offset)) => LitType.Local(offset, jtyp.applies.map(toType(_,src)))(src, attrs)
+        case Some((TypeKinds.Sig(), offset)) => SigType.Local(offset, jtyp.applies.map(toType(_,src)))(src, attrs)
+        case _ => Type.Unknown(Set.empty)(src)
       }
 
       case remote => jtyp.componentIndex match {
-        case Some((TypeKinds.Adt(), offset)) => AdtType.Remote(CompLink.fromString(remote), offset, jtyp.applies.map(toType))
-        case Some((TypeKinds.Lit(), offset)) => LitType.Remote(CompLink.fromString(remote), offset, jtyp.applies.map(toType))
-        case Some((TypeKinds.Sig(), offset)) => SigType.Remote(CompLink.fromString(remote), offset, jtyp.applies.map(toType))
-        case _ => Type.DefaultUnknown
+        case Some((TypeKinds.Adt(), offset)) => AdtType.Remote(CompLink.fromString(remote), offset, jtyp.applies.map(toType(_,src)))(src, attrs)
+        case Some((TypeKinds.Lit(), offset)) => LitType.Remote(CompLink.fromString(remote), offset, jtyp.applies.map(toType(_,src)))(src, attrs)
+        case Some((TypeKinds.Sig(), offset)) => SigType.Remote(CompLink.fromString(remote), offset, jtyp.applies.map(toType(_,src)))(src, attrs)
+        case _ => Type.Unknown(Set.empty)(src, attrs)
       }
     }
   }
-
-
 }
 

@@ -154,40 +154,46 @@ object Serializer {
         JsonModel.Type(
           module = TypeEncodings.Projection.name,
           componentIndex = None,
-          applies = Seq(toTypeRepr(proj.inner))
+          applies = Seq(toTypeRepr(proj.inner)),
+          attributes = typ.attributes
         )
       case Type.GenericType(_, offset) =>
         JsonModel.Type(
           module = TypeEncodings.Generic.name,
           componentIndex = Some(TypeKinds.Param.name, offset),
-          applies = Seq.empty
+          applies = Seq.empty,
+          attributes = typ.attributes
         )
       case adt:AdtType =>
         val (module, index) = extractTypeLocation()
         JsonModel.Type(
           module = module,
           componentIndex = Some(TypeKinds.Adt.name, index),
-          applies = adt.applies.map(toTypeRepr)
+          applies = adt.applies.map(toTypeRepr),
+          attributes = typ.attributes
         )
       case lit:LitType =>
         val (module, index) = extractTypeLocation()
         JsonModel.Type(
           module = module,
           componentIndex = Some(TypeKinds.Lit.name, index),
-          applies = lit.applies.map(toTypeRepr)
+          applies = lit.applies.map(toTypeRepr),
+          attributes = typ.attributes
         )
       case sig:SigType =>
         val (module, index) = extractTypeLocation()
         JsonModel.Type(
           module = module,
           componentIndex = Some(TypeKinds.Sig.name, index),
-          applies = sig.applies.map(toTypeRepr)
+          applies = sig.applies.map(toTypeRepr),
+          attributes = typ.attributes
         )
       case _:Type.Unknown =>
         JsonModel.Type(
           module = TypeEncodings.Unknown.name,
           componentIndex = None,
-          applies = Seq.empty
+          applies = Seq.empty,
+          attributes = typ.attributes
         )
     }
   }

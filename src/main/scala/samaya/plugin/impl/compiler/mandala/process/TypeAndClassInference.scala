@@ -1,26 +1,24 @@
 package samaya.plugin.impl.compiler.mandala.process
 
-import samaya.compilation.ErrorManager._
-import samaya.plugin.impl.compiler.mandala.components.InstInfo
 import samaya.plugin.impl.compiler.mandala.components.clazz.Class
-import samaya.plugin.impl.compiler.mandala.components.instance.Instance.EntryRef
-import samaya.structure.types.{Accessibility, AttrId, CompLink, DefinedFunc, Func, Id, ImplFunc, OpCode, Permission, Ref, SourceId, StdFunc, Type}
-import samaya.structure.{Attribute, Binding, FunctionDef, Generic, ImplementDef, Interface, Module, Param, Result}
+import samaya.structure.types.{Accessibility, AttrId, CompLink, DefinedFunc, Func, OpCode, Permission, Ref, SourceId, Type}
+import samaya.structure.{Attribute, Binding, FunctionDef, Generic, ImplementDef, Interface, Param, Result}
 import samaya.toolbox.process.TypeInference
 import samaya.toolbox.process.TypeInference.TypeVar
 import samaya.toolbox.track.JoinType
-import samaya.toolbox.transform.ComponentTransformer
+import samaya.toolbox.transform.EntryTransformer
 import samaya.types.Context
 
-class TypeAndClassInference(instanceFinder:InstanceFinder)  extends ComponentTransformer{
+class TypeAndClassInference(instanceFinder:InstanceFinder) extends EntryTransformer{
 
   override def transformFunction(in: FunctionDef, context: Context): FunctionDef = {
     val analyzer = new TypeAndClassInference(Left(in), context)
     val result = analyzer.extract()
     val transformer = new TypeAndClassReplacing(result, Left(in), context)
-    val adapted = transformer.component.left.get
+    val adapted = transformer.entry.left.get
+
     new FunctionDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -39,9 +37,9 @@ class TypeAndClassInference(instanceFinder:InstanceFinder)  extends ComponentTra
     val analyzer = new TypeAndClassInference(Right(in), context)
     val result = analyzer.extract()
     val transformer = new TypeAndClassReplacing(result, Right(in), context)
-    val adapted = transformer.component.right.get
+    val adapted = transformer.entry.right.get
     new ImplementDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external: Boolean = in.external
       override val index: Int = in.index
@@ -88,7 +86,7 @@ class TypeAndClassInference(instanceFinder:InstanceFinder)  extends ComponentTra
             // If we are in a class then we have no bodies and thus never end up here
             // If we are not in a class then the func always points to a remote (where we already have the interface)
             case Some(cls:Class with Interface[_]) =>
-              val appls = func.applies.take(cls.classGenerics.size)
+              val appls = func.applies.take(cls.generics.size)
               foundClasses = foundClasses.updated(func, ClassCallInfo(func.name(context),cls.link, appls, src))
             case _ =>
 
@@ -120,7 +118,7 @@ class TypeAndClassInference(instanceFinder:InstanceFinder)  extends ComponentTra
         instanceFinder.findAndApplyTargetFunction(name, comp, resolvedApplies, func.applies, context, src) match {
           case Some(newFunc) => funSubs = funSubs + (func -> newFunc)
             //Error was printed in findAndApplyTargetFunction
-          case None => funSubs = funSubs + (func -> Func.Unknown)
+          case None => funSubs = funSubs + (func -> Func.Unknown(src))
         }
       }
       AnalysisResults(parent.substitutions, parent.joins, funSubs)

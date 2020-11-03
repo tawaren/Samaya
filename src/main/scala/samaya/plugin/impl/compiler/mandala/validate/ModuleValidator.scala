@@ -2,20 +2,35 @@ package samaya.plugin.impl.compiler.mandala.validate
 
 import samaya.compilation.ErrorManager._
 import samaya.plugin.impl.compiler.mandala.MandalaCompiler
+import samaya.plugin.impl.compiler.mandala.components.module.MandalaModule
+import samaya.plugin.impl.compiler.mandala.entry.TypeAlias
 import samaya.structure.{CompiledModule, FunctionSig, Module, Package}
+import samaya.types.Context
+import samaya.validation.SignatureValidator
 
 
 object ModuleValidator {
 
-  def validateModule(module: Module): Unit = {
+  def validateModule(module: MandalaModule, pkg:Package): Unit = {
+    val context = Context(module, pkg)
     module.functions.foreach(f => checkSig(f,"Function"))
     module.signatures.foreach(s => checkSig(s,"Signature"))
     module.implements.foreach(i => checkSig(i,"Implement"))
+    module.typeAlias.foreach{
+      case ta@TypeAlias(name, generics, target, source) =>
+        val genericIdents:Set[String] = generics.map(p => p.name).toSet
+        //check that type param names are unique
+        if(genericIdents.size != generics.size){
+          feedback(LocatedMessage(s"$name generics must have unique names", source, Error))
+        }
+        SignatureValidator.validateType(target.src, target, ta, context)
+
+    }
     //Todo: Validate Instances exist?
   }
 
-  def validateCompiledModule(module: CompiledModule): Unit = {
-    validateModule(module);
+  def validateCompiledModule(module: CompiledModule with MandalaModule, pkg:Package): Unit = {
+    validateModule(module, pkg)
     module.implements.foreach(i => {
       var hit = false
       for(param <- i.sigParamBindings){

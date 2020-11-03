@@ -411,7 +411,7 @@ class PlainDebugAssembler extends DebugAssembler {
 
     def ref(r:Ref):String = {
       r match {
-        case v:Val => s"${v.id.name}@${assocs.getOrElse(v.origin,"_")}"
+        case v:Val => s"${v.id.name}@${assocs.getOrElse(v.src,"_")}"
         case id:Id => s"${id.name}"
       }
     }

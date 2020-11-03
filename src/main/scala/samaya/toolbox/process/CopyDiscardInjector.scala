@@ -1,26 +1,25 @@
 package samaya.toolbox.process
 
 import samaya.compilation.ErrorManager.producesErrorValue
-import samaya.structure.types.Type.DefaultUnknown
 import samaya.structure.{Attribute, Binding, FunctionDef, Generic, ImplementDef, Package, Param, Result, Transaction, types}
 import samaya.structure.types.{SourceId, _}
 import samaya.toolbox.process.TypeInference.{TypeInference, TypeReplacing}
 import samaya.toolbox.stack.SlotFrameStack.SlotDomain
 import samaya.toolbox.track.{TypeTracker, ValueTracker}
-import samaya.toolbox.transform.{ComponentTransformer, TransformTraverser}
+import samaya.toolbox.transform.{EntryTransformer, TransformTraverser}
 import samaya.toolbox.traverse.ViewTraverser
 import samaya.types.Context
 
 import scala.collection.immutable.ListMap
 
-object CopyDiscardInjector extends ComponentTransformer {
+object CopyDiscardInjector extends EntryTransformer {
 
   override def transformFunction(in: FunctionDef, context: Context): FunctionDef = {
     val analyzer = new LastUsageFinder(Left(in),context)
     val result = analyzer.extract()
     val transformer = new CopyDropInjection(result,Left(in),context)
     new FunctionDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external:Boolean = in.external
       override val index: Int = in.index
@@ -41,7 +40,7 @@ object CopyDiscardInjector extends ComponentTransformer {
     val result = analyzer.extract()
     val transformer = new CopyDropInjection(result,Right(in),context)
     new ImplementDef {
-      override val src: SourceId = in.src
+      override val src:SourceId = in.src
       override val code: Seq[OpCode] = transformer.transform()
       override val external:Boolean = in.external
       override val index: Int = in.index
@@ -105,7 +104,7 @@ object CopyDiscardInjector extends ComponentTransformer {
 
   //todo: change source resolution everywhere to before super
   //       but only after it works maybe their was a reason we did it after even if it seams wrong
-  class LastUsageFinder(override val component:Either[FunctionDef,ImplementDef], override val context:Context) extends ViewTraverser with TypeTracker{
+  class LastUsageFinder(override val entry:Either[FunctionDef,ImplementDef], override val context:Context) extends ViewTraverser with TypeTracker{
 
     //todo: propagate the usedOver -- What to Set for injected
     sealed trait IdUsage {def usedBy:SourceId}
@@ -177,6 +176,7 @@ object CopyDiscardInjector extends ComponentTransformer {
 
     //Helper to Start new frames for Switch & Try
     def newScope(branches:Int): Unit = {
+      assert(branches != 0)
       stack = new Frame(branches) +: stack
     }
 
@@ -228,7 +228,7 @@ object CopyDiscardInjector extends ComponentTransformer {
       newScope(1)
       //do the traversing (we are not interested in the result as we track separately)
       super.traverse()
-      //ensure that only the caller remains ont the stack
+      //ensure that only the caller remains on the stack
       assert(stack.size == 1)
       //init new empty stuff to collect aggregated results
       var injectionsByCodeId = Map.empty[SourceId,Seq[Val]].withDefaultValue(Seq.empty)
@@ -424,7 +424,7 @@ object CopyDiscardInjector extends ComponentTransformer {
     }
   }
 
-  class CopyDropInjection(lookup:AnalysisResults, override val component:Either[FunctionDef,ImplementDef], override val context:Context) extends TransformTraverser with TypeTracker {
+  class CopyDropInjection(lookup:AnalysisResults, override val entry:Either[FunctionDef,ImplementDef], override val context:Context) extends TransformTraverser with TypeTracker {
 
     //sometimes we create n opcode that does not require further processing by this transformer
     private var ignoreOpcodes:Set[SourceId] = Set.empty
@@ -435,7 +435,7 @@ object CopyDiscardInjector extends ComponentTransformer {
         if(exists.contains(r)) {
           val newId = Id.apply(r.id)
           //ensure we have a unique fresh one
-          val newOrigin = new InputSourceId(source.src)
+          val newOrigin = new InputSourceId(source.origin)
           //make a fix ref
           val opCode = OpCode.Fetch(AttrId(newId,Seq.empty), r, FetchMode.Copy, newOrigin)
           (Some(opCode), opCode.retVal(0))
@@ -542,7 +542,7 @@ object CopyDiscardInjector extends ComponentTransformer {
 
     //todo: Handle the spezial case where src used more then once & is last use, as then we need copy for all expect last
     private def transformParams(params: Seq[(Ref, Boolean)], origin: SourceId, stack: Stack): (Seq[OpCode], Seq[Ref]) = {
-      val regionMap = params.flatMap(p => p._1.src.map((p._1, _))).toMap
+      val regionMap = params.map(p => (p._1,p._1.src)).toMap
       val valsWithConsumeInfo = params.map{
         case (id,c) => (stack.resolve(id),c)
       }
@@ -557,7 +557,7 @@ object CopyDiscardInjector extends ComponentTransformer {
           //keep the name intact just shadow old value
           val nId = AttrId(Id.apply(v.id), Seq.empty)
           //adapt it from the lookup id or use the pack code if missing
-          val newOrigin = new InputSourceId(regionMap.getOrElse(v.id, origin.src))
+          val newOrigin = regionMap.getOrElse(v.id, origin)
           //make a fix ref
           val opCode = OpCode.Fetch(nId,v.id, FetchMode.Copy, newOrigin)
           (opCode.retVal(0), Some(opCode))
