@@ -36,7 +36,7 @@ trait ArityChecker extends TypeTracker{
 
 
   override def caseStart(fields: Seq[AttrId], src: Ref, ctr: Id, mode: Option[FetchMode], origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract{
       case adt:AdtType =>
         val ctrs = adt.ctrs(context)
         ctrs.get(ctr.name) match {
@@ -52,7 +52,7 @@ trait ArityChecker extends TypeTracker{
   }
 
   override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract {
       case adt:AdtType =>
         val ctrs = adt.ctrs(context)
         if(ctrs.size != 1) {
@@ -71,7 +71,7 @@ trait ArityChecker extends TypeTracker{
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract {
       case adt:AdtType =>
         val ctrs = adt.ctrs(context)
         if(ctrs.size != 1) {
@@ -90,7 +90,7 @@ trait ArityChecker extends TypeTracker{
   }
 
   override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin:SourceId, stack: Stack):Stack = {
-    res.typ match {
+    res.typ.projectionExtract {
       case adt: AdtType => if(!adt.ctrs(context).contains(ctr.name)) {
           feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error))
       }

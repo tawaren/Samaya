@@ -14,6 +14,8 @@ object SignatureValidator {
   //  This is necessary when checking data type fields against the data types capabilities
 
   def validateTypeConstraints(t:Type, reqCaps:Set[Capability], container:TypeParameterized, context:Context, promoteGenerics:Boolean = false):Unit = {
+
+    //Todo: get an appropriate source in here as t.src shows the error on the target
     def checkInternal(caps:Set[Capability], generics:Seq[Generic], applies:Seq[Type]):Unit = {
       if (generics.length != applies.length) {
         feedback(LocatedMessage("Number of applied generics missmatches expected generics", t.src, Error))

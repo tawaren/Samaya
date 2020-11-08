@@ -95,7 +95,7 @@ trait DefinitionChecker extends TypeTracker{
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract {
       case adt: AdtType => for((ctr, idx) <- adt.ctrs(context).values.zipWithIndex){
         ctr.get(fieldName.name) match {
           case Some(typ) => if(typ.isUnknown) {
@@ -110,7 +110,7 @@ trait DefinitionChecker extends TypeTracker{
   }
 
   override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract {
       case adt: AdtType => for(ctr <- adt.ctrs(context).values; ((name,field), idx) <- ctr.zipWithIndex){
         if(field.isUnknown) {
           val src = res.lift(idx).map(_.id.src).getOrElse(origin)

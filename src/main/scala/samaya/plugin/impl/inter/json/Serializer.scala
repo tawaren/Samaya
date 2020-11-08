@@ -84,7 +84,6 @@ object Serializer {
       generics = generics,
       constructors = constructors,
       external = data.external,
-      top = data.top
     )
   }
 

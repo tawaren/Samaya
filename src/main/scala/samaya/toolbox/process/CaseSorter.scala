@@ -55,7 +55,7 @@ object CaseSorter extends EntryTransformer {
 
   class CaseSorter(override val entry: Either[FunctionDef, ImplementDef], override val context: Context) extends TransformTraverser with TypeTracker {
     override def transformSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
-      val branches = stack.getType(src) match {
+      val branches = stack.getType(src).projectionExtract {
         case adt:AdtType =>
           var builder = ListMap.newBuilder[Id,  (Seq[AttrId], Seq[OpCode])]
           //todo: fix the UnknownSourceId -- We need the original from bodies
@@ -71,7 +71,7 @@ object CaseSorter extends EntryTransformer {
     }
 
     override def transformInspect(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
-      val branches = stack.getType(src) match {
+      val branches = stack.getType(src).projectionExtract {
         case adt:AdtType =>
           var builder = ListMap.newBuilder[Id,  (Seq[AttrId], Seq[OpCode])]
           //todo: fix the UnknownSourceId -- We need the original from bodies

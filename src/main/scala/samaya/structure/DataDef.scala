@@ -15,7 +15,6 @@ trait DataDef extends TypeParameterized with ModuleEntry{
   def constructor(tag:Int):Option[Constructor]= constructors.find(c => c.tag == tag)
   def capabilities:Set[Capability]
   def external:Option[Short]
-  def top:Boolean
 }
 
 object DataDef {

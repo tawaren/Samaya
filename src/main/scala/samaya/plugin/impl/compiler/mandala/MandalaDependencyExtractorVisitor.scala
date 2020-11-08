@@ -121,7 +121,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
     val old = componentGenerics
     componentGenerics = extractGenericArgs(ctx.genericArgs())
     val res = aggregateResult(
-      visitRef(ctx.baseRef().path().part.asScala.map(getName(_).getText), sourceIdFromContext(ctx), isComp = true),
+      visitRef(ctx.compRef().path().part.asScala.map(getName(_).getText), sourceIdFromContext(ctx), isComp = true),
       //visits the ref again but is no problem as worst case results in a package which then is ignored by builder (if it exists)
       super.visitInstance(ctx)
     )

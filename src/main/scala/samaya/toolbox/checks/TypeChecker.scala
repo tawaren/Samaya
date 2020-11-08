@@ -65,21 +65,25 @@ trait TypeChecker extends TypeTracker{
 
   override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     SignatureValidator.validateType(origin, res.typ,parametrization,context)
-    res.typ match {
+    val fields = res.typ.projectionSeqMap{
       case adtType: AdtType =>
         val ctrs = adtType.ctrs(context)
         ctrs.get(ctr.name) match {
-          case Some(value) =>
-            val fields = value.values
-            srcs.map(v => (v.src, stack.getType(v))).padTo(fields.size, (UnknownSourceId, Type.Unknown(Set.empty)(origin))).zip(fields).zipWithIndex.foreach{
-              case (((_, srcT), targT),_) if srcT == targT =>
-              case (((src, srcT), targT), idx) => if(!srcT.isUnknown && !targT.isUnknown) {
-                feedback(LocatedMessage(s"${indexToString(idx+1)} field value for constructor call ${adtType.prettyString(context,gens)}#${ctr.name} has the wrong type: expected ${targT.prettyString(context, gens)}, provided ${srcT.prettyString(context, gens)}", src, Error))
-              }
-            }
-          case None => feedback(LocatedMessage(s"Type ${adtType.prettyString(context,gens)} does not have a constructor named ${ctr.name}", origin, Error))
+          case Some(value) => value.values.toSeq
+          case None =>
+            feedback(LocatedMessage(s"Type ${adtType.prettyString(context,gens)} does not have a constructor named ${ctr.name}", origin, Error))
+            Seq.empty
         }
-      case _ => feedback(LocatedMessage(s"Type ${res.typ.prettyString(context,gens)} can not be constructed with a pack instruction", origin, Error))
+      case _ =>
+        feedback(LocatedMessage(s"Type ${res.typ.prettyString(context,gens)} can not be constructed with a pack instruction", origin, Error))
+        Seq.empty
+    }
+
+    srcs.map(v => (v.src, stack.getType(v))).padTo(fields.size, (UnknownSourceId, Type.Unknown(Set.empty)(origin))).zip(fields).zipWithIndex.foreach{
+      case (((_, srcT), targT),_) if srcT == targT =>
+      case (((src, srcT), targT), idx) => if(!srcT.isUnknown && !targT.isUnknown) {
+        feedback(LocatedMessage(s"${indexToString(idx+1)} field value for constructor call ${res.typ.prettyString(context,gens)}#${ctr.name} has the wrong type: expected ${targT.prettyString(context, gens)}, provided ${srcT.prettyString(context, gens)}", src, Error))
+      }
     }
     super.pack(res, srcs, ctr, mode, origin, stack)
   }
@@ -137,7 +141,7 @@ trait TypeChecker extends TypeTracker{
   }
 
   override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract {
       case _: AdtType =>
       case typ => if(!typ.isUnknown){
         feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error))
@@ -148,7 +152,7 @@ trait TypeChecker extends TypeTracker{
 
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract {
       case _: AdtType =>
       case typ => if(!typ.isUnknown){
         feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be deconstructed with a field instruction", origin, Error))
@@ -158,7 +162,7 @@ trait TypeChecker extends TypeTracker{
   }
 
   override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract {
       case _: AdtType =>
       case typ => if(!typ.isUnknown){
         feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be deconstructed with a switch instruction", origin, Error))
@@ -168,7 +172,7 @@ trait TypeChecker extends TypeTracker{
   }
 
   override def inspectBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src) match {
+    stack.getType(src).projectionExtract{
       case _: AdtType =>
       case typ => if(!typ.isUnknown) {
         feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be inspected", origin, Error))

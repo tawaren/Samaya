@@ -20,7 +20,6 @@ case class DataDefImpl(override val location: JsonLocation, data: JsonModel.Data
   override val capabilities: Set[Capability] = data.capabilities.flatMap(c => Capability.fromString(c))
   override def attributes: Seq[Attribute] = data.attributes
   override val external: Option[Short] = data.external
-  override val top: Boolean = data.top
 
   override val constructors: Seq[Constructor] = TypeBuilder.inContext(generics){
     val ctrLoc = location.descendProperty("constructors")

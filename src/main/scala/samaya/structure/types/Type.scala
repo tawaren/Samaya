@@ -24,6 +24,9 @@ trait Type {
   def src:SourceId
   def attributes:Seq[Attribute]
   def changeMeta(src:SourceId = src, attributes:Seq[Attribute] = attributes):Type
+  def projectionExtract[T](f:Type => T):T = f(this)
+  def projectionMap(f:Type => Type):Type = f(this)
+  def projectionSeqMap(f:Type => Seq[Type]):Seq[Type] = f(this)
 
   def asAdtType:Option[AdtType] = this match {
     case adtType: AdtType => Some(adtType)
@@ -159,6 +162,8 @@ object Type {
 
   case class DefaultProjected(override val inner:Type)(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends Projected {
     override def projected(src:SourceId, attributes:Seq[Attribute] = Seq.empty): Type = DefaultProjected(this)(src, attributes)
+    override def projectionMap(f: Type => Type): Type = inner.projectionMap(f).projected(src,attributes)
+    override def projectionSeqMap(f: Type => Seq[Type]): Seq[Type] = inner.projectionSeqMap(f).map(_.projected(src))
     override def replaceContainedTypes(f: Type => Type): Type = f(inner).projected(src, attributes)
     override def instantiate(applies: Seq[Type]): Type  = DefaultProjected(inner.instantiate(applies))(src, attributes)
     override def isCurrentModule: Boolean = inner.isCurrentModule
@@ -174,6 +179,8 @@ object Type {
       case Permission.Call | Permission.Define => false
       case _ => true
     }
+
+    override def projectionExtract[T](f: Type => T): T = inner.projectionExtract(f)
 
     override def matches(other: Type): Option[Map[Int, Type]] = other match {
       case projected:Projected => inner.matches(projected.inner)
@@ -312,7 +319,8 @@ object AdtType {
 
   case class Projected(override val inner:AdtType)(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends AdtType with Type.Projected {
     override def projected(src:SourceId, attributes:Seq[Attribute] = Seq.empty): Type = Projected(this)(src, attributes)
-    override def hasPermission(context: Context, perm: Permission): Boolean = inner.hasPermission(context, perm)
+    override def projectionMap(f: Type => Type): Type = inner.projectionMap(f).projected(src,attributes)
+    override def projectionSeqMap(f: Type => Seq[Type]): Seq[Type] = inner.projectionSeqMap(f).map(_.projected(src))
     override def ctrs(context: Context): ListMap[String,ListMap[String,Type]] = inner.ctrs(context).map{
       case (ctrName,fields) => ctrName -> fields.map{
         case (fieldName,fieldTyp) => fieldName -> fieldTyp.projected(fieldTyp.src, fieldTyp.attributes)
@@ -359,6 +367,8 @@ object LitType {
 
   case class Projected(override val inner:LitType)(override val src:SourceId, override val attributes:Seq[Attribute] = Seq.empty) extends LitType with Type.Projected {
     override def projected(src:SourceId, attributes:Seq[Attribute] = Seq.empty): Type = Projected(this)(src,attributes)
+    override def projectionMap(f: Type => Type): Type = inner.projectionMap(f).projected(src,attributes)
+    override def projectionSeqMap(f: Type => Seq[Type]): Seq[Type] = inner.projectionSeqMap(f).map(_.projected(src))
     override def size(context:Context): Short = inner.size(context)
     override def replaceContainedTypes(f: Type => Type): Type = f(inner).projected(src,attributes)
     override def instantiate(applies: Seq[Type]): LitType = Projected(inner.instantiate(applies))(src, attributes)
@@ -370,7 +380,6 @@ object LitType {
   }
 
 }
-
 
 object SigType {
 

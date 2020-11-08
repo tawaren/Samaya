@@ -73,7 +73,6 @@ class PlainDebugAssembler extends DebugAssembler {
           if(data.external.nonEmpty) {
             indented { printLine(s"SIZE: ${data.external.get}")}
           }
-          printLine(s"TOP: ${data.top}")
           printLine("ACCESS")
           indented {
             for(acc <- data.accessibility) {

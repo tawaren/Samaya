@@ -129,6 +129,9 @@ object ModuleValidator {
       feedback(LocatedMessage("Implements need to return single value of the implemented signature", src, Error))
     } else {
       processOrdered[Param](implement.params,implement.param, p => {
+        if(!p.consumes) {
+          feedback(LocatedMessage("Captured implement parameters must be consumed", src, Error))
+        }
         val reqCaps = implement.result(0).get.typ.capabilities(context)
         if(implement.transactional && !p.typ.hasCap(context, Capability.Drop)) {
           feedback(LocatedMessage("Captured implement parameters for transactional signature must have a type with the Drop Capability", src, Error))
@@ -138,7 +141,6 @@ object ModuleValidator {
         }
       })
     }
-
   }
 
   //public so it can be shared with Transaction Validator

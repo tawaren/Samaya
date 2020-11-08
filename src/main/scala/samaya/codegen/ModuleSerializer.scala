@@ -186,8 +186,6 @@ object ModuleSerializer {
     serializeAccessibility(out, dataType.accessibility(Permission.Consume), dataType)
     //pub inspect_scope: Accessibility
     serializeAccessibility(out, dataType.accessibility(Permission.Inspect), dataType)
-    //pub top:bool
-    out.writeBoolean(dataType.top)
     //pub provided_caps:CapSet
     val caps = dataType.capabilities.map(c => c.mask).fold(0.asInstanceOf[Byte]){ (a, m) => (a|m).asInstanceOf[Byte]}
     out.writeByte(caps)

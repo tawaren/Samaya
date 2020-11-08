@@ -201,7 +201,7 @@ object CodeSerializer {
       //PermRef
       out.writeByte(imports.permIndex(stack.getType(src)))
       //todo: better absent error handling
-      val offset = stack.getType(src) match {
+      val offset = stack.getType(src).projectionExtract{
         case adt:AdtType => adt.ctrs(context).head._2.keys.toSeq.indexOf(fieldName.name)
         case _ => unexpected("Type checker missed a field access on a not adt type")
       }
@@ -248,9 +248,9 @@ object CodeSerializer {
       //PermRef
       out.writeByte(imports.permIndex(res.typ))
       //Tag
-      val offset = res.typ match {
+      val offset = res.typ.projectionExtract {
         case adt:AdtType => adt.ctrs(context).keys.toSeq.indexOf(ctr.name)
-        case _ =>  unexpected("Type checker missed a pack on a not adt type")
+        case _ => unexpected("Type checker missed a pack on a not adt type")
       }
       out.writeByte(offset)
       //Vec<ValueRef>

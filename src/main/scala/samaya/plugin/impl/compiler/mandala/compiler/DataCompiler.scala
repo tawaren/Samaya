@@ -42,7 +42,6 @@ trait DataCompiler extends CompilerToolbox {
         override val accessibility: Map[Permission, Accessibility] = access
         override val generics: Seq[Generic] = localGenerics
         override val external: Option[Short] = visitExt(ctx.ext())
-        override val top: Boolean = ctx.TOP() != null
         override val constructors: Seq[Constructor] = visitCtrs(ctx.ctrs(),dataName)
         override val capabilities: Set[Capability] = withDefaultCaps(dataCapsDefault){
           visitCapabilities(ctx.capabilities())

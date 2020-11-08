@@ -320,6 +320,7 @@ object CopyDiscardInjector extends EntryTransformer {
     }
 
     override def invokeSig(res: Seq[AttrId], src: Ref, params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
+      checkedRecord(stack.resolve(src),origin,stack)
       val srcType = stack.getType(src)
       srcType match {
         case sig:SigType =>

@@ -148,18 +148,18 @@ object TypeInference extends EntryTransformer {
     }
 
     override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-      res.typ match {
+      val fields = res.typ.projectionSeqMap {
         case adtType: AdtType =>
           val ctrs = adtType.ctrs(context)
           ctrs.get(ctr.name) match {
-            case Some(value) =>
-              val fields = value.values
-              srcs.map(stack.getType).zip(fields).foreach {
-                case (srcT, targT) => unify(srcT, targT)
-                case _ =>
-              }
-            case None =>
+            case Some(value) => value.values.toSeq
+            case None => Seq.empty
           }
+        case _ => Seq.empty
+      }
+
+      srcs.map(stack.getType).zip(fields).foreach {
+        case (srcT, targT) => unify(srcT, targT)
         case _ =>
       }
       super.pack(res, srcs, ctr, mode, origin, stack)

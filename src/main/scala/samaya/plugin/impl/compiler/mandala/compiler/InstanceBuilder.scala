@@ -15,7 +15,7 @@ trait InstanceBuilder extends CompilerToolbox{
   self: ComponentResolver with ComponentBuilder with CapabilityCompiler with PermissionCompiler with SigCompiler =>
 
   private def resolveLinks(ctx:InstanceContext):Option[(Map[String,Int], CompLink, CompLink)] = {
-    val parts = ctx.baseRef().path().part.asScala.map(visitName)
+    val parts = ctx.compRef().path().part.asScala.map(visitName)
     val (path,targets) = resolveImport(parts, isEntryPath = false)
     val funLinks = targets.flatMap{
       case cls:FunClass =>
@@ -66,7 +66,7 @@ trait InstanceBuilder extends CompilerToolbox{
     resolveLinks(ctx) match {
       case Some((argCount, funClassLink, sigClassLink)) => withComponentBuilder(name) {
         val classApplies = withGenerics(localGenerics) {
-          visitTypeRefArgs(ctx.baseRef().typeRefArgs())
+          visitTypeRefArgs(ctx.compRef().typeRefArgs())
         }
         withComponentGenerics(localGenerics){
           val implementInfos = withArgCount(argCount) {
@@ -111,7 +111,7 @@ trait InstanceBuilder extends CompilerToolbox{
     resolveLinks(ctx) match {
       case Some((argCount, clazzLink, sigLink)) =>
         val classApplies = withGenerics(localGenerics) {
-          visitTypeRefArgs(ctx.baseRef().typeRefArgs())
+          visitTypeRefArgs(ctx.compRef().typeRefArgs())
         }
         withComponentGenerics(localGenerics){
           val implementInfos = withArgCount(argCount) {
@@ -234,7 +234,7 @@ trait InstanceBuilder extends CompilerToolbox{
             override val name: String = p.name
             override val index: Int = nextIndex()
             override val typ: Type = p.typ
-            override val consumes: Boolean = p.consumes
+            override val consumes: Boolean = true
             override val attributes: Seq[Attribute] = p.attributes
             override val src: SourceId = srcId
           }

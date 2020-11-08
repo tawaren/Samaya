@@ -50,7 +50,10 @@ trait ExpressionBuilder extends CompilerToolbox{
   }
 
   def visitExp(ctx:ParseTree):(Seq[Ref], Seq[OpCode]) = {
-    visit(ctx).asInstanceOf[(Seq[Ref], Seq[OpCode])]
+    visit(ctx) match {
+      case (ids:Seq[Ref], codes:Seq[OpCode]) => (ids,codes)
+      case _ =>  (Seq.empty, Seq.empty)
+    }
   }
 
   private def idAttr(id: Id): AttrId = AttrId(id, Seq.empty)
@@ -166,7 +169,7 @@ trait ExpressionBuilder extends CompilerToolbox{
     // make normal function call
     val sourceId = sourceIdFromContext(ctx)
     val parts = Seq(name)
-    val addFun = resolveFunc(parts, None, Some(args.length), sourceId)
+    val addFun = resolveFunc(parts, None, None, Some(args.length), sourceId)
     val rets = getExpReturns(ctx, addFun)
     (rets, OpCode.Invoke(rets.map(idAttr), addFun, args, sourceId))
   }
@@ -176,7 +179,6 @@ trait ExpressionBuilder extends CompilerToolbox{
     withIsTailExp(false) {
       val op1Id = freshIdFromContext(ctx)
       val op2Id = freshIdFromContext(ctx)
-
       val (res1,producingCodes1) = withDefaultReturns(Seq(op1Id)){ exp1 }
       val (res2,producingCodes2) = withDefaultReturns(Seq(op2Id)){ exp2 }
       val args = Seq(res1.headOption.getOrElse(op1Id), res2.headOption.getOrElse(op2Id))

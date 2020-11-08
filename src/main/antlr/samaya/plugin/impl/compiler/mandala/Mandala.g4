@@ -32,11 +32,11 @@ classEntry : functionDef;
 
 instanceEntry: aliasDef;
 
-dataDef : accessibilities TOP? ext? capabilities DATA name generics=genericArgs? ctrs? #Data;
+dataDef : accessibilities ext? capabilities DATA name generics=genericArgs? ctrs? #Data;
 //signatureDef : accessibilities TRANSACTIONAL? capabilities SIGNATURE name generics=genericArgs? params rets #Sig;
 //implementDef : accessibilities EXTERNAL? IMPLEMENT name generics=genericArgs? captures=simpleParams FOR baseRef paramBindings=bindings (':' retBindings=ids)? funBody? #Implement;
 functionDef : accessibilities OVERLOADED? TRANSACTIONAL? EXTERNAL? FUNCTION name generics=genericArgs? params rets? funBody? #Function;
-instanceDef : INSTANCE name generics=genericArgs? FOR baseRef '{' entry=instanceEntry* '}' #Instance;
+instanceDef : INSTANCE name generics=genericArgs? FOR compRef '{' entry=instanceEntry* '}' #Instance;
 aliasDef: IMPLEMENT name generics=genericArgs? WITH baseRef;
 typeAliasDef: TYPE name generics=genericArgs? EQ typeRef;
 
@@ -171,7 +171,9 @@ exp: lit                                            #Literal
     | TRY baseRef tryArgs WITH OR? succ OR fail     #TryInvoke
     | TRY baseRef tryArgs WITH OR? fail OR succ     #TryInvoke
     //Todo: can we have operator for that
+    | PROJECT '(' argExp ')'                        #Project
     | PROJECT argExp                                #Project
+    | UNPROJECT '(' argExp ')'                      #Unproject
     | UNPROJECT argExp                              #Unproject
     //These two would be ambigous if we make the # optional
     | typeRef '#' (ctrName=name)? args?             #Pack
@@ -227,14 +229,18 @@ typeRef : baseRef
         | PROJECT '(' typeRef ')'
         | QUEST
         ;
-baseRef : path targs=typeRefArgs?;
+baseRef : path targs=typeRefArgs?
+        | path compArgs=typeRefArgs DOT name targs=typeRefArgs?
+        ;
+
+compRef : path targs=typeRefArgs?;
 
 typeRefArgs : '[' (targs+=typeRef) (COMMA targs+=typeRef)* ']'
             | '[' ']';
 
 path : (part+=name) (DOT part+=name)*;
 
-name : TICK? RAW_ID | TICK keywords;
+name : TICK? RAW_ID | TICK keywords; //Todo: can we make the ' optional in keywords as well?
 
 keywords : id=TOP | id=TRANSACTIONAL | id=FOR | id=MODULE | id=TRANSACTION | id=DATA | id=FUNCTION | id=SIGNATURE | id=IMPLEMENT
          | id=EXTERNAL | id=SYSTEM | id=LET | id=IN | id=RETURN | id=ROLLBACK | id=MATCH | id=WITH | id=TRY | id=PHANTOM | id=DROP

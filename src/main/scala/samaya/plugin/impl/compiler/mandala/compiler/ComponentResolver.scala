@@ -143,19 +143,28 @@ trait ComponentResolver extends CompilerToolbox {
     ctx.targs.asScala.map(visitTypeRef)
   }
 
-  override def visitBaseRef(ctx: MandalaParser.BaseRefContext): Type = {
-    val parts = ctx.path().part.asScala.map(visitName)
-    //Resolve arguments
+  private def extractBaseRef(ctx: MandalaParser.BaseRefContext): (Seq[String],Option[Seq[Type]], Option[Seq[Type]]) = {
+    var parts = ctx.path().part.asScala.map(visitName)
     val applies = if(ctx.targs == null) None else Some(ctx.targs.targs.asScala.map(visitTypeRef))
-    resolveType(parts, applies, sourceIdFromContext(ctx))
+    val compApplies = if(ctx.compArgs != null){
+      parts = parts :+ visitName(ctx.name())
+      Some(ctx.compArgs.targs.asScala.map(visitTypeRef))
+    } else {
+      None
+    }
+    (parts, compApplies, applies)
+  }
+
+  override def visitBaseRef(ctx: MandalaParser.BaseRefContext): Type = {
+    val (parts, compApplies, applies) = extractBaseRef(ctx)
+    //Resolve arguments
+    resolveType(parts, compApplies, applies, sourceIdFromContext(ctx))
   }
 
   def visitFunRef(ctx: MandalaParser.BaseRefContext, numArgs:Option[Int]): Func = {
-    val parts = ctx.path().part.asScala.map(visitName)
+    val (parts, compApplies, applies) = extractBaseRef(ctx);
     //Resolve arguments
-    val applies = if(ctx.targs == null) None else Some(ctx.targs.targs.asScala.map(visitTypeRef))
-    resolveFunc(parts, applies, numArgs, sourceIdFromContext(ctx))
-  }
+    resolveFunc(parts, compApplies, applies, numArgs, sourceIdFromContext(ctx))  }
 
   override def visitTypeRef(ctx: MandalaParser.TypeRefContext): Type = {
     val src = sourceIdFromContext(ctx)
@@ -194,16 +203,21 @@ trait ComponentResolver extends CompilerToolbox {
     (path, env.pkg.findComponentByPath(packagePath, Package.nameFilter(componentName)))
   }
 
-  private def resolveApplies(applies:Option[Seq[Type]], classVars:Int, expected:Int, src:SourceId):Seq[Type] = {
+  private def resolveApplies(compApplies:Option[Seq[Type]], applies:Option[Seq[Type]], classVars:Int, expected:Int, src:SourceId):Seq[Type] = {
     assert(classVars <= expected)
+    val componentApplies = compApplies match {
+      case None => Seq.fill(classVars)(TypeInference.TypeVar(src));
+      case Some(value) => value
+    }
+
     applies match {
-      case Some(value) => Seq.fill(classVars)(TypeInference.TypeVar(src)) ++ value
-      case None => Seq.fill(expected)(TypeInference.TypeVar(src))
+      case Some(value) => componentApplies ++ value
+      case None => componentApplies ++ Seq.fill(expected-classVars)(TypeInference.TypeVar(src))
     }
   }
   //todo: we need some unified dependency lookup model
   //The resolver algorithms
-  def resolveType(importPath:Seq[String],applies:Option[Seq[Type]], sourceId:SourceId): Type = {
+  def resolveType(importPath:Seq[String],compApplies:Option[Seq[Type]], applies:Option[Seq[Type]], sourceId:SourceId): Type = {
     val start = importPath.head
     //If it is just a name not a path it can refer to local declarations
     if(importPath.size == 1) {
@@ -217,9 +231,9 @@ trait ComponentResolver extends CompilerToolbox {
       //May be from local module scope
       if(localEntries.contains(start)){
         return localEntries(start) match {
-          case dt:DataDef if dt.external.isDefined => LitType.Local(dt.index, resolveApplies(applies, 0, dt.generics.size, sourceId))(sourceId)
-          case dt:DataDef if dt.external.isEmpty => AdtType.Local(dt.index, resolveApplies(applies, 0, dt.generics.size, sourceId))(sourceId)
-          case st:SignatureDef => SigType.Local(st.index, resolveApplies(applies, 0, st.generics.size, sourceId))(sourceId)
+          case dt:DataDef if dt.external.isDefined => LitType.Local(dt.index, resolveApplies(compApplies, applies, 0, dt.generics.size, sourceId))(sourceId)
+          case dt:DataDef if dt.external.isEmpty => AdtType.Local(dt.index, resolveApplies(compApplies, applies, 0, dt.generics.size, sourceId))(sourceId)
+          case st:SignatureDef => SigType.Local(st.index, resolveApplies(compApplies, applies, 0, st.generics.size, sourceId))(sourceId)
           case _:FunctionDef =>
             feedback(LocatedMessage(s"$start does refer to a function but a type is expected", sourceId, Error))
             Type.Unknown(Set.empty)(sourceId)
@@ -232,7 +246,7 @@ trait ComponentResolver extends CompilerToolbox {
       //Maybe a local Alias
       localAliases.find(ta => ta.name == start) match {
         case Some(TypeAlias(_,gens,typ,_)) =>
-          return typ.instantiate(resolveApplies(applies, 0, gens.size, sourceId))
+          return typ.instantiate(resolveApplies(compApplies, applies, 0, gens.size, sourceId))
         case _ =>
       }
     }
@@ -263,9 +277,9 @@ trait ComponentResolver extends CompilerToolbox {
     //Note: currently classes can not define DataTypes but we still add the getClassVars(module) as we may allow it in the future
     if(typeTargets.nonEmpty){
       typeTargets.map{
-        case (module,dt:DataDef) if dt.external.isDefined => LitType.Remote(module.link, dt.index, resolveApplies(applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
-        case (module,dt:DataDef) if dt.external.isEmpty => AdtType.Remote(module.link, dt.index, resolveApplies(applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
-        case (module,st:SignatureDef) => SigType.Remote(module.link, st.index, resolveApplies(applies, getClassVars(module), st.generics.size, sourceId))(sourceId)
+        case (module,dt:DataDef) if dt.external.isDefined => LitType.Remote(module.link, dt.index, resolveApplies(compApplies, applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
+        case (module,dt:DataDef) if dt.external.isEmpty => AdtType.Remote(module.link, dt.index, resolveApplies(compApplies, applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
+        case (module,st:SignatureDef) => SigType.Remote(module.link, st.index, resolveApplies(compApplies, applies, getClassVars(module), st.generics.size, sourceId))(sourceId)
         case _ => Type.Unknown(Set.empty)(sourceId)
       }.head
     } else  {
@@ -282,7 +296,7 @@ trait ComponentResolver extends CompilerToolbox {
             case _ => typ.attributes
           }
           val newAttributes = attrs :+ Attribute(MandalaCompiler.Aliasing_Module_Attribute_Name, Attribute.Text(md.link.toString))
-          glType.instantiate(resolveApplies(applies, 0, gens.size, sourceId)).changeMeta(attributes = newAttributes)
+          glType.instantiate(resolveApplies(compApplies, applies, 0, gens.size, sourceId)).changeMeta(attributes = newAttributes)
       }.head
     }
   }
@@ -292,14 +306,14 @@ trait ComponentResolver extends CompilerToolbox {
     case _ => 0
   }
 
-  def resolveFunc(importPath:Seq[String],applies:Option[Seq[Type]], numArgs:Option[Int], sourceId: SourceId): Func = {
+  def resolveFunc(importPath:Seq[String],compApplies:Option[Seq[Type]], applies:Option[Seq[Type]], numArgs:Option[Int], sourceId: SourceId): Func = {
     val start = importPath.head
     //If it is just a name not a path it can refer to local declarations
     if(importPath.size == 1) {
       def resolveLocalEntry(name:String):Func = {
         localEntries(name) match {
-          case fd:FunctionDef => StdFunc.Local(fd.index, resolveApplies(applies, 0, fd.generics.size, sourceId))(sourceId)
-          case id:ImplementDef => ImplFunc.Local(id.index, resolveApplies(applies, 0, id.generics.size, sourceId))(sourceId)
+          case fd:FunctionDef => StdFunc.Local(fd.index, resolveApplies(compApplies, applies, 0, fd.generics.size, sourceId))(sourceId)
+          case id:ImplementDef => ImplFunc.Local(id.index, resolveApplies(compApplies,applies, 0, id.generics.size, sourceId))(sourceId)
           case _:DataDef =>
             feedback(LocatedMessage(s"$start does refer to a type but a function is expected", sourceId, Error))
             Func.Unknown(sourceId)
@@ -346,11 +360,11 @@ trait ComponentResolver extends CompilerToolbox {
     //construct the type
     if(funTargets.nonEmpty){
       funTargets.head match {
-        case (module,fd) => StdFunc.Remote(module.link, fd.index, resolveApplies(applies, getClassVars(module), fd.generics.size, sourceId))(sourceId)
+        case (module,fd) => StdFunc.Remote(module.link, fd.index, resolveApplies(compApplies, applies, getClassVars(module), fd.generics.size, sourceId))(sourceId)
       }
     } else if(implTargets.nonEmpty) {
       implTargets.head match {
-        case (module,id) => ImplFunc.Remote(module.link, id.index, resolveApplies(applies, getClassVars(module), id.generics.size, sourceId))(sourceId)
+        case (module,id) => ImplFunc.Remote(module.link, id.index, resolveApplies(compApplies, applies, getClassVars(module), id.generics.size, sourceId))(sourceId)
       }
     } else {
       //error was printed during funTargets.isEmpty && implTargets.isEmpty check

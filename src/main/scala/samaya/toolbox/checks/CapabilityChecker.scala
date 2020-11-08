@@ -12,6 +12,11 @@ import samaya.toolbox.track.TypeTracker
 //todo: check taht all is checked
 trait CapabilityChecker extends TypeTracker{
 
+  private val gens = entry match {
+    case Left(value) => value.generics.map(_.name)
+    case Right(value) => value.generics.map(_.name)
+  }
+
   private def hasCap(typ:Option[Type], cap:Capability):Boolean = typ match {
     case Some(value) => value.hasCap(context, cap)
     case None => false
@@ -21,7 +26,7 @@ trait CapabilityChecker extends TypeTracker{
     val frame = stack.frameValues
     frame.take(assigns.size).map(v => (v,stack.getType(v))).foreach {
       case (v, typ) => if(!typ.hasCap(context, Capability.Unbound)) {
-        feedback(LocatedMessage("A value returned from a block must be of a type with the unbound capability", v.src, Error))
+        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} returned from a block must have unbound capability", v.src, Error))
       }
     }
     super.traverseBlockEnd(assigns, origin, stack)
@@ -31,7 +36,7 @@ trait CapabilityChecker extends TypeTracker{
     val typ = stack.getType(src)
     mode match {
       case FetchMode.Copy => if(!typ.hasCap(context,Capability.Copy)) {
-        feedback(LocatedMessage("A value copied with the fetch opcode must be of a type with the copy capability", origin, Error))
+        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the fetch opcode must have the copy capability", origin, Error))
       }
       case _ =>
     }
@@ -42,7 +47,7 @@ trait CapabilityChecker extends TypeTracker{
     val typ = stack.getType(src)
     mode match {
       case FetchMode.Copy => if(!typ.hasCap(context,Capability.Copy)) {
-        feedback(LocatedMessage("A value copied with the unpack opcode must be of a type with the copy capability", origin, Error))
+        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the unpack opcode must have the copy capability", origin, Error))
       }
       case _ =>
     }
@@ -58,7 +63,7 @@ trait CapabilityChecker extends TypeTracker{
           val ctrs = adt.ctrs(context)
           val fields = ctrs.head._2
           if (!hasCap(fields.get(fieldName.name), Capability.Copy)) {
-            feedback(LocatedMessage("A value copied with the field opcode must be of a type with the copy capability", fieldId, Error))
+            feedback(LocatedMessage(s"The value with type ${adt.prettyString(context, gens)} copied with the field opcode must have the copy capability", fieldId, Error))
           }
         case _ =>
       }
@@ -79,7 +84,7 @@ trait CapabilityChecker extends TypeTracker{
     //Ensure it is not freed
     stack.getType(src) match {
       case proj:Projected => if(!proj.inner.hasCap(context, Capability.Primitive)) {
-        feedback(LocatedMessage("Only projections of primitive values can be reversed", origin, Error))
+        feedback(LocatedMessage(s"Projections of non-primitive type ${proj.prettyString(context,gens)} can not be reversed", origin, Error))
       }
       case _ =>
     }

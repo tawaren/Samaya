@@ -1,6 +1,6 @@
 package samaya.toolbox.track
 
-import samaya.structure.types.Type.Unknown
+import samaya.structure.types.Type.{Projected, Unknown}
 import samaya.structure.types._
 import samaya.toolbox.stack.SlotFrameStack.SlotDomain
 import samaya.structure.{Attribute, Param}
@@ -34,7 +34,7 @@ trait TypeTracker extends ValueTracker {
 
   override def caseStart(fields: Seq[AttrId], src: Ref, ctr: Id, mode: Option[FetchMode], origin: SourceId, stack: Stack): Stack ={
     val nType = stack.getType(stack.resolve(src))
-    val argTypes = nType match {
+    val argTypes = nType.projectionSeqMap{
       case adt:AdtType => adt.ctrs(context).get(ctr.name).map(_.values.toSeq).getOrElse(Seq.empty).padTo(fields.size, Type.Unknown(Set.empty)(origin))
       case _ => Seq.fill(fields.size)(Type.Unknown(Set.empty)(origin))
     }
@@ -87,7 +87,7 @@ trait TypeTracker extends ValueTracker {
 
   override def unpack(fields: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     val nType = stack.getType(stack.resolve(src))
-    val argTypes = nType match {
+    val argTypes = nType.projectionSeqMap {
       case adt:AdtType => adt.ctrs(context).headOption.map(_._2.values.toSeq).getOrElse(Seq.empty).padTo(fields.size, Type.Unknown(Set.empty)(origin))
       case _ => Seq.fill(fields.size)(Type.Unknown(Set.empty)(origin))
     }
@@ -100,7 +100,7 @@ trait TypeTracker extends ValueTracker {
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     val nType = stack.getType(stack.resolve(src))
-    val fieldType = nType match {
+    val fieldType = nType.projectionMap{
       case adt:AdtType => adt.ctrs(context).headOption.flatMap(_._2.get(fieldName.name)).getOrElse(Type.Unknown(Set.empty)(origin))
       case _ => Type.Unknown(Set.empty)(origin)
     }

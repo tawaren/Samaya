@@ -40,7 +40,7 @@ object JsonModel {
   case class Accessibility(name:String, guards:Set[String] = Set.empty)
   case class Ref(module:String = TypeEncodings.Generic.name, offset:Option[Int] = None, args:Option[Int] = None)
   //todo: if it is external or not is completely irrelevant if we just look at the interface
-  case class DataSignature(name:String, offset:Int, position:Int, attributes:Seq[Attribute], accessibility:Map[String, Accessibility], capabilities:Set[String], generics:Seq[Generic], constructors:Seq[Constructor], external:Option[Short], top:Boolean)
+  case class DataSignature(name:String, offset:Int, position:Int, attributes:Seq[Attribute], accessibility:Map[String, Accessibility], capabilities:Set[String], generics:Seq[Generic], constructors:Seq[Constructor], external:Option[Short])
   case class FunctionSignature(name:String, offset:Int, position:Int, attributes:Seq[Attribute], capabilities:Set[String], accessibility:Map[String, Accessibility], transactional:Boolean, generics:Seq[Generic], params:Seq[Param], returns:Seq[Return])
   case class InterfaceModule(name:String, link: Option[String], mode:structure.Module.Mode, hadError:Boolean, language:String, version:String, classifier:Set[String], attributes:Seq[Attribute], functions: Seq[FunctionSignature], implements: Seq[FunctionSignature], datatypes: Seq[DataSignature], sigtypes: Seq[FunctionSignature])
   case class InterfaceTransaction(name:String, link: Option[String], hadError:Boolean, language:String, version:String, classifier:Set[String], attributes:Seq[Attribute], transactional:Boolean, params:Seq[Param], returns:Seq[Return])

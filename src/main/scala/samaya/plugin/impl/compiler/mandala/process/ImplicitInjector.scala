@@ -175,7 +175,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
       nStack
     }
 
-    private def resolveParams(params:Seq[Ref], func:Func):(Seq[OpCode], Seq[Ref]) = {
+    private def resolveParams(params:Seq[Ref], func:Func, src:SourceId):(Seq[OpCode], Seq[Ref]) = {
       val funcParams = func.paramInfo(context)
       val target = func match {
         case func: DefinedFunc[_] => func.getEntry(context)
@@ -198,28 +198,28 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
                       val (clsApplies,funApplies) = typ.applies.splitAt(cls.generics.size)
                       instancesFinder.findAndApplyImplementFunction(entry.name, cls.clazzLink, clsApplies, funApplies, context, p.src) match {
                         case Some(implement) =>
-                          val (parmCodes, params) = resolveParams(Seq.empty, implement)
+                          val (parmCodes, params) = resolveParams(Seq.empty, implement, src)
                           producingOpcodes = producingOpcodes ++ parmCodes
                           val ret = Id(p.src)
                           val code = OpCode.Invoke(Seq(AttrId(ret, Seq.empty)),implement,params, p.src)
                           producingOpcodes = producingOpcodes :+ code
                           ret
                         case None =>
-                          feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",p.src,Error))
-                          Val.unknown(p.name, p.src)
+                          feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error))
+                          Val.unknown(p.name, src)
                       }
                     case _ =>
-                      feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",p.src,Error))
-                      Val.unknown(p.name, p.src)
+                      feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error))
+                      Val.unknown(p.name, src)
                   }
                   case _ =>
-                    feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",p.src,Error))
-                    Val.unknown(p.name, p.src)
+                    feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error))
+                    Val.unknown(p.name, src)
                 }
               }
             } else {
-              feedback(LocatedMessage("Only implicit parameters are allowed to be missing",p.src,Error))
-              Val.unknown(p.name, p.src)
+              feedback(LocatedMessage("Only implicit parameters are allowed to be missing",src,Error))
+              Val.unknown(p.name, src)
             }
         }
         case _ => params
@@ -229,7 +229,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
 
 
     override def transformInvoke(res: Seq[AttrId], func: Func, params: Seq[Ref], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
-      val (pCodes, nParams) = resolveParams(params, func)
+      val (pCodes, nParams) = resolveParams(params, func, origin)
       Some(pCodes :+ OpCode.Invoke(res,func,nParams,origin))
     }
 
@@ -242,7 +242,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
     override def transformInvokeSig(res: Seq[AttrId], func: Ref, param: Seq[Ref], origin: SourceId, stack: Stack): Option[Seq[OpCode]] =  {
       stack.getType(func) match {
         case sigFunc:SigType =>
-          val (pCodes, nParams) = resolveParams(param, sigFunc)
+          val (pCodes, nParams) = resolveParams(param, sigFunc, origin)
           Some(pCodes :+ OpCode.InvokeSig(res,func,nParams,origin))
         case _ => None
       }
@@ -255,7 +255,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
     }
 
     override def transformTryInvoke(res: Seq[AttrId], func: Func, param: Seq[(Boolean, Ref)], success: (Seq[AttrId], Seq[OpCode]), failure: (Seq[AttrId], Seq[OpCode]), origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
-      val (pCodes, nParams) = resolveParams(param.map(_._2), func)
+      val (pCodes, nParams) = resolveParams(param.map(_._2), func, origin)
       val nFinParams = param.map(_._1).zipAll(nParams, false, Val.unknown("unknown",origin))
       Some(pCodes :+ OpCode.TryInvoke(res,func,nFinParams, success,failure,origin))
     }
@@ -269,7 +269,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
     override def transformTryInvokeSig(res: Seq[AttrId], func: Ref, param: Seq[(Boolean, Ref)], origin: SourceId, stack: Stack, success: (Seq[AttrId], Seq[OpCode]), failure: (Seq[AttrId], Seq[OpCode])): Option[Seq[OpCode]] = {
       stack.getType(func) match {
         case sigFunc:SigType =>
-          val (pCodes, nParams) = resolveParams(param.map(_._2), sigFunc)
+          val (pCodes, nParams) = resolveParams(param.map(_._2), sigFunc, origin)
           val nFinParams = param.map(_._1).zipAll(nParams, false, Val.unknown("unknown",origin))
           Some(pCodes :+ OpCode.TryInvokeSig(res, func, nFinParams, success, failure, origin))
         case _ => None
