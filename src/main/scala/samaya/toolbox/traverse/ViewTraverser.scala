@@ -1,6 +1,6 @@
 package samaya.toolbox.traverse
 
-import samaya.compilation.ErrorManager.{Info, LocatedMessage, PlainMessage, feedback}
+import samaya.compilation.ErrorManager.{Checking, Info, LocatedMessage, PlainMessage, feedback}
 import samaya.structure.types._
 import samaya.toolbox.stack.SlotFrameStack
 
@@ -49,9 +49,10 @@ abstract class ViewTraverser extends Traverser {
       case OpCode.Discard(trg, id) => discard(trg, id,stack)
       case OpCode.DiscardMany(trgs, id) => trgs.foldLeft(stack){ (s, v) => discard(v,id,s)}
       case OpCode.Unpack(res, src, mode, id) => unpack(res, src, mode, id, stack)
+      case OpCode.InspectUnpack(res, src, id) => inspectUnpack(res, src, id, stack)
       case OpCode.Field(res, src, fieldName, mode, id) => field(res, src, fieldName, mode, id, stack)
       case OpCode.Switch(res, src, branches, mode, id) => branchLocal(res, src, branches, Some(mode), id, stack)
-      case OpCode.Inspect(res, src, branches, id) => branchLocal(res, src, branches, None, id, stack)
+      case OpCode.InspectSwitch(res, src, branches, id) => branchLocal(res, src, branches, None, id, stack)
       case OpCode.Pack(res, src, ctr, mode, id) => pack(res,src,ctr,mode,id,stack)
       case OpCode.Invoke(res, func, param, id) => invoke(res, func, param, id, stack)
       case OpCode.InvokeSig(res, src, param, id) => invokeSig(res, src, param, id, stack)
@@ -76,7 +77,7 @@ abstract class ViewTraverser extends Traverser {
     val newState = if(mode.isDefined) {
       switchBefore(res, src, branches, mode.get, origin, stack)
     } else {
-      inspectBefore(res, src, branches, origin, stack)
+      inspectSwitchBefore(res, src, branches, origin, stack)
     }
 
     val branchStates = branches.zipWithIndex.map { case ((ctrName, (intro, code)), idx) =>
@@ -88,14 +89,14 @@ abstract class ViewTraverser extends Traverser {
     val fState = if(branchStates.nonEmpty) {
       traverseJoin(res.map(_.id),origin,branchStates)
     } else {
-      feedback(LocatedMessage("Empty branching detected", origin, Info));
+      feedback(LocatedMessage("Empty branching detected", origin, Info, Checking(10)));
       newState
     }
 
     if(mode.isDefined) {
       switchAfter(res, src, branches, mode.get, origin, fState)
     } else {
-      inspectAfter(res, src, branches, origin, fState)
+      inspectSwitchAfter(res, src, branches, origin, fState)
     }
   }
 

@@ -21,7 +21,7 @@ trait OwnershipTracker extends TypeTracker {
     def getStatus(id:Ref):SlotStatus = stack.getStatusInternal(id).getOrElse(Unknown)
   }
 
-  private val lockStack =  mutable.Stack[Option[Val]]()
+  private val lockStack =  mutable.Stack[Seq[Val]]()
 
   override def initialState(): Stack = {
     lockStack.clear()
@@ -36,15 +36,13 @@ trait OwnershipTracker extends TypeTracker {
   }
 
   override def traverseBlockStart(input: Seq[AttrId], result: Seq[Id], code: Seq[OpCode], origin: SourceId, stack: Stack): Stack = {
-    //we do not yet know if we have to lock something we overwrite this if necessary
-    lockStack.push(None)
+    lockStack.push(Seq())
     super.traverseBlockStart(input, result, code, origin, stack)
   }
 
   override def traverseBlockEnd(assigns: Seq[Id], origin: SourceId, stack: Stack): Stack = {
-    val unlockedStack = lockStack.pop() match {
-      case Some(lock) => stack.unlock(lock)
-      case None => stack
+    val unlockedStack = lockStack.pop().foldLeft(stack) {
+      case (lstack, lock) => lstack.unlock(lock)
     }
     super.traverseBlockEnd(assigns, origin, unlockedStack)
   }
@@ -65,9 +63,9 @@ trait OwnershipTracker extends TypeTracker {
     val nStack = super.caseStart(fields, src, ctr, mode, origin, stack)
     mode match {
       case None =>
-        //replace the lock entry on top of the stack
-        lockStack.pop()
-        lockStack.push(Some(srcVal))
+        //add to the lock entry on top of the stack
+        val locks = lockStack.pop()
+        lockStack.push(srcVal +: locks)
         fields.foldLeft(nStack.lock(srcVal)){case (s,e) => s.withReadOnly(e)}
       case Some(FetchMode.Copy | FetchMode.Infer) => fields.foldLeft(nStack){case (s,e) => s.withOwned(e)}
       case Some(FetchMode.Move)  => fields.foldLeft(nStack.consume(srcVal)){case (s,e) => s.withOwned(e)}
@@ -112,6 +110,14 @@ trait OwnershipTracker extends TypeTracker {
       case FetchMode.Copy | FetchMode.Infer => res.foldLeft(nStack){case (s,e) => s.withOwned(e)}
       case FetchMode.Move => res.foldLeft(nStack.consume(srcValOpt)){case (s,e) => s.withOwned(e)}
     }
+  }
+
+  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    val srcValOpt = stack.resolve(src)
+    val nStack = super.inspectUnpack(res, src, origin, stack)
+    val locks = lockStack.pop()
+    lockStack.push(srcValOpt +: locks)
+    res.foldLeft(nStack.lock(srcValOpt)){case (s,e) => s.withOwned(e)}
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {

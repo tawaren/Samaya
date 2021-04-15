@@ -51,7 +51,7 @@ class FileLocationResolver extends LocationResolver{
     val pathString = fullPath.map{
       case Identifier.General(name) => name
         //Please Compiler
-      case Identifier.Specific(_, _) => unexpected("should not happen")
+      case Identifier.Specific(_, _) => unexpected("should not happen", Always)
     }.reduce((left, right) => left+File.separator+right)
 
     val file = new File(pathString)

@@ -3,9 +3,9 @@ package samaya.plugin.impl.pkg.json
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import JsonModel._
 import samaya.codegen.{ModuleSerializer, NameGenerator}
-import samaya.compilation.ErrorManager.unexpected
+import samaya.compilation.ErrorManager.{Always, unexpected}
 import samaya.plugin.service.PackageEncoder.PackageExtension
-import samaya.structure.{LinkablePackage, Meta, Interface, ModuleInterface, TransactionInterface, Transaction}
+import samaya.structure.{Interface, LinkablePackage, Meta, ModuleInterface, Transaction, TransactionInterface}
 import samaya.plugin.service.{InterfaceEncoder, LocationResolver, PackageEncoder, Selectors}
 import samaya.structure.types.Hash
 import samaya.structure
@@ -143,7 +143,7 @@ class JsonPackageEncoder extends PackageEncoder {
     val sourceId = link.source match {
       case Some(Source(name, Some(extension))) => Identifier(name, extension)
       case Some(Source(name, None)) => Identifier(name)
-      case None => unexpected("I hope we do not need this")//Identifier(m.name, m.info.classifier)
+      case None => unexpected("I hope we do not need this", Always)//Identifier(m.name, m.info.classifier)
     }
     val sourceCodeSource = LocationResolver.resolveSource(sourceLoc, Path(sourceId))
     //get the interface File

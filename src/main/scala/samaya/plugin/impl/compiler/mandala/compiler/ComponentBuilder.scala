@@ -65,7 +65,7 @@ trait ComponentBuilder extends CompilerToolbox{
 
   private def checkExistence(name:String, src:SourceId):Boolean = {
     if(imports.contains(name)) {
-      feedback(LocatedMessage(s"Module entry named $name shadows import",src,Warning))
+      feedback(LocatedMessage(s"Module entry named $name shadows import",src,Warning, Compiler()))
     }
 
     currentComponent.availableEntries.contains(name) ||
@@ -74,7 +74,7 @@ trait ComponentBuilder extends CompilerToolbox{
 
   private def register[T <: ModuleEntry](comp:T)(update:(T) => Unit):T = {
     if(checkExistence(comp.name, comp.src)){
-      feedback(LocatedMessage(s"Entry with name ${comp.name} already exists", comp.src, Error))
+      feedback(LocatedMessage(s"Entry with name ${comp.name} already exists", comp.src, Error, Compiler()))
     }
 
     currentComponent.availableEntries = currentComponent.availableEntries.updated(comp.name,comp)
@@ -84,7 +84,7 @@ trait ComponentBuilder extends CompilerToolbox{
 
   def registerInstanceEntry(entr:LocalInstanceEntry):LocalInstanceEntry = {
     if(checkExistence(entr.name, entr.src)){
-      feedback(LocatedMessage(s"Entry with name ${entr.name} already exists", entr.src, Error))
+      feedback(LocatedMessage(s"Entry with name ${entr.name} already exists", entr.src, Error, Compiler()))
     }
     currentComponent.reservedNames = currentComponent.reservedNames + entr.name
     currentComponent.localInstances = currentComponent.localInstances :+ entr
@@ -97,7 +97,7 @@ trait ComponentBuilder extends CompilerToolbox{
 
   def registerTypeAlias(typAlias:TypeAlias):TypeAlias = {
     if(checkExistence(typAlias.name, typAlias.source)){
-      feedback(LocatedMessage(s"Entry with name ${typAlias.name} already exists", typAlias.source, Error))
+      feedback(LocatedMessage(s"Entry with name ${typAlias.name} already exists", typAlias.source, Error, Compiler()))
     }
     currentComponent.reservedNames = currentComponent.reservedNames + typAlias.name
     currentComponent._typeAlias =  currentComponent._typeAlias :+ typAlias

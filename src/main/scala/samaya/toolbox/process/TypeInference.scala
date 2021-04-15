@@ -1,6 +1,6 @@
 package samaya.toolbox.process
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, PlainMessage, feedback, producesErrorValue}
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, PlainMessage, canProduceErrors, feedback, producesErrorValue}
 import samaya.structure.types.OpCode.{VirtualOpcode, ZeroSrcOpcodes}
 import samaya.structure.types.{SourceId, _}
 import samaya.structure.{Param, types, _}
@@ -9,7 +9,10 @@ import samaya.toolbox.transform.{EntryTransformer, TransformTraverser}
 import samaya.toolbox.traverse.ViewTraverser
 import samaya.types.Context
 
+import scala.collection.immutable.ListMap
+
 object TypeInference extends EntryTransformer {
+  val Priority:Int = 100
 
   case class TypeHint(src: Ref, typ: Type, id: SourceId) extends VirtualOpcode with ZeroSrcOpcodes
 
@@ -24,6 +27,7 @@ object TypeInference extends EntryTransformer {
     }
     override def hashCode(): Int = id.hashCode()
     override def changeMeta(src: SourceId, attributes: Seq[Attribute]): TypeVar = new TypeVar(id)(src, attributes)
+    override def prettyString(context: Context, genNames: Seq[String]): String = "type_var"
   }
 
   object TypeVar {
@@ -147,6 +151,43 @@ object TypeInference extends EntryTransformer {
       AnalysisResults(resolvedSubs, resolvedJoins)
     }
 
+    def eagerInference(src: Ref, stack: Stack): Stack = {
+      stack.getType(src) match {
+        case tv:TypeVar if substitutions.contains(tv) => stack.withType(src, resolve(tv))
+        case _ => stack
+      }
+    }
+
+    override def unproject(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {
+      val infStack = eagerInference(src, stack)
+      super.unproject(res, src, origin, infStack)
+    }
+
+    override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+      val infStack = eagerInference(src, stack)
+      super.switchBefore(res, src, branches, mode, origin, infStack)
+    }
+
+    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+      val infStack = eagerInference(src, stack)
+      super.inspectSwitchBefore(res, src, branches, origin, infStack)
+    }
+
+    override def unpack(fields: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+      val infStack = eagerInference(src, stack)
+      super.unpack(fields, src, mode, origin, infStack)
+    }
+
+    override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+      val infStack = eagerInference(src, stack)
+      super.inspectUnpack(fields, src, origin, infStack)
+    }
+
+    override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+      val infStack = eagerInference(src, stack)
+      super.field(res, src, fieldName, mode, origin, infStack)
+    }
+
     override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       val fields = res.typ.projectionSeqMap {
         case adtType: AdtType =>
@@ -178,11 +219,12 @@ object TypeInference extends EntryTransformer {
     }
 
     override def invokeSig(res: Seq[AttrId], src: Ref, params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
-      stack.getType(src) match {
-        case sig: SigType => inferFunctionCall(sig, params, stack)
+      val infStack = eagerInference(src, stack)
+      infStack.getType(src) match {
+        case sig: SigType => inferFunctionCall(sig, params, infStack)
         case _ =>
       }
-      super.invokeSig(res, src, params, origin, stack)
+      super.invokeSig(res, src, params, origin, infStack)
     }
 
     override def tryInvokeBefore(res: Seq[AttrId], func: Func, params: Seq[(Boolean, Ref)], succ: (Seq[AttrId], Seq[OpCode]), fail: (Seq[AttrId], Seq[OpCode]), origin: SourceId, stack: Stack): Stack = {
@@ -191,11 +233,12 @@ object TypeInference extends EntryTransformer {
     }
 
     override def tryInvokeSigBefore(res: Seq[AttrId], src: Ref, params: Seq[(Boolean, Ref)], succ: (Seq[AttrId], Seq[OpCode]), fail: (Seq[AttrId], Seq[OpCode]), origin: SourceId, stack: Stack): Stack = {
-      stack.getType(src) match {
-        case sig: SigType => inferFunctionCall(sig, params.map(_._2), stack)
+      val infStack = eagerInference(src, stack)
+      infStack.getType(src) match {
+        case sig: SigType => inferFunctionCall(sig, params.map(_._2), infStack)
         case _ =>
       }
-      super.tryInvokeSigBefore(res, src, params, succ, fail, origin, stack)
+      super.tryInvokeSigBefore(res, src, params, succ, fail, origin, infStack)
     }
 
     override def virtual(code: VirtualOpcode, stack: Stack): Stack = {
@@ -221,14 +264,14 @@ object TypeInference extends EntryTransformer {
       //Joins do already have attributes changed during finalisation
       case jt:JoinType => lookup.joins.getOrElse(jt,{
           //Todo: Where? we need src for types /type vars
-          feedback(LocatedMessage(s"A type could not be inferred", t.src, Error))
-          Type.Unknown(Set.empty)(jt.src)
+          feedback(LocatedMessage(s"A type could not be inferred", t.src, Error, Compiler(Priority)))
+          jt
       })
       //Substitutions do already have attributes changed during finalisation
       case tv:TypeVar => lookup.substitutions.getOrElse(tv,{
         //Todo: Where? we need src for types /type vars
-        feedback(LocatedMessage(s"A type could not be inferred", t.src, Error))
-        Type.Unknown(Set.empty)(tv.src)
+        feedback(LocatedMessage(s"A type could not be inferred", t.src, Error, Compiler(Priority)))
+        tv
       })
       case p:Type.Projected => substituteType(p.inner).projected(p.src, p.attributes)
       case g:Type.GenericType => g
@@ -297,12 +340,12 @@ object TypeInference extends EntryTransformer {
           value.enforceSize(litT.size(context)) match {
             case Some(sizedValue) => sizedValue
             case None =>
-              feedback(LocatedMessage(s"Provided literal $value can not be converted to a value of type $typ", origin, Error))
+              feedback(LocatedMessage(s"Provided literal $value can not be converted to a value of type $typ", origin, Error, Compiler(Priority)))
               value
           }
         case None =>
           if(!typ.isUnknown) {
-            feedback(LocatedMessage(s"Can only generate literals for external types", origin, Error))
+            feedback(LocatedMessage(s"Can only generate literals for external types", origin, Error, Compiler(Priority)))
           }
           value
       }
@@ -333,7 +376,7 @@ object TypeInference extends EntryTransformer {
       code match {
         case TypeHint(trg: Ref, typ: Type, id: SourceId) =>
           substituteType(typ) match {
-            case _:Type.Unknown => feedback(LocatedMessage("Explicit type check failed",id.origin, Error))
+            case _:Type.Unknown => feedback(LocatedMessage("Explicit type check failed",id.origin, Error, Compiler(Priority)))
             case _ =>
           }
           //Eliminate Type Check

@@ -3,7 +3,7 @@ package samaya.codegen
 import java.io.DataOutputStream
 
 import samaya.codegen.ModuleSerializer.ImportCollector
-import samaya.compilation.ErrorManager.unexpected
+import samaya.compilation.ErrorManager.{CodeGen, unexpected}
 import samaya.structure.{FunctionDef, ImplementDef}
 import samaya.structure.types.{AdtType, AttrId, Const, FetchMode, Func, Id, OpCode, Permission, Ref, SourceId, Type, TypedId}
 import samaya.toolbox.track.{PositionTracker, TypeTracker}
@@ -48,9 +48,9 @@ object CodeSerializer {
       super.switchBefore(res, src, branches, mode, origin, stack)
     }
 
-    override def inspectBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
       imports.addType(stack.getType(src), Some(Permission.Inspect))
-      super.inspectBefore(res, src, branches, origin, stack)
+      super.inspectSwitchBefore(res, src, branches, origin, stack)
     }
 
     override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
@@ -91,7 +91,7 @@ object CodeSerializer {
     override def unproject(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {
       stack.getType(src) match {
         case p:Type.Projected =>  imports.addType(p.inner)
-        case _ => unexpected("Type checker missed a unproject on a not projected type")
+        case _ => unexpected("Type checker missed a unproject on a not projected type", CodeGen())
       }
       super.unproject(res, src, origin, stack)
     }
@@ -191,10 +191,12 @@ object CodeSerializer {
     }
     //)
 
-    //[9]CopyField(
-    //[10]Field(
+    //[9] InspectUnpack( //OPEN
+
+    //[10]CopyField(
+    //[11]Field(
     override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(fetchOffset(9, mode))
+      out.writeByte(fetchOffset(10, mode))
       //ValueRef
       //todo: assert size & better error handling
       out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
@@ -203,17 +205,17 @@ object CodeSerializer {
       //todo: better absent error handling
       val offset = stack.getType(src).projectionExtract{
         case adt:AdtType => adt.ctrs(context).head._2.keys.toSeq.indexOf(fieldName.name)
-        case _ => unexpected("Type checker missed a field access on a not adt type")
+        case _ => unexpected("Type checker missed a field access on a not adt type", CodeGen())
       }
       out.writeByte(offset)
       super.field(res, src, fieldName, mode, origin, stack)
     }
     //)
 
-    //[11]CopySwitch(
-    //[12]Switch(
+    //[12]CopySwitch(
+    //[13]Switch(
     override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(fetchOffset(11, mode))
+      out.writeByte(fetchOffset(12, mode))
       //ValueRef
       //todo: assert size & better error handling
       out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
@@ -226,9 +228,9 @@ object CodeSerializer {
     }
     //)
 
-    //[13]Inspect(
-    override def inspectBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(13)
+    //[14]InspectSwitch(
+    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+      out.writeByte(14)
       //ValueRef
       //todo: assert size & better error handling
       out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
@@ -237,20 +239,20 @@ object CodeSerializer {
       out.writeByte(imports.permIndex(stack.getType(src)))
       //Vec<Exp> -- we only write size, the expressions are written by traverser
       out.writeByte(branches.size)
-      super.inspectBefore(res, src, branches, origin, stack)
+      super.inspectSwitchBefore(res, src, branches, origin, stack)
     }
     //)
 
-    //[14]CopyPack(
-    //[15]Pack(
+    //[15]CopyPack(
+    //[16]Pack(
     override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(fetchOffset(14, mode))
+      out.writeByte(fetchOffset(15, mode))
       //PermRef
       out.writeByte(imports.permIndex(res.typ))
       //Tag
       val offset = res.typ.projectionExtract {
         case adt:AdtType => adt.ctrs(context).keys.toSeq.indexOf(ctr.name)
-        case _ => unexpected("Type checker missed a pack on a not adt type")
+        case _ => unexpected("Type checker missed a pack on a not adt type", CodeGen())
       }
       out.writeByte(offset)
       //Vec<ValueRef>
@@ -261,9 +263,9 @@ object CodeSerializer {
     }
     //)
 
-    //[16]Invoke(
+    //[17]Invoke(
     override def invoke(res: Seq[AttrId], func: Func, params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(16)
+      out.writeByte(17)
       //PermRef
       out.writeByte(imports.permIndex(func))
       //Vec<ValueRef>
@@ -274,9 +276,9 @@ object CodeSerializer {
     }
     //)
 
-    //[17]TryInvoke()
+    //[18]TryInvoke()
     override def tryInvokeBefore(res: Seq[AttrId], func: Func, params: Seq[(Boolean, Ref)], succ: (Seq[AttrId], Seq[OpCode]), fail: (Seq[AttrId], Seq[OpCode]), origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(17)
+      out.writeByte(18)
       //PermRef
       out.writeByte(imports.permIndex(func))
       // Vec<(
@@ -295,9 +297,9 @@ object CodeSerializer {
     }
     //)
 
-    //[18]InvokeSig(
+    //[19]InvokeSig(
     override def invokeSig(res: Seq[AttrId], src: Ref, params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(18)
+      out.writeByte(19)
       //ValueRef
       out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
       //PermRef
@@ -310,9 +312,9 @@ object CodeSerializer {
     }
     //)
 
-    //[19]TryInvokeSig(
+    //[20]TryInvokeSig(
     override def tryInvokeSigBefore(res: Seq[AttrId], src: Ref, params: Seq[(Boolean, Ref)], succ: (Seq[AttrId], Seq[OpCode]), fail: (Seq[AttrId], Seq[OpCode]), origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(19)
+      out.writeByte(20)
       //ValueRef
       out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
       //PermRef
@@ -335,9 +337,9 @@ object CodeSerializer {
 
     //TODO: Repeat & TryRepeat
 
-    //[22]Project(
+    //[23]Project(
     override def project(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(22)
+      out.writeByte(23)
       //TypeRef
       out.writeByte(imports.typeIndex(stack.getType(src).projected(origin)))
       //ValueRef
@@ -347,13 +349,13 @@ object CodeSerializer {
     }
     //)
 
-    //[23]UnProject(
+    //[24]UnProject(
     override def unproject(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(23)
+      out.writeByte(24)
       //TypeRef
       stack.getType(src) match {
         case p:Type.Projected => out.writeByte(imports.typeIndex(p.inner))
-        case _ => unexpected("Type checker missed a unproject on a not projected type")
+        case _ => unexpected("Type checker missed a unproject on a not projected type", CodeGen())
       }
       //ValueRef
       //todo: assert size & better error handling
@@ -362,9 +364,9 @@ object CodeSerializer {
     }
     //)
 
-    //[24]RollBack(
+    //[25]RollBack(
     override def rollback(res: Seq[AttrId], resTypes: Seq[Type], params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
-      out.writeByte(24)
+      out.writeByte(25)
       //Vec<ValueRef>
       out.writeByte(params.length)
       params.foreach(src => out.writeShort(stack.getRef(src).get.asInstanceOf[Short]))

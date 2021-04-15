@@ -19,13 +19,13 @@ object ModuleValidator {
     var prevIndex = -1
     for(e <- seq) {
       if(!exact) {
-        if(e.index <= prevIndex) feedback(PlainMessage("Sequence entries are not ordered", Error))
+        if(e.index <= prevIndex) feedback(PlainMessage("Sequence entries are not ordered", Error, Checking()))
       } else {
-        if(e.index != prevIndex+1) feedback(PlainMessage("Sequence entries are not strictly ordered", Error))
+        if(e.index != prevIndex+1) feedback(PlainMessage("Sequence entries are not strictly ordered", Error, Checking()))
       }
       prevIndex = e.index
       if(!lookup(e.index).contains(e)) {
-        unexpected("Entry inconsistent with lookup result")
+        unexpected("Entry inconsistent with lookup result", Checking())
       }
       check(e)
     }
@@ -48,13 +48,13 @@ object ModuleValidator {
 
     for(data <- module.dataTypes) {
       if(typNames.contains(data.name)) {
-        feedback(LocatedMessage("type names in a module must be unique", data.src, Error))
+        feedback(LocatedMessage("type names in a module must be unique", data.src, Error, Checking()))
       }
       typNames += data.name
     }
     for(sig <- module.signatures) {
       if(typNames.contains(sig.name)) {
-        feedback(LocatedMessage("type names in a module must be unique", sig.src, Error))
+        feedback(LocatedMessage("type names in a module must be unique", sig.src, Error, Checking()))
       }
       typNames += sig.name
     }
@@ -62,13 +62,13 @@ object ModuleValidator {
     var callNames = Set.empty[String]
     for(fun <- module.functions) {
       if(callNames.contains(fun.name)) {
-        feedback(LocatedMessage("function names in a module must be unique", fun.src, Error))
+        feedback(LocatedMessage("function names in a module must be unique", fun.src, Error, Checking()))
       }
       callNames += fun.name
     }
     for(impl <- module.implements) {
       if(callNames.contains(impl.name))  {
-        feedback(LocatedMessage("function names in a module must be unique", impl.src, Error))
+        feedback(LocatedMessage("function names in a module must be unique", impl.src, Error, Checking()))
       }
       callNames += impl.name
     }
@@ -78,13 +78,13 @@ object ModuleValidator {
     processOrdered[Generic](data.generics,data.generic, g => {})
 
     if(data.accessibility.keySet != Set(Permission.Consume, Permission.Inspect, Permission.Create)){
-      feedback(LocatedMessage("DataTypes must have exactly the Inspect, Consume and Create permissions", src, Error))
+      feedback(LocatedMessage("DataTypes must have exactly the Inspect, Consume and Create permissions", src, Error, Checking()))
     }
 
     val genericIdents:Set[String] = data.generics.map(p => p.name).toSet
     //check that generic names are unique
     if(genericIdents.size != data.generics.size){
-      feedback(LocatedMessage("Data types generics must have unique names", src, Error))
+      feedback(LocatedMessage("Data types generics must have unique names", src, Error, Checking()))
     }
 
     processOrdered[Constructor](data.constructors,data.constructor, c => {
@@ -95,9 +95,9 @@ object ModuleValidator {
           case GenericType(_,pos) =>
             data.generic(pos) match {
               case Some(gd) => if(gd.phantom) {
-                feedback(LocatedMessage("Phantoms can not be used as field types", gd.src, Error))
+                feedback(LocatedMessage("Phantoms can not be used as field types", gd.src, Error, Checking()))
               }
-              case None => feedback(LocatedMessage("Requested Generic does not exist", src, Error))
+              case None => feedback(LocatedMessage("Requested Generic does not exist", src, Error, Checking()))
             }
           case _ =>
         }
@@ -106,7 +106,7 @@ object ModuleValidator {
       val fieldIdents:Set[String] = c.fields.map(p => p.name).toSet
       //check that field names are unique
       if(fieldIdents.size != c.fields.size){
-        feedback(LocatedMessage("Data types constructor field names must have unique names", src, Error))
+        feedback(LocatedMessage("Data types constructor field names must have unique names", src, Error, Checking()))
       }
 
     })
@@ -114,11 +114,11 @@ object ModuleValidator {
     val ctrIdents:Set[String] = data.constructors.map(p => p.name).toSet
     //check that generic names are unique
     if(ctrIdents.size != data.constructors.size){
-      feedback(LocatedMessage("Data types constructors must have unique names", src, Error))
+      feedback(LocatedMessage("Data types constructors must have unique names", src, Error, Checking()))
     }
 
     if(data.external.nonEmpty && data.constructors.nonEmpty){
-      feedback(LocatedMessage("External data types can not have constructors", src, Error))
+      feedback(LocatedMessage("External data types can not have constructors", src, Error, Checking()))
     }
 
   }
@@ -126,18 +126,18 @@ object ModuleValidator {
   def validateImplement(src:SourceId, implement:FunctionSig, context: Context):Unit = {
     validateFunction(src,implement, context, "Implement")
     if(implement.results.size != 1) {
-      feedback(LocatedMessage("Implements need to return single value of the implemented signature", src, Error))
+      feedback(LocatedMessage("Implements need to return single value of the implemented signature", src, Error, Checking()))
     } else {
       processOrdered[Param](implement.params,implement.param, p => {
         if(!p.consumes) {
-          feedback(LocatedMessage("Captured implement parameters must be consumed", src, Error))
+          feedback(LocatedMessage("Captured implement parameters must be consumed", src, Error, Checking()))
         }
         val reqCaps = implement.result(0).get.typ.capabilities(context)
         if(implement.transactional && !p.typ.hasCap(context, Capability.Drop)) {
-          feedback(LocatedMessage("Captured implement parameters for transactional signature must have a type with the Drop Capability", src, Error))
+          feedback(LocatedMessage("Captured implement parameters for transactional signature must have a type with the Drop Capability", src, Error, Checking()))
         }
         if(!reqCaps.subsetOf(p.typ.capabilities(context))){
-          feedback(LocatedMessage("Captured implement parameters must have all the Capabilities declared on the implemented Signature", src, Error))
+          feedback(LocatedMessage("Captured implement parameters must have all the Capabilities declared on the implemented Signature", src, Error, Checking()))
         }
       })
     }
@@ -149,11 +149,11 @@ object ModuleValidator {
 
     if(defineAllowed){
       if(function.accessibility.keySet != Set(Permission.Call, Permission.Define)){
-        feedback(LocatedMessage(s"${name}s must have exactly the Call and Define permissions", src, Error))
+        feedback(LocatedMessage(s"${name}s must have exactly the Call and Define permissions", src, Error, Checking()))
       }
     } else {
       if(function.accessibility.keySet != Set(Permission.Call)){
-        feedback(LocatedMessage(s"${name}s must have exactly the Call permission", src, Error))
+        feedback(LocatedMessage(s"${name}s must have exactly the Call permission", src, Error, Checking()))
       }
     }
 
@@ -161,7 +161,7 @@ object ModuleValidator {
 
     //check that type param names are unique
     if(genericIdents.size != function.generics.size){
-      feedback(LocatedMessage(s"$name generics must have unique names", src, Error))
+      feedback(LocatedMessage(s"$name generics must have unique names", src, Error, Checking()))
     }
 
     processOrdered[Param](function.params,function.param, p => {
@@ -169,9 +169,9 @@ object ModuleValidator {
       p.typ match {
         case GenericType(_, pos) =>
           function.generic(pos) match {
-            case None => unexpected("Requested Generic does not exist")
+            case None => unexpected("Requested Generic does not exist", Checking())
             case Some(gf) =>  if(gf.phantom){
-              feedback(LocatedMessage("Phantom generics not allowed as parameter type", gf.src, Error))
+              feedback(LocatedMessage("Phantom generics not allowed as parameter type", gf.src, Error, Checking()))
             }
           }
         case _ =>
@@ -181,7 +181,7 @@ object ModuleValidator {
     val paramIdents = function.params.map(p => p.name).toSet
     //check that param names are unique
     if(paramIdents.size != function.params.size){
-      feedback(LocatedMessage(s"$name parameters must have unique names", src, Error))
+      feedback(LocatedMessage(s"$name parameters must have unique names", src, Error, Checking()))
     }
 
     processOrdered[Result](function.results,function.result, r => {
@@ -191,7 +191,7 @@ object ModuleValidator {
     val returnIdents = function.results.map(p => p.name).toSet
     //check that reutrn names are unique
     if(returnIdents.size != function.results.size){
-      feedback(LocatedMessage(s"$name returns must have unique names", src, Error))
+      feedback(LocatedMessage(s"$name returns must have unique names", src, Error, Checking()))
     }
   }
 }

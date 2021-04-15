@@ -1,12 +1,12 @@
 package samaya.structure.types
 
-import java.io.{DataOutputStream, InputStream, OutputStream}
+import java.io.{DataOutputStream, FilterInputStream, FilterOutputStream, InputStream, OutputStream}
 import java.math.BigInteger
 import java.security.{DigestInputStream, DigestOutputStream, MessageDigest}
 import java.util
 
+import io.github.rctcwyvrn.blake3.Blake3
 import org.apache.commons.codec.binary.Hex
-import com.rfksystems.blake2b.Blake2b
 import samaya.types.{InputSource, OutputTarget}
 
 case class Hash(data:Array[Byte]) {
@@ -25,28 +25,30 @@ case class Hash(data:Array[Byte]) {
 }
 
 object Hash {
+  val len:Int = 20
   def fromBytes(data: Array[Byte]): Hash = Hash(data)
   def fromString(hash:String):Hash = Hash(Hex.decodeHex(hash))
 
   //Helper to directly Hash an InputStream
   def fromInputSource(input: InputSource): Hash = {
-    val digest = MessageDigest.getInstance(Blake2b.BLAKE2_B_160)
-    val digestStream = new DigestInputStream(input.content, digest)
+    val digest = Blake3.newInstance
+    val digestStream = new Blake3InputStream(input.content, digest)
     while (digestStream.read() > -1) {}
     digestStream.close()
-    fromBytes(digest.digest())
+    fromBytes(digest.digest(Hash.len))
   }
 
 
   def writeAndHash(out:OutputTarget, writer:OutputStream => Unit):Hash =  {
     out.write(out => {
-      val stream = new DigestOutputStream(out, MessageDigest.getInstance(Blake2b.BLAKE2_B_160))
+      val digest = Blake3.newInstance
+      val stream = new Blake3OutputStream(out, digest)
       try {
         writer(stream)
       } finally {
         stream.close()
       }
-      fromBytes(stream.getMessageDigest.digest())
+      fromBytes(digest.digest(Hash.len))
     })
   }
 
@@ -73,4 +75,34 @@ object Hash {
       }
     }
   }
+}
+
+class Blake3InputStream(stream: InputStream, digest:Blake3) extends FilterInputStream(stream) {
+  override def read: Int = {
+    val ch = in.read
+    if (ch != -1) digest.update(Array(ch.toByte))
+    ch
+  }
+
+  override def read(b: Array[Byte], off: Int, len: Int): Int = {
+    val result = in.read(b, off, len)
+    if (result != -1) digest.update(b.slice(off, off+result))
+    result
+  }
+  override def toString: String = "[Digest Input Stream] " + digest.toString
+}
+
+class Blake3OutputStream(stream: OutputStream, digest:Blake3) extends FilterOutputStream(stream) {
+
+  override def write(b: Int): Unit = {
+    out.write(b)
+    digest.update(Array(b.toByte))
+  }
+
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+    out.write(b, off, len)
+    digest.update(b.slice(off,off+len))
+  }
+
+  override def toString: String = "[Digest Output Stream] " + digest.toString
 }

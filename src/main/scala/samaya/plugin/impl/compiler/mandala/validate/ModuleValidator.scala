@@ -21,7 +21,7 @@ object ModuleValidator {
         val genericIdents:Set[String] = generics.map(p => p.name).toSet
         //check that type param names are unique
         if(genericIdents.size != generics.size){
-          feedback(LocatedMessage(s"$name generics must have unique names", source, Error))
+          feedback(LocatedMessage(s"$name generics must have unique names", source, Error, Checking()))
         }
         SignatureValidator.validateType(target.src, target, ta, context)
 
@@ -37,7 +37,7 @@ object ModuleValidator {
         if(param.attributes.exists(a => a.name == MandalaCompiler.Implicit_Attribute_Name)){
           hit = true
         } else if(hit) {
-          feedback(LocatedMessage(s"All implicit bindings must be placed at the end of an Implement",param.src, Error))
+          feedback(LocatedMessage(s"All implicit bindings must be placed at the end of an Implement",param.src, Error, Checking()))
         }
       }
     })
@@ -49,7 +49,7 @@ object ModuleValidator {
       if(param.attributes.exists(a => a.name == MandalaCompiler.Implicit_Attribute_Name)){
         hit = true
       } else if(hit) {
-        feedback(LocatedMessage(s"All implicit params must be placed at the end of a $kind",param.src, Error))
+        feedback(LocatedMessage(s"All implicit params must be placed at the end of a $kind",param.src, Error, Checking()))
       }
     }
   }

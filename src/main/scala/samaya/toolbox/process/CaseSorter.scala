@@ -70,7 +70,7 @@ object CaseSorter extends EntryTransformer {
       Some(List(OpCode.Switch(res,src,branches,mode, origin)))
     }
 
-    override def transformInspect(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
+    override def transformInspectSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       val branches = stack.getType(src).projectionExtract {
         case adt:AdtType =>
           var builder = ListMap.newBuilder[Id,  (Seq[AttrId], Seq[OpCode])]
@@ -83,7 +83,7 @@ object CaseSorter extends EntryTransformer {
           newBodies ++ bodies.filter(kv => !newBodies.contains(kv._1))
         case _ => bodies
       }
-      Some(List(OpCode.Inspect(res,src,branches, origin)))
+      Some(List(OpCode.InspectSwitch(res,src,branches, origin)))
     }
   }
 }

@@ -14,7 +14,7 @@ object ComponentSerializer {
       case txt: CompiledTransaction =>
         val context = Context(pkg)
         ModuleSerializer.serializeFunction(out,txt,context, true)
-      case other => unexpected(s"Component $other can not be used in codegen")
+      case other => unexpected(s"Component $other can not be used in codegen", CodeGen())
     }
 
   }

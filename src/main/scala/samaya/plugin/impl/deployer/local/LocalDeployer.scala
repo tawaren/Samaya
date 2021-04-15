@@ -49,7 +49,7 @@ class LocalDeployer extends Deployer{
       }
     } catch {
       case e:Exception =>
-        feedback(PlainMessage(s"deploy error: ${e.getMessage}", Error))
+        feedback(PlainMessage(s"deploy error: ${e.getMessage}", Error, Always))
         None
     } finally {
       socket.close()

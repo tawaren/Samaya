@@ -92,9 +92,9 @@ object Type {
   def restrictCapabilities(context:Context, base:Set[Capability], applies:Seq[(Generic,Type)]):Set[Capability] = {
     applies.foldLeft(base) { (r,gen) =>
       if(gen._1.phantom) {
-        base
+        r
       } else {
-        base.intersect(gen._2.capabilities(context))
+        r.intersect(gen._2.capabilities(context))
       }
     }
   }
@@ -122,7 +122,6 @@ object Type {
     override def matches(other: Type): Option[Map[Int, Type]] = Some(Map(offset -> other))
     override def instantiate(applies: Seq[Type]): Type = {
       if(offset >= applies.size) {
-        feedback(LocatedMessage(s"No instantiation for generic type provided during substitution", src, Error))
         Unknown(capabilities)(src)
       } else {
         applies(offset)
@@ -212,9 +211,7 @@ object Type {
     def onDef[T](context: Context, fallback: T, f: (D, Type => Type) => T): T = {
       getEntry(context) match {
         case Some(typ) => f(typ, x => x)
-        case None =>
-          feedback(LocatedMessage(s"Can not find associated data type with index: $offset in current module", src, Error))
-          fallback
+        case None => fallback
       }
     }
   }
@@ -248,9 +245,7 @@ object Type {
     def onDef[T](context: Context, fallback: T, f: (D, Type => Type) => T): T = {
       getEntry(context) match {
         case Some(typ) => f(typ, adaptLocals)
-        case None =>
-          feedback(LocatedMessage(s"Can not find dependent module with hash: $moduleRef", src, Error))
-          fallback
+        case None => fallback
       }
     }
   }
@@ -269,7 +264,7 @@ object DataType {
         case None => false
         case Some(Accessibility.Global) => true
         case Some(Accessibility.Local) => isCurrentModule
-        case Some(Accessibility.Guarded(guards)) => guards.forall { name =>
+        case Some(Accessibility.Guarded(guards)) => isCurrentModule || guards.forall { name =>
           dataType.generics.find(_.name == name) match {
             case Some(value) => applies(value.index).isCurrentModule
             case None => false
@@ -405,7 +400,7 @@ object SigType {
         case None => false
         case Some(Accessibility.Global) => true
         case Some(Accessibility.Local) => isCurrentModule
-        case Some(Accessibility.Guarded(guards)) => guards.forall { name =>
+        case Some(Accessibility.Guarded(guards)) => isCurrentModule || guards.forall { name =>
           sigDef.generics.find(_.name == name) match {
             case Some(value) => applies(value.index).isCurrentModule
             case None =>false

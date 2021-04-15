@@ -2,7 +2,7 @@ package samaya.plugin.impl.compiler.mandala
 
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import samaya.build.desc.Dependency
-import samaya.compilation.ErrorManager.producesErrorValue
+import samaya.compilation.ErrorManager.{canProduceErrors, newPlainErrorScope, producesErrorValue}
 import samaya.plugin.impl.compiler.common.BasicErrorListener
 import samaya.plugin.impl.compiler.mandala.compiler.MandalaBaseCompiler
 import samaya.plugin.impl.compiler.mandala.components.InstInfo
@@ -10,7 +10,7 @@ import samaya.plugin.impl.compiler.mandala.process.{ImplicitInjector, InstanceFi
 import samaya.plugin.service.Selectors.{CompilerSelectorByMeta, CompilerSelectorBySource}
 import samaya.plugin.service.{LanguageCompiler, Selectors}
 import samaya.structure.{Component, Interface, Package}
-import samaya.toolbox.process.{CaseSorter, CopyDiscardInjector}
+import samaya.toolbox.process.{CaseSorter, CopyDiscardInjector, RollbackFiller}
 import samaya.toolbox.transform.EntryTransformer
 import samaya.types.InputSource
 
@@ -64,6 +64,8 @@ class MandalaCompiler extends LanguageCompiler{
           new ImplicitInjector(instanceFinder)
         ).andThen(
           CopyDiscardInjector
+        ).andThen(
+          RollbackFiller
         )
       }
 
@@ -73,14 +75,16 @@ class MandalaCompiler extends LanguageCompiler{
     }
 
     val vis = new MandalaBaseCompiler(env)
-    parseFile(source) match {
-      case Some(file) => vis.visitFile(file)
-      case None =>
+    newPlainErrorScope {
+      parseFile(source) match {
+        case Some(file) => vis.visitFile(file)
+        case None =>
+      }
     }
     env.pkg
   }
 
-  override def extractDependencies(source: InputSource): Set[Dependency] = {
+  override def extractDependencies(source: InputSource): Set[Dependency] = newPlainErrorScope {
     parseFile(source).toSet.flatMap((tree: MandalaParser.FileContext) => {
       val vis = new MandalaDependencyExtractorVisitor(source.identifier.fullName)
       vis.visitFile(tree).map{
@@ -89,13 +93,10 @@ class MandalaCompiler extends LanguageCompiler{
     })
   }
 
-  override def extractComponentNames(source: InputSource): Set[String] = {
+  override def extractComponentNames(source: InputSource): Set[String] = newPlainErrorScope {
     parseFile(source).toSet.flatMap((tree: MandalaParser.FileContext) => {
       val vis = new NameExtractorVisitor()
       vis.visitFile(tree)
     })
   }
-
-
-
 }

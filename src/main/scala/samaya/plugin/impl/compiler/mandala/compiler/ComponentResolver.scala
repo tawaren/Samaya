@@ -1,6 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, Warning, feedback}
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, Warning, feedback}
 import samaya.plugin.impl.compiler.mandala.{MandalaCompiler, MandalaParser}
 import samaya.plugin.impl.compiler.mandala.components.clazz.Class
 import samaya.plugin.impl.compiler.mandala.components.instance.{DefInstance, Instance}
@@ -15,7 +15,9 @@ import scala.collection.JavaConverters._
 trait ComponentResolver extends CompilerToolbox {
   self: ComponentBuilder with CapabilityCompiler =>
 
-  var imports: Map[String, Seq[String]] = Map[String,Seq[String]]()
+  private val Priority = 120
+  
+  var imports = Map[String,Seq[String]]()
 
   //This is per component
   private var availableGenerics = Map.empty[String,Generic]
@@ -64,7 +66,7 @@ trait ComponentResolver extends CompilerToolbox {
     //First check if it is defined in Mandala we prefer these
     val components = env.pkg.componentByPathAndName(path,mod).flatMap(_.asModule)
     if(components.isEmpty) {
-      feedback(LocatedMessage(s"Wildcard import ${elems.mkString(".")} does not point to a component", sourceId, Warning))
+      feedback(LocatedMessage(s"Wildcard import ${elems.mkString(".")} does not point to a component", sourceId, Warning, Compiler(Priority)))
       return
     }
     for(module <- components) {
@@ -118,7 +120,7 @@ trait ComponentResolver extends CompilerToolbox {
   private def recordImport(elems:Seq[String], rename:Option[String], sourceId: SourceId): Unit ={
     val last = rename.getOrElse(elems.last)
     if(imports.contains(last) && imports(last) != elems) {
-      feedback(LocatedMessage(s"Import ${elems.mkString(".")} shadows a previous import", sourceId, Warning))
+      feedback(LocatedMessage(s"Import ${elems.mkString(".")} shadows a previous import", sourceId, Warning, Compiler(Priority)))
     }
     imports = imports.updated(last,elems)
   }
@@ -170,7 +172,7 @@ trait ComponentResolver extends CompilerToolbox {
     val src = sourceIdFromContext(ctx)
     if(ctx == null) {
       TypeInference.TypeVar(src)
-    }else if(ctx.PROJECT() != null) {
+    }else if(ctx.typeRef() != null) {
       visitTypeRef(ctx.typeRef()).projected(src)
     } else if(ctx.QUEST() != null) {
       TypeInference.TypeVar(src)
@@ -179,12 +181,23 @@ trait ComponentResolver extends CompilerToolbox {
     }
   }
 
-  def resolveImport(importPath:Seq[String], isEntryPath:Boolean = true): (Seq[String], Seq[Interface[Component]]) = {
+  def resolveImport(importPath:Seq[String], numArgs:Option[Int],isEntryPath:Boolean = true): (Seq[String], Seq[Interface[Component]]) = {
     val start = importPath.head
     //If not a local declaration it can still be something imported | absolute path
     //todo: shall we check both, original as well?
     val path = if(imports.contains(start)) {
       imports(start) ++ importPath.tail
+    } else if(importPath.size == 1){
+      numArgs match {
+        case None => importPath
+        case Some(args) =>
+          val overloadedStart = MandalaModule.deriveOverloadedName(start,args)
+          if(imports.contains(overloadedStart)){
+            imports(overloadedStart)
+          } else {
+            importPath
+          }
+      }
     } else {
       importPath
     }
@@ -224,7 +237,7 @@ trait ComponentResolver extends CompilerToolbox {
       //May be from local scope
       if(availableGenerics.contains(start)){
         //check that there are no params
-        if(applies.nonEmpty) feedback(LocatedMessage(s"Generics do not have parameters", sourceId, Error))
+        if(applies.nonEmpty) feedback(LocatedMessage(s"Generics do not have parameters", sourceId, Error, Compiler(Priority)))
         return availableGenerics(start).asType(sourceId)
       }
 
@@ -235,10 +248,10 @@ trait ComponentResolver extends CompilerToolbox {
           case dt:DataDef if dt.external.isEmpty => AdtType.Local(dt.index, resolveApplies(compApplies, applies, 0, dt.generics.size, sourceId))(sourceId)
           case st:SignatureDef => SigType.Local(st.index, resolveApplies(compApplies, applies, 0, st.generics.size, sourceId))(sourceId)
           case _:FunctionDef =>
-            feedback(LocatedMessage(s"$start does refer to a function but a type is expected", sourceId, Error))
+            feedback(LocatedMessage(s"$start does refer to a function but a type is expected", sourceId, Error, Compiler(Priority)))
             Type.Unknown(Set.empty)(sourceId)
           case _:ImplementDef =>
-            feedback(LocatedMessage(s"$start does refer to an implement but a type is expected", sourceId, Error))
+            feedback(LocatedMessage(s"$start does refer to an implement but a type is expected", sourceId, Error, Compiler(Priority)))
             Type.Unknown(Set.empty)(sourceId)
         }
       }
@@ -250,7 +263,7 @@ trait ComponentResolver extends CompilerToolbox {
         case _ =>
       }
     }
-    val (path, comps) = resolveImport(importPath)
+    val (path, comps) = resolveImport(importPath, None)
     val entryName = path.last
     val modules = comps.flatMap(_.asModuleInterface);
     val typeTargets = modules.flatMap(m => (m.dataTypes ++ m.signatures).filter(_.name == entryName).map((m,_)))
@@ -261,25 +274,25 @@ trait ComponentResolver extends CompilerToolbox {
     //did we found at least 1
     if(typeTargets.isEmpty && aliases.isEmpty) {
       if(comps.isEmpty && path.init.nonEmpty) {
-        feedback(LocatedMessage(s"Component ${path.init.mkString(".")} is missing in workspace", sourceId, Error))
+        feedback(LocatedMessage(s"Component ${path.init.mkString(".")} is missing in workspace", sourceId, Error, Compiler(Priority)))
       } else {
-        feedback(LocatedMessage(s"typ ${path.mkString(".")} does not exist", sourceId, Error))
+        feedback(LocatedMessage(s"typ ${path.mkString(".")} does not exist", sourceId, Error, Compiler(Priority)))
       }
       return Type.Unknown(Set.empty)(sourceId)
     }
 
     //did we found more than 1 candidate
     if(typeTargets.size + aliases.size > 1) {
-      feedback(LocatedMessage(s"${path.mkString(".")} is ambiguous (points to multiple candidates)", sourceId, Error))
+      feedback(LocatedMessage(s"${path.mkString(".")} is ambiguous (points to multiple candidates)", sourceId, Error, Compiler(Priority)))
       return Type.Unknown(Set.empty)(sourceId)
     }
     //construct the type
     //Note: currently classes can not define DataTypes but we still add the getClassVars(module) as we may allow it in the future
     if(typeTargets.nonEmpty){
-      typeTargets.map{
-        case (module,dt:DataDef) if dt.external.isDefined => LitType.Remote(module.link, dt.index, resolveApplies(compApplies, applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
-        case (module,dt:DataDef) if dt.external.isEmpty => AdtType.Remote(module.link, dt.index, resolveApplies(compApplies, applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
-        case (module,st:SignatureDef) => SigType.Remote(module.link, st.index, resolveApplies(compApplies, applies, getClassVars(module), st.generics.size, sourceId))(sourceId)
+      typeTargets.map {
+        case (module, dt: DataDef) if dt.external.isDefined => LitType.Remote(module.link, dt.index, resolveApplies(compApplies, applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
+        case (module, dt: DataDef) if dt.external.isEmpty => AdtType.Remote(module.link, dt.index, resolveApplies(compApplies, applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
+        case (module, st: SignatureDef) => SigType.Remote(module.link, st.index, resolveApplies(compApplies, applies, getClassVars(module), st.generics.size, sourceId))(sourceId)
         case _ => Type.Unknown(Set.empty)(sourceId)
       }.head
     } else  {
@@ -315,10 +328,10 @@ trait ComponentResolver extends CompilerToolbox {
           case fd:FunctionDef => StdFunc.Local(fd.index, resolveApplies(compApplies, applies, 0, fd.generics.size, sourceId))(sourceId)
           case id:ImplementDef => ImplFunc.Local(id.index, resolveApplies(compApplies,applies, 0, id.generics.size, sourceId))(sourceId)
           case _:DataDef =>
-            feedback(LocatedMessage(s"$start does refer to a type but a function is expected", sourceId, Error))
+            feedback(LocatedMessage(s"$start does refer to a type but a function is expected", sourceId, Error, Compiler(Priority)))
             Func.Unknown(sourceId)
           case _:SignatureDef =>
-            feedback(LocatedMessage(s"$start does refer to a type but a function is expected", sourceId, Error))
+            feedback(LocatedMessage(s"$start does refer to a type but a function is expected", sourceId, Error, Compiler(Priority)))
             Func.Unknown(sourceId)
         }
       }
@@ -333,7 +346,7 @@ trait ComponentResolver extends CompilerToolbox {
     }
 
     //Find all modules matching the path
-    val (path, comps) = resolveImport(importPath)
+    val (path, comps) = resolveImport(importPath,numArgs)
     val names = if(numArgs.nonEmpty){
       val entryName = path.last
       val overloadEntryName = MandalaModule.deriveOverloadedName(entryName,numArgs.get)
@@ -348,15 +361,15 @@ trait ComponentResolver extends CompilerToolbox {
     //did we found at least 1
     if(funTargets.isEmpty && implTargets.isEmpty) {
       if(comps.isEmpty && path.init.nonEmpty) {
-        feedback(LocatedMessage(s"Component ${path.init.mkString(".")} is missing in workspace", sourceId, Error))
+        feedback(LocatedMessage(s"Component ${path.init.mkString(".")} is missing in workspace", sourceId, Error, Compiler(Priority)))
       } else {
-        feedback(LocatedMessage(s"Function ${path.mkString(".")} does not exist", sourceId, Error))
+        feedback(LocatedMessage(s"Function ${path.mkString(".")} does not exist", sourceId, Error, Compiler(Priority)))
       }
       return Func.Unknown(sourceId)
     }
 
     //did we found more than 1 candidate
-    if((funTargets.size + implTargets.size) > 1) feedback(LocatedMessage(s"${path.mkString(".")} is ambiguous (points to multiple candidates)", sourceId, Error))
+    if((funTargets.size + implTargets.size) > 1) feedback(LocatedMessage(s"${path.mkString(".")} is ambiguous (points to multiple candidates)", sourceId, Error, Compiler(Priority)))
     //construct the type
     if(funTargets.nonEmpty){
       funTargets.head match {

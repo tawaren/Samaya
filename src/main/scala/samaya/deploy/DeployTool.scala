@@ -12,8 +12,8 @@ object DeployTool {
   def main(args: Array[String]): Unit = deploy(args(0))
   def deploy(target:String):Unit = {
     ErrorManager.producesErrorValue(BuildTool.build(target)) match {
-      case None => feedback(PlainMessage("Skipped Deployment due to compilation error", Info))
-      case Some(lp) => deployPackage(lp, mutable.HashSet())
+      case Some(Some(lp)) => deployPackage(lp, mutable.HashSet())
+      case _ => feedback(PlainMessage("Skipped Deployment due to compilation error", Info, Always))
     }
   }
 
@@ -34,11 +34,11 @@ object DeployTool {
       case Some(hash) =>
         if(deployed.add(hash)){
           mc.meta.code match {
-            case None => unexpected(s"Can not deploy ${mc.name} as code is missing")
+            case None => unexpected(s"Can not deploy ${mc.name} as code is missing", ErrorManager.Deployer())
             case Some(code) => Deployer.deploy(mc) match {
-              case None => unexpected(s"Deployment of ${mc.name} failed")
+              case None => unexpected(s"Deployment of ${mc.name} failed", ErrorManager.Always)
               case Some(deployHash) =>
-                if(hash != deployHash) unexpected(s"Target Platform produced a different hash then compiler $deployHash vs. $hash")
+                if(hash != deployHash) unexpected(s"Target Platform produced a different hash then compiler $deployHash vs. $hash", ErrorManager.Always)
             }
           }
         }

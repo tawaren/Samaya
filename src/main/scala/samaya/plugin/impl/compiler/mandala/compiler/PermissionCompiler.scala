@@ -1,6 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
-import samaya.compilation.ErrorManager.{LocatedMessage, Warning, feedback}
+import samaya.compilation.ErrorManager.{Compiler, LocatedMessage, Warning, feedback}
 import samaya.plugin.impl.compiler.mandala.MandalaParser
 import samaya.structure.types.Accessibility.{Global, Guarded, Local}
 import samaya.structure.types.Permission.{Call, Consume, Create, Define, Inspect}
@@ -45,7 +45,7 @@ trait PermissionCompiler extends CompilerToolbox {
     }
 
     if(accessibilities.size != result.size) {
-      feedback(LocatedMessage(s"Unsupported Accessibility is ignored", sourceIdFromContext(ctx), Warning))
+      feedback(LocatedMessage(s"Unsupported Accessibility is ignored", sourceIdFromContext(ctx), Warning, Compiler()))
     }
 
     //Add defaults for unspecified Keys

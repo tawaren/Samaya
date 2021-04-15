@@ -1,6 +1,6 @@
 package samaya.toolbox.track
 
-import samaya.compilation.ErrorManager.unexpected
+import samaya.compilation.ErrorManager.{Always, unexpected}
 import samaya.structure.Param
 import samaya.structure.types.{Val, _}
 import samaya.toolbox.stack.SlotFrameStack.SlotDomain
@@ -16,7 +16,7 @@ trait PositionTracker extends ValueTracker {
     //returns None if Id does not exist
     def getPos(id:Ref):Option[Int] = s.readSlot(PositionTracker,id)
     def getPos(v:Val):Int = s.readSlot(PositionTracker,v).getOrElse(
-      unexpected("Position Tracker is intended to map a Type to every Val either the caller made a mistake by using a non-existing value or their is a bug in PositionTracker")
+      unexpected("Position Tracker is intended to map a Type to every Val either the caller made a mistake by using a non-existing value or their is a bug in PositionTracker", Always)
     )
 
     def getRef(id:Ref):Option[Int] =  getPos(id).map(p => s.stackSize() - (p +1))
@@ -67,6 +67,11 @@ trait PositionTracker extends ValueTracker {
 
   override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     val nStack = super.unpack(res, src, mode, origin, stack)
+    placeMany(res, stack.stackSize(), nStack)
+  }
+
+  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    val nStack = super.inspectUnpack(res, src, origin, stack)
     placeMany(res, stack.stackSize(), nStack)
   }
 

@@ -26,8 +26,6 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   private var imports = Map[String,Seq[String]]()
   private var availableBindings = Set.empty[String]
 
-  private def startsUpper(elem:String) = elem.length > 0 && elem.charAt(0).isUpper
-
   override def visitImport_(ctx: MandalaParser.Import_Context): Map[Seq[String], Seq[SourceId]] = {
     val elems = ctx.path().part.asScala.map(name => getName(name).getText)
     if(ctx.wildcard() != null) {
@@ -106,7 +104,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   }
 
   override def visitFunction(ctx: MandalaParser.FunctionContext): Map[Seq[String], Seq[SourceId]] = {
-    val bodyBindings = ctx.params().p.asScala.map(n => getName(n.name).getText).toSet
+    val bodyBindings = extractParamsBindings(ctx.params())
     withBindings(bodyBindings) {
       availableGenerics = componentGenerics ++ extractGenericArgs(ctx.genericArgs())
       val res = super.visitFunction(ctx)
@@ -187,11 +185,38 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
     }
   }
 
+
+
+
+  def extractBindings(ctx:MandalaParser.BindingContext):Set[String] = {
+    if(ctx.name() != null) {
+      Set(getName(ctx.name()).getText)
+    } else if(ctx.patterns() != null){
+      extractPatternBindings(ctx.patterns())
+    } else {
+      Set.empty
+    }
+  }
+
+  def extractPatternBindings(ctx: MandalaParser.PatternsContext): Set[String] = {
+    ctx.p.asScala.flatMap(extractBindings).toSet
+  }
+
+  def extractParamsBindings(ctx: MandalaParser.ParamsContext):Set[String] = {
+    ctx.p.asScala.flatMap(pctx => {
+      if(pctx.name() != null) {
+        Set(getName(pctx.name()).getText)
+      } else {
+        extractPatternBindings(pctx.patterns())
+      }
+    }).toSet
+  }
+
   override def visitBranch(ctx: MandalaParser.BranchContext): Map[Seq[String], Seq[SourceId]] = {
-    val extracts = if(ctx == null || ctx.extracts() == null) {
+    val extracts = if(ctx == null || ctx.patterns() == null) {
       Set.empty[String]
     } else {
-      ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
+      extractPatternBindings(ctx.patterns())
     }
     withBindings(extracts) {
       super.visitBranch(ctx)
@@ -199,8 +224,8 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   }
 
   override def visitSucc(ctx: MandalaParser.SuccContext): Map[Seq[String], Seq[SourceId]] = {
-    val extracts = if(ctx.extracts() != null) {
-      ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
+    val extracts = if(ctx.patterns() != null) {
+      extractPatternBindings(ctx.patterns())
     } else {
       Set.empty[String]
     }
@@ -210,8 +235,8 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   }
 
   override def visitFail(ctx: MandalaParser.FailContext): Map[Seq[String], Seq[SourceId]] = {
-    val extracts = if(ctx.extracts() != null) {
-      ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
+    val extracts = if(ctx.patterns() != null) {
+      extractPatternBindings(ctx.patterns())
     } else {
       Set.empty[String]
     }
@@ -248,23 +273,20 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
 
   override def visitLet(ctx: MandalaParser.LetContext): Map[Seq[String], Seq[SourceId]] = {
     val bindImports = visit(ctx.bind)
-    val assigImports = visitAssigs(ctx.assigs())
-    val extracts = ctx.assigs().`val`.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
+    val assigImports = visitTopPatterns(ctx.topPatterns())
+
+    val extracts = if(ctx.topPatterns().binding() != null){
+      extractBindings(ctx.topPatterns().binding())
+    } else {
+      extractPatternBindings(ctx.topPatterns().patterns())
+    }
+
     val execImports = withBindings(extracts) {
       visit(ctx.exec)
     }
     aggregateResult(aggregateResult(bindImports, assigImports), execImports)
   }
 
-  override def visitUnpack(ctx: MandalaParser.UnpackContext): Map[Seq[String], Seq[SourceId]] = {
-    val bindImports = visit(ctx.bind)
-    val extractImports = visitExtracts(ctx.extracts())
-    val extracts = ctx.extracts().p.asScala.filter(_.name() != null).map(n => getName(n.name()).getText).toSet
-    val execImports = withBindings(extracts) {
-      visit(ctx.exec)
-    }
-    aggregateResult(aggregateResult(bindImports, extractImports), execImports)
-  }
 
   override def visitPath(ctx: PathContext): Map[Seq[String], Seq[SourceId]] = {
     visitRef(ctx.part.asScala.map(getName(_).getText), sourceIdFromContext(ctx), isComp = false)

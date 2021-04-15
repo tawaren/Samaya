@@ -12,6 +12,8 @@ import samaya.toolbox.track.TypeTracker
 //todo: check taht all is checked
 trait CapabilityChecker extends TypeTracker{
 
+  private final val Priority = 100;
+
   private val gens = entry match {
     case Left(value) => value.generics.map(_.name)
     case Right(value) => value.generics.map(_.name)
@@ -26,7 +28,7 @@ trait CapabilityChecker extends TypeTracker{
     val frame = stack.frameValues
     frame.take(assigns.size).map(v => (v,stack.getType(v))).foreach {
       case (v, typ) => if(!typ.hasCap(context, Capability.Unbound)) {
-        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} returned from a block must have unbound capability", v.src, Error))
+        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} returned from a block must have unbound capability", v.src, Error, Checking(Priority)))
       }
     }
     super.traverseBlockEnd(assigns, origin, stack)
@@ -36,7 +38,7 @@ trait CapabilityChecker extends TypeTracker{
     val typ = stack.getType(src)
     mode match {
       case FetchMode.Copy => if(!typ.hasCap(context,Capability.Copy)) {
-        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the fetch opcode must have the copy capability", origin, Error))
+       feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the fetch opcode must have the copy capability", origin, Error, Checking(Priority)))
       }
       case _ =>
     }
@@ -47,13 +49,12 @@ trait CapabilityChecker extends TypeTracker{
     val typ = stack.getType(src)
     mode match {
       case FetchMode.Copy => if(!typ.hasCap(context,Capability.Copy)) {
-        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the unpack opcode must have the copy capability", origin, Error))
+        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the unpack opcode must have the copy capability", origin, Error, Checking(Priority)))
       }
       case _ =>
     }
     super.unpack(res, src, mode, origin, stack)
   }
-
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     val fieldId = fieldName.src
@@ -63,7 +64,7 @@ trait CapabilityChecker extends TypeTracker{
           val ctrs = adt.ctrs(context)
           val fields = ctrs.head._2
           if (!hasCap(fields.get(fieldName.name), Capability.Copy)) {
-            feedback(LocatedMessage(s"The value with type ${adt.prettyString(context, gens)} copied with the field opcode must have the copy capability", fieldId, Error))
+            feedback(LocatedMessage(s"The value with type ${adt.prettyString(context, gens)} copied with the field opcode must have the copy capability", fieldId, Error, Checking(Priority)))
           }
         case _ =>
       }
@@ -72,7 +73,7 @@ trait CapabilityChecker extends TypeTracker{
           val ctrs = adt.ctrs(context)
           val fields = ctrs.head._2
           if (!fields.filter(_._1 != fieldName.name).forall(_._2.hasCap(context, Capability.Drop))) {
-            feedback(LocatedMessage("Extracting a field requires that the other fields must be of a type with the drop capability", fieldId, Error))
+            feedback(LocatedMessage("Extracting a field requires that the other fields must be of a type with the drop capability", fieldId, Error, Checking(Priority)))
           }
         case _ =>
       }
@@ -84,7 +85,7 @@ trait CapabilityChecker extends TypeTracker{
     //Ensure it is not freed
     stack.getType(src) match {
       case proj:Projected => if(!proj.inner.hasCap(context, Capability.Primitive)) {
-        feedback(LocatedMessage(s"Projections of non-primitive type ${proj.prettyString(context,gens)} can not be reversed", origin, Error))
+        feedback(LocatedMessage(s"Projections of non-primitive type ${proj.prettyString(context,gens)} can not be reversed", origin, Error, Checking(Priority)))
       }
       case _ =>
     }
@@ -96,7 +97,7 @@ trait CapabilityChecker extends TypeTracker{
       case FetchMode.Copy =>
         srcs.map(id => (id, stack.getType(id))).foreach {
           case (id,typ) => if(!typ.hasCap(context, Capability.Copy)) {
-            feedback(LocatedMessage("The Argument to a copy pack must be of a type with the copy capability", id.src, Error))
+            feedback(LocatedMessage("The Argument to a copy pack must be of a type with the copy capability", id.src, Error, Checking(Priority)))
           }
         }
       case _ =>
@@ -108,11 +109,11 @@ trait CapabilityChecker extends TypeTracker{
   override def tryInvokeBefore(res: Seq[AttrId], func: Func, params: Seq[(Boolean, Ref)], succ: (Seq[AttrId], Seq[OpCode]), fail: (Seq[AttrId], Seq[OpCode]), origin: SourceId, stack: Stack): Stack = {
     func.paramInfo(context).zip(params).foreach{
       case ((typ, _), (true, ref)) => if(!typ.hasCap(context, Capability.Value)){
-        feedback(LocatedMessage("Essential try invoke arguments must have the value capability", ref.src, Error))
+        feedback(LocatedMessage("Essential try invoke arguments must have the value capability", ref.src, Error, Checking(Priority)))
 
       }
       case ((typ, true), (false, ref)) => if(!typ.hasCap(context, Capability.Drop)){
-        feedback(LocatedMessage("Consumed non essential try invoke arguments must have the drop capability", ref.src, Error))
+        feedback(LocatedMessage("Consumed non essential try invoke arguments must have the drop capability", ref.src, Error, Checking(Priority)))
       }
       case _ =>
     }

@@ -4,6 +4,7 @@ import samaya.structure.types.Type.{Projected, Unknown}
 import samaya.structure.types._
 import samaya.toolbox.stack.SlotFrameStack.SlotDomain
 import samaya.structure.{Attribute, Param}
+import samaya.types.Context
 
 /**
   * The Type Tracker associates a type with each value produced by the Value Tracker
@@ -16,7 +17,7 @@ trait TypeTracker extends ValueTracker {
   //provide an implicit view of the stack that knows how to fetch / set types
   final implicit class TypedStack(s:Stack) {
     def getType(id:Ref):Type = s.readSlot(TypeTracker,id).map(_.changeMeta()).getOrElse(Type.Unknown(Set.empty)(id.src))
-    private[TypeTracker] def withType(id:Ref, t:Type):Stack = s.updateSlot(TypeTracker,id)(_ => Some(t))
+    def withType(id:Ref, t:Type):Stack = s.updateSlot(TypeTracker,id)(_ => Some(t))
 
   }
 
@@ -29,7 +30,9 @@ trait TypeTracker extends ValueTracker {
 
   override def functionStart(params:Seq[Param], origin: SourceId, stack: Stack): Stack = {
     val nStack = super.functionStart(params, origin, stack)
-    params.foldLeft(nStack)((s, p) => s.withType(getParamVal(p),p.typ))
+    params.foldLeft(nStack)((s, p) => {
+      s.withType(getParamVal(p),p.typ)
+    })
   }
 
   override def caseStart(fields: Seq[AttrId], src: Ref, ctr: Id, mode: Option[FetchMode], origin: SourceId, stack: Stack): Stack ={
@@ -93,6 +96,19 @@ trait TypeTracker extends ValueTracker {
     }
 
     val nStack = super.unpack(fields, src, mode, origin, stack)
+    fields.zip(argTypes).foldLeft(nStack){
+      case (s, (id,cType)) => s.withType(id,cType)
+    }
+  }
+
+  override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    val nType = stack.getType(stack.resolve(src))
+    val argTypes = nType.projectionSeqMap {
+      case adt:AdtType => adt.ctrs(context).headOption.map(_._2.values.toSeq).getOrElse(Seq.empty).padTo(fields.size, Type.Unknown(Set.empty)(origin))
+      case _ => Seq.fill(fields.size)(Type.Unknown(Set.empty)(origin))
+    }
+
+    val nStack = super.inspectUnpack(fields, src, origin, stack)
     fields.zip(argTypes).foldLeft(nStack){
       case (s, (id,cType)) => s.withType(id,cType)
     }
@@ -177,6 +193,8 @@ class JoinType(val joined:Set[Type])(origin:SourceId, attributes:Seq[Attribute] 
     }
   }
   override def changeMeta(src: SourceId = src, attributes: Seq[Attribute] = attributes): JoinType = new JoinType(joined)(origin, attributes)
+  override def prettyString(context: Context, genNames: Seq[String]): String = s"join(${joined.map(_.prettyString(context,genNames)).mkString(",")})"
+
 }
 
 private object TypeTracker extends SlotDomain[Type] {

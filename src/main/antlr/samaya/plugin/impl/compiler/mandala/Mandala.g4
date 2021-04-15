@@ -6,7 +6,7 @@ grammar Mandala;
     package samaya.plugin.impl.compiler.mandala;
 }
 
-file: header* component+;
+file: header* component*;
 component: module | transaction | class_ | topInstance;
 header: import_;
 import_: IMPORT path wildcard
@@ -33,8 +33,6 @@ classEntry : functionDef;
 instanceEntry: aliasDef;
 
 dataDef : accessibilities ext? capabilities DATA name generics=genericArgs? ctrs? #Data;
-//signatureDef : accessibilities TRANSACTIONAL? capabilities SIGNATURE name generics=genericArgs? params rets #Sig;
-//implementDef : accessibilities EXTERNAL? IMPLEMENT name generics=genericArgs? captures=simpleParams FOR baseRef paramBindings=bindings (':' retBindings=ids)? funBody? #Implement;
 functionDef : accessibilities OVERLOADED? TRANSACTIONAL? EXTERNAL? FUNCTION name generics=genericArgs? params rets? funBody? #Function;
 instanceDef : INSTANCE name generics=genericArgs? FOR compRef '{' entry=instanceEntry* '}' #Instance;
 aliasDef: IMPLEMENT name generics=genericArgs? WITH baseRef;
@@ -86,23 +84,9 @@ params: '(' (p+=param) (COMMA p+=param)* ')'
        | '(' ')'
        ;
 
-param: IMPLICIT? CONTEXT? CONSUME? name ':' typeRef ;
-
-simpleParams: '(' (p+=simpleParam) (COMMA p+=simpleParam)* ')'
-            | '(' ')'
-            ;
-
-simpleParam: IMPLICIT? CONTEXT? name ':' type=typeRef ;
-
-bindings: '(' (i+=bindingName) (COMMA i+=bindingName)* ')'
-        |  i+=bindingName
-        ;
-
-bindingName: IMPLICIT? CONTEXT? name;
-
-ids: '(' (i+=name) (COMMA i+=name)* ')'
-   |  i+=name
-   ;
+param: IMPLICIT? CONTEXT? CONSUME? name ':' typeRef
+     | IMPLICIT? CONSUME? typeRef patterns
+     ;
 
 rets: ':' '(' (r+=ret) (COMMA r+=ret)* ')'
     | ':' r+=ret
@@ -155,30 +139,34 @@ prio2: op1=prio2 (MUL | DIV | MOD) op2=prio1          #MulDivExp
      | prio1                                          #Prio1Exp
      ;
 
-prio1: (BANG | INV) op1=prio1     #UnExp
-     | prio0                      #Prio0Exp
+prio1: (BANG | INV ) op1=prio1                        #UnExp
+     | prio0                                          #Prio0Exp
      ;
 
 prio0: exp
      | '(' prio8 ')'
      ;
 
-exp: lit                                            #Literal
-    | LET assigs bind=tailExp IN exec=tailExp       #Let
-    | LET extracts '@' bind=argExp IN exec=tailExp  #Unpack
-    | MATCH argExp WITH branches                    #Switch
-    | INSPECT argExp WITH branches                  #Inspect
-    | TRY baseRef tryArgs WITH OR? succ OR fail     #TryInvoke
-    | TRY baseRef tryArgs WITH OR? fail OR succ     #TryInvoke
+exp: lit                                                #Literal
+    | LET topPatterns EQ bind=tailExp IN exec=tailExp  #Let
+    | ENSURE argExp IN exec=tailExp                     #Ensure
+    | MATCH argExp WITH branches                        #Switch
+    | INSPECT argExp WITH branches                      #Inspect
+    | IF argExp THEN casT=tailExp ELSE casF=tailExp     #IfThenElse
+    | TRY baseRef tryArgs WITH OR? succ OR fail         #TryInvoke
+    | TRY baseRef tryArgs WITH OR? fail OR succ         #TryInvoke
     //Todo: can we have operator for that
-    | PROJECT '(' argExp ')'                        #Project
-    | PROJECT argExp                                #Project
-    | UNPROJECT '(' argExp ')'                      #Unproject
-    | UNPROJECT argExp                              #Unproject
+    | PROJECT '(' argExp ')'                            #Project
+    | PROJECT argExp                                    #Project
+    | '<' argExp '>'                                    #Project
+    | UNPROJECT '(' argExp ')'                          #Unproject
+    | UNPROJECT argExp                                  #Unproject
+    | '>' argExp '<'                                    #Unproject
+
     //These two would be ambigous if we make the # optional
     | typeRef '#' (ctrName=name)? args?             #Pack
     | baseRef args                                  #Invoke
-    | ROLLBACK args? (':' typeRefArgs)?             #Rollback
+    | ROLLBACK typeRefArgs?                         #Rollback
     | name                                          #Symbol
     | exp typeHint                                  #Typed
     | exp DOT name                                  #Get
@@ -190,17 +178,18 @@ exp: lit                                            #Literal
 //      allow inferenz from surounding??
 
 //Todo: allow _ to indivate drop
-assigs: val+=binding '='
-     | '(' (val+=binding) (COMMA val+=binding)* ')' EQ
-     | '(' ')' EQ
-     ;
 
-extracts: p+=binding
-        | '(' (p+=binding) (COMMA p+=binding)* ')'
-        | '(' ')' ;
+topPatterns: binding
+            | patterns
+            ;
+
+patterns: '(' (p+=binding) (COMMA p+=binding)* ')'
+        | '(' ')'
+         ;
 
 binding: CONTEXT? name typeHint?
      | '_' typeHint?
+     | typeRef patterns
      ;
 
 typeHint: ':' typeRef;
@@ -211,22 +200,28 @@ lit: HEX    #Hex
 
 branches: OR? (b+=branch) (OR b+=branch)*;
 
-branch: name extracts? '=>' tailExp;
-succ: SUCCESS extracts? '=>' tailExp;
-fail: FAILURE extracts? '=>' tailExp;
-
+branch: name patterns? '=>' tailExp
+      | name patterns? '{' tailExp '}'
+      ;
+succ: SUCCESS patterns? '=>' tailExp
+    | SUCCESS patterns? '{' tailExp '}'
+    ;
+fail: FAILURE patterns? '=>' tailExp
+    | FAILURE patterns? '{' tailExp '}'
+    ;
 
 args : '(' (a+=argExp) (COMMA a+=argExp)* ')'
      | '(' ')'
      ;
 
-tryArgs : '(' (a+=bangExp) (COMMA a+=bangExp)* ')'
+tryArgs : '(' (a+=dolExp) (COMMA a+=dolExp)* ')'
      | '(' ')'
      ;
-bangExp : BANG? argExp;
+dolExp : DOL? argExp;
 
 typeRef : baseRef
         | PROJECT '(' typeRef ')'
+        | '<' typeRef '>'
         | QUEST
         ;
 baseRef : path targs=typeRefArgs?
@@ -247,7 +242,7 @@ keywords : id=TOP | id=TRANSACTIONAL | id=FOR | id=MODULE | id=TRANSACTION | id=
          | id=COPY | id=PERSIST | id=PRIMITIVE | id=VALUE | id=UNBOUND | id=INSPECT | id=CONSUME | id=IMPLICIT | id=CALL | id=DEFINE
          | id=PROJECT | id=UNPROJECT | id=CASE | id=IMPORT | id=SUCCESS | id=FAILURE | id=CREATE | id=GLOBAL | id=LOCAL | id=GUARDED
          | id=VOITAILE | id=STANDARD | id=RELEVANT | id=AFFINE | id=LINEAR | id=PERSISTED | id=TEMPORARY | id=BOUNDED | id=UNBOUNDED
-         | id=AS | id=TYPE | id=OVERLOADED
+         | id=AS | id=TYPE | id=OVERLOADED | id=IF | id=THEN | id=ELSE | id=ENSURE
          ;
 
 BLOCK_COMMENT : '/*' .*? ( '*/' | EOF ) -> channel(HIDDEN) ;
@@ -258,10 +253,12 @@ AMP: '&';
 BANG: '!';
 INV: '~';
 QUEST: '?';
+DOL: '$';
 OR: '|';
 XOR: '^';
 TICK: '`';
 MUL: '*';
+UNDIV: '\\';
 DIV: '/';
 MOD: '%';
 ADD: '+';
@@ -298,6 +295,7 @@ RETURN: 'return';
 ROLLBACK: 'rollback';
 MATCH: 'match';
 WITH: 'with';
+ENSURE: 'ensure';
 
 TRY: 'try';
 PHANTOM : 'phantom';
@@ -319,6 +317,9 @@ CASE: 'case';
 IMPORT: 'import';
 USE: 'use';
 AS: 'as';
+IF: 'if';
+THEN: 'then';
+ELSE: 'else';
 SUCCESS: 'success';
 FAILURE: 'failure';
 CREATE: 'create';

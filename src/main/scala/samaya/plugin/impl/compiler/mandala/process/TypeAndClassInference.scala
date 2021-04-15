@@ -1,5 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.process
 
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, feedback}
 import samaya.plugin.impl.compiler.mandala.components.clazz.Class
 import samaya.structure.types.{Accessibility, AttrId, CompLink, DefinedFunc, Func, OpCode, Permission, Ref, SourceId, Type}
 import samaya.structure.{Attribute, Binding, FunctionDef, Generic, ImplementDef, Interface, Param, Result}
@@ -10,6 +11,7 @@ import samaya.toolbox.transform.EntryTransformer
 import samaya.types.Context
 
 class TypeAndClassInference(instanceFinder:InstanceFinder) extends EntryTransformer{
+  val Priority:Int = 80
 
   override def transformFunction(in: FunctionDef, context: Context): FunctionDef = {
     val analyzer = new TypeAndClassInference(Left(in), context)
@@ -112,13 +114,18 @@ class TypeAndClassInference(instanceFinder:InstanceFinder) extends EntryTransfor
       //repeat as long as we make progress
       for((func, ClassCallInfo(name, comp, applies, src)) <- foundClasses) {
         val resolvedApplies = applies.map {
-          case t:TypeVar => subs(t)
+          case t:TypeVar => subs.get(t) match {
+            case Some(sub) => sub
+            case None =>
+              feedback(LocatedMessage("Could not inference class generics", src, Error, Compiler(Priority)))
+              t
+          }
           case t => t
         }
         instanceFinder.findAndApplyTargetFunction(name, comp, resolvedApplies, func.applies, context, src) match {
           case Some(newFunc) => funSubs = funSubs + (func -> newFunc)
             //Error was printed in findAndApplyTargetFunction
-          case None => funSubs = funSubs + (func -> Func.Unknown(src))
+          case None => funSubs
         }
       }
       AnalysisResults(parent.substitutions, parent.joins, funSubs)

@@ -18,7 +18,8 @@ object FrameStack {
     val parents = branches.map(_.parent)
     val parent = parents.head
     assert(parents.forall(_.eq(parents.head)))
-    val branchRes = branches.map(_.frameValues.reverse).transpose.padTo(rets.size, Seq.empty)
+    val min = branches.minBy(_.frameSize).frameSize
+    val branchRes = branches.map(_.frameValues.take(min).reverse).transpose.padTo(rets.size, Seq.empty)
     rets.zip(branchRes).zipWithIndex.foldLeft((parent,Map.empty[Val,Seq[Val]])) {
       case ((p,m),((ret, vs),idx)) =>
         val (nVal, nStack) = p.push(ret,origin,idx)

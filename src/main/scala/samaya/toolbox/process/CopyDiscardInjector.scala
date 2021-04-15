@@ -1,11 +1,9 @@
 package samaya.toolbox.process
 
-import samaya.compilation.ErrorManager.producesErrorValue
 import samaya.structure.{Attribute, Binding, FunctionDef, Generic, ImplementDef, Package, Param, Result, Transaction, types}
 import samaya.structure.types.{SourceId, _}
-import samaya.toolbox.process.TypeInference.{TypeInference, TypeReplacing}
 import samaya.toolbox.stack.SlotFrameStack.SlotDomain
-import samaya.toolbox.track.{TypeTracker, ValueTracker}
+import samaya.toolbox.track.TypeTracker
 import samaya.toolbox.transform.{EntryTransformer, TransformTraverser}
 import samaya.toolbox.traverse.ViewTraverser
 import samaya.types.Context
@@ -389,8 +387,8 @@ object CopyDiscardInjector extends EntryTransformer {
       nStack
     }
 
-    override def inspectBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: Stack): Stack = {
-      val nStack = super.inspectBefore(res, src, branches, origin, state)
+    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: Stack): Stack = {
+      val nStack = super.inspectSwitchBefore(res, src, branches, origin, state)
       newScope(branches.size)
       nStack
     }
@@ -452,7 +450,7 @@ object CopyDiscardInjector extends EntryTransformer {
       if(ignoreOpcodes.contains(origin)) return code
       //Note: the filter(state.exists) removes the values that were entered to eagerly by analyzer
       //      it is way easier to do this here then in Analyzer (but in Analyzer would be conceptually more consistent)
-      val injectedVals = lookup.injectionsByCodeId(origin).filter(state.exists)
+      val injectedVals = lookup.injectionsByCodeId(origin).filter(state.exists).filter(v => state.getType(v).hasCap(context, Capability.Drop))
       if(injectedVals.isEmpty) {
         code
       } else {

@@ -100,9 +100,7 @@ object Func {
     def onDef[T](context: Context, fallback: T, f: (D, Type => Type) => T): T = {
       getEntry(context) match {
         case Some(func) => f(func, x => x)
-        case None =>
-          feedback(LocatedMessage(s"Can not find associated data type with index: $offset in current module", src, Error))
-          fallback
+        case None => fallback
       }
     }
   }
@@ -120,9 +118,7 @@ object Func {
     def onDef[T](context: Context, fallback: T, f: (D, Type => Type) => T): T = {
       getEntry(context)  match {
         case Some(func) => f(func, adaptLocals)
-        case None =>
-          feedback(LocatedMessage(s"Can not find dependent module with hash: $moduleRef", src, Error))
-          fallback
+        case None => fallback
       }
     }
   }
@@ -152,7 +148,7 @@ object StdFunc {
         case None => false
         case Some(Accessibility.Global) => true
         case Some(Accessibility.Local) => isCurrentModule
-        case Some(Accessibility.Guarded(guards)) => guards.forall { name =>
+        case Some(Accessibility.Guarded(guards)) => isCurrentModule || guards.forall { name =>
           sig.generics.find(_.name == name) match {
             case Some(value) => applies(value.index).isCurrentModule
             case None => false
@@ -199,7 +195,7 @@ object ImplFunc {
         case None => false
         case Some(Accessibility.Global) => true
         case Some(Accessibility.Local) => isCurrentModule
-        case Some(Accessibility.Guarded(guards)) => guards.forall { name =>
+        case Some(Accessibility.Guarded(guards)) => isCurrentModule || guards.forall { name =>
           sig.generics.find(_.name == name) match {
             case Some(value) => applies(value.index).isCurrentModule
             case None => false

@@ -7,6 +7,8 @@ import samaya.toolbox.track.TypeTracker
 //todo: split into Untyped & Typed Arity Checker
 trait ArityChecker extends TypeTracker{
 
+  private final val Priority = 120;
+
   private val gens = entry match {
     case Left(value) => value.generics.map(_.name)
     case Right(value) => value.generics.map(_.name)
@@ -15,7 +17,7 @@ trait ArityChecker extends TypeTracker{
   override def traverseBlockStart(input: Seq[AttrId], result: Seq[Id], code: Seq[OpCode], origin: SourceId, stack: Stack): Stack = {
     val bodyRes = code.filter(!_.isVirtual).last.rets.size;
     if(code.filter(!_.isVirtual).last.rets.size != result.size) {
-      feedback(LocatedMessage(s"The block body returns $bodyRes values but ${result.size} values were expected", origin, Error))
+      feedback(LocatedMessage(s"The block body returns $bodyRes values but ${result.size} values were expected", origin, Error, Checking(Priority)))
     }
     super.traverseBlockStart(input, result, code, origin, stack)
   }
@@ -25,11 +27,11 @@ trait ArityChecker extends TypeTracker{
       val src = entry.fold(_.src,_.src)
       val modName = context.module.map(_.name+".").getOrElse("")
       val funName = context.pkg.name+"."+modName+name
-      feedback(LocatedMessage(s"The body of function $funName returns ${stack.stackSize()} values but ${results.size} values were expected", src, Error))
+      feedback(LocatedMessage(s"The body of function $funName returns ${stack.stackSize()} values but ${results.size} values were expected", src, Error, Checking(Priority)))
     }
 
     if(stack.frameSize != results.size) {
-      unexpected("Only one frame was expected")
+      unexpected("Only one frame was expected", Checking(Priority))
     }
     super.finalState(stack)
   }
@@ -42,9 +44,9 @@ trait ArityChecker extends TypeTracker{
         ctrs.get(ctr.name) match {
           //check that whe have the right amount of fields
           case Some(args) => if(args.size != fields.size) {
-            feedback(LocatedMessage(s"The case extracts ${fields.size} values but the constructor ${adt.prettyString(context,gens)}#${ctr.name} only defines ${args.size} fields", origin, Error))
+            feedback(LocatedMessage(s"The case extracts ${fields.size} values but the constructor ${adt.prettyString(context,gens)}#${ctr.name} only defines ${args.size} fields", origin, Error, Checking(Priority)))
           }
-          case None => feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error))
+          case None => feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error, Checking(Priority)))
         }
       case _ =>
     }
@@ -56,12 +58,12 @@ trait ArityChecker extends TypeTracker{
       case adt:AdtType =>
         val ctrs = adt.ctrs(context)
         if(ctrs.size != 1) {
-          feedback(LocatedMessage(s"${adt.prettyString(context,gens)} has ${ctrs.size} constructors but 1 was expected", origin, Error))
+          feedback(LocatedMessage(s"${adt.prettyString(context,gens)} has ${ctrs.size} constructors but 1 was expected", origin, Error, Checking(Priority)))
         }
         ctrs.headOption match {
           //check that whe have the right amount of fields
           case Some((name,fields)) => if(fields.size != res.size) {
-            feedback(LocatedMessage(s"The unpack extracts ${res.size} values but the constructor ${adt.prettyString(context,gens)}#$name only defines ${fields.size} fields", origin, Error))
+            feedback(LocatedMessage(s"The unpack extracts ${res.size} values but the constructor ${adt.prettyString(context,gens)}#$name only defines ${fields.size} fields", origin, Error, Checking(Priority)))
           }
           case _ =>
         }
@@ -70,17 +72,36 @@ trait ArityChecker extends TypeTracker{
     super.unpack(res, src, mode, origin, stack)
   }
 
+  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    stack.getType(src).projectionExtract {
+      case adt:AdtType =>
+        val ctrs = adt.ctrs(context)
+        if(ctrs.size != 1) {
+          feedback(LocatedMessage(s"${adt.prettyString(context,gens)} has ${ctrs.size} constructors but 1 was expected", origin, Error, Checking(Priority)))
+        }
+        ctrs.headOption match {
+          //check that whe have the right amount of fields
+          case Some((name,fields)) => if(fields.size != res.size) {
+            feedback(LocatedMessage(s"The inspect unpack extracts ${res.size} values but the constructor ${adt.prettyString(context,gens)}#$name only defines ${fields.size} fields", origin, Error, Checking(Priority)))
+          }
+          case _ =>
+        }
+      case _ =>
+    }
+    super.inspectUnpack(res, src, origin, stack)
+  }
+
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     stack.getType(src).projectionExtract {
       case adt:AdtType =>
         val ctrs = adt.ctrs(context)
         if(ctrs.size != 1) {
-          feedback(LocatedMessage(s"${adt.prettyString(context,gens)} has ${ctrs.size} constructors but 1 was expected", origin, Error))
+          feedback(LocatedMessage(s"${adt.prettyString(context,gens)} has ${ctrs.size} constructors but 1 was expected", origin, Error, Checking(Priority)))
         }
         ctrs.headOption match {
           //check that whe have the right amount of fields
           case Some((name,fields)) => if(!fields.contains(fieldName.name)) {
-            feedback(LocatedMessage(s"The field ${fieldName.name} is not a field defined by the constructor ${adt.prettyString(context,gens)}#$name", fieldName.src, Error))
+            feedback(LocatedMessage(s"The field ${fieldName.name} is not a field defined by the constructor ${adt.prettyString(context,gens)}#$name", fieldName.src, Error, Checking(Priority)))
           }
           case _ =>
         }
@@ -92,7 +113,7 @@ trait ArityChecker extends TypeTracker{
   override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin:SourceId, stack: Stack):Stack = {
     res.typ.projectionExtract {
       case adt: AdtType => if(!adt.ctrs(context).contains(ctr.name)) {
-          feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error))
+          feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error, Checking(Priority)))
       }
       case _ =>
     }
@@ -103,14 +124,14 @@ trait ArityChecker extends TypeTracker{
     val paramInfo = func.paramInfo(context)
     if(paramInfo.size != params.size) {
       if(!func.isUnknown) {
-        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} takes ${paramInfo.size} arguments but ${params.size} were provided", origin, Error))
+        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} takes ${paramInfo.size} arguments but ${params.size} were provided", origin, Error, Checking(Priority)))
       }
     }
 
     val retInfo = func.returnInfo(context)
     if(retInfo.size != res.size) {
       if(!func.isUnknown) {
-        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} returns ${retInfo.size} values but ${res.size} were expected", origin, Error))
+        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} returns ${retInfo.size} values but ${res.size} were expected", origin, Error, Checking(Priority)))
       }
     }
   }
@@ -132,20 +153,20 @@ trait ArityChecker extends TypeTracker{
     val paramInfo = func.paramInfo(context)
     if(paramInfo.size != params.size) {
       if(!func.isUnknown) {
-        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} takes ${paramInfo.size} arguments but ${params.size} were provided", origin, Error))
+        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} takes ${paramInfo.size} arguments but ${params.size} were provided", origin, Error, Checking(Priority)))
       }
     }
     val essentials = params.count(b => b)
     if(essentials != failParams) {
       if(!func.isUnknown) {
-        feedback(LocatedMessage(s"The call to ${func.prettyString(context,gens)} has $essentials arguments but $failParams were expected by the fail case", origin, Error))
+        feedback(LocatedMessage(s"The call to ${func.prettyString(context,gens)} has $essentials arguments but $failParams were expected by the fail case", origin, Error, Checking(Priority)))
       }
     }
 
     val retInfo = func.returnInfo(context)
     if(retInfo.size != succParams) {
       if(!func.isUnknown) {
-        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} returns ${retInfo.size} values but $succParams were expected by the success case", origin, Error))
+        feedback(LocatedMessage(s"The function ${func.prettyString(context,gens)} returns ${retInfo.size} values but $succParams were expected by the success case", origin, Error, Checking(Priority)))
       }
     }
   }
@@ -165,14 +186,14 @@ trait ArityChecker extends TypeTracker{
 
   override def rollback(res: Seq[AttrId], resTypes: Seq[Type], params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
     if(res.size != resTypes.size) {
-      feedback(LocatedMessage(s"The rollback defines ${resTypes.size} return types but expects ${res.size} returned values", origin, Error))
+      feedback(LocatedMessage(s"The rollback defines ${resTypes.size} return types but expects ${res.size} returned values", origin, Error, Checking(Priority)))
     }
     super.rollback(res, resTypes, params, origin, stack)
   }
 
   override def _return(res: Seq[AttrId], src: Seq[Ref], origin: SourceId, stack: Stack): Stack = {
     if(res.size != src.size) {
-      feedback(LocatedMessage(s"The return opcode defines ${src.size} arguments but expects ${res.size} returned values", origin, Error))
+      feedback(LocatedMessage(s"The return opcode defines ${src.size} arguments but expects ${res.size} returned values", origin, Error, Checking(Priority)))
     }
     super._return(res, src, origin, stack)
   }

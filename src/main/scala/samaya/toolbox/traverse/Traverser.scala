@@ -81,11 +81,13 @@ trait Traverser{
   def _return(res: Seq[AttrId], src: Seq[Ref], origin: SourceId, state: State):State = state
   def discard(trg:Ref, origin:SourceId, state: State):State = state
   def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, state: State):State = state
+  def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, state: State):State = state
   def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, state: State): State = state
   def switchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, state: State): State = state
-  def inspectBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: State): State = state
-  def inspectAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: State): State = state
+  def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: State): State = state
+  def inspectSwitchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: State): State = state
   def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, state: State):State = state
+
   def pack(res:TypedId, srcs:Seq[Ref], ctr:Id, mode:FetchMode, origin:SourceId, state:State):State = state
   def invoke(res: Seq[AttrId], func: Func, params: Seq[Ref], origin: SourceId, state: State): State = state
   def invokeSig(res: Seq[AttrId], src: Ref, params: Seq[Ref], origin: SourceId, state: State): State = state

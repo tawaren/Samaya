@@ -28,8 +28,11 @@ object Id {
   def apply(src:SourceId):Id = new Id("$#"+nextNo())(src)
   def apply(num:Int,src:SourceId):Id = new Id("$"+num)(src)
 
-  def apply(name:String,src:SourceId):Id = new Id(name.replaceAllLiterally("$","$$"))(src)
+  def apply(name:String,src:SourceId):Id = new Id(name)(src)
   def apply(id:Id):Id = new Id(s"${id.name}#${nextNo()}")(id.src)
+
+  //in case the source language allows $ it needs to call this before apply
+  def escapeName(name:String) = name.replaceAllLiterally("$","_$")
 
 }
 

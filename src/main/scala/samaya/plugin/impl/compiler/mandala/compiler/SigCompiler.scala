@@ -1,6 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, feedback}
 import samaya.plugin.impl.compiler.mandala.components.module.MandalaModule
 import samaya.plugin.impl.compiler.mandala.{MandalaCompiler, MandalaParser}
 import samaya.structure.types.Permission.{Call, Define}
@@ -12,7 +12,6 @@ import scala.collection.JavaConverters._
 
 trait SigCompiler extends CompilerToolbox {
   self: CapabilityCompiler with PermissionCompiler with ComponentBuilder with ComponentResolver with ExpressionBuilder =>
-
 
   override def visitFunction(ctx: MandalaParser.FunctionContext): FunctionDef = {
     val localGenerics = withDefaultCaps(genericFunCapsDefault){
@@ -36,28 +35,31 @@ trait SigCompiler extends CompilerToolbox {
       val overloaded = ctx.OVERLOADED != null
       if(overloaded) {
         if(componentGenerics.nonEmpty){
-          feedback(LocatedMessage("Class Functions can not be overloaded", sourceId, Error))
+          feedback(LocatedMessage("Class Functions can not be overloaded", sourceId, Error, Compiler()))
         }
         if(localEntries.contains(rawName)) {
-          feedback(LocatedMessage("Overloaded Functions can not share a name with non-overloaded function", sourceId, Error))
+          feedback(LocatedMessage("Overloaded Functions can not share a name with non-overloaded function", sourceId, Error, Compiler()))
         }
       }
-      val bodyBindings = ctx.params().p.asScala.map(n => visitName(n.name))
+
+      val (funParams, bodyBindings, processors) = visitParams(ctx.params())
       val (resResults, body) = if(ctx.rets() != null) {
         val res = withFreshIndex{
           ctx.rets().r.asScala.map(visitRet)
         }
         val defaultIds = res.map(b => Id(b.name, b.src))
-        val code = withDefaultReturns(defaultIds){processBody(ctx.funBody, bodyBindings.toSet)}
+        val code = withDefaultReturns(defaultIds){
+          processBody(ctx.funBody, bodyBindings)
+        }
         if(code.isDefined) {
           if(componentGenerics.nonEmpty || ext){
-            feedback(LocatedMessage("External and Class Functions can not have a body", sourceIdFromContext(ctx.funBody), Error))
+            feedback(LocatedMessage("External and Class Functions can not have a body", sourceIdFromContext(ctx.funBody), Error, Compiler()))
           }
 
         }
         (res,code)
       } else {
-        val code = processBody(ctx.funBody, bodyBindings.toSet)
+        val code = processBody(ctx.funBody, bodyBindings)
         val last = code.get.filter(!_.isVirtual).last.rets
         val res = withFreshIndex{
           last.map(aid => new Result {
@@ -71,12 +73,12 @@ trait SigCompiler extends CompilerToolbox {
         (res,code)
       }
 
-      if(body.isEmpty && !ext && componentGenerics.isEmpty) {
-        feedback(LocatedMessage("Non External Functions need a body",sourceId,Error))
+      if(body.isEmpty && processors.nonEmpty) {
+        feedback(LocatedMessage("External Functions can not have paramter extractors",sourceId,Error, Compiler()))
       }
 
-      val funParams = withFreshIndex{
-        ctx.params().p.asScala.map(visitParam)
+      if(body.isEmpty && !ext && componentGenerics.isEmpty) {
+        feedback(LocatedMessage("Non External Functions need a body",sourceId,Error, Compiler()))
       }
 
       val funName = if(overloaded){
@@ -86,11 +88,10 @@ trait SigCompiler extends CompilerToolbox {
         rawName
       }
 
-
       registerFunctionDef(new FunctionDef {
         override val position: Int = nextPosition()
         override val src:SourceId = sourceId
-        override val code: Seq[OpCode] = body.getOrElse(Seq.empty)
+        override val code: Seq[OpCode] = body.map(processors ++ _).getOrElse(Seq.empty)
         override val external:Boolean = ext
         override val transactional: Boolean = ctx.TRANSACTIONAL() != null
         override val index: Int = nextFunIndex()
@@ -104,35 +105,44 @@ trait SigCompiler extends CompilerToolbox {
     }
   }
 
-
-  override def visitParam(ctx: MandalaParser.ParamContext): Param = {
-    var attr = Seq.empty[Attribute]
-    if(ctx.IMPLICIT() != null) attr = attr :+ Attribute(MandalaCompiler.Implicit_Attribute_Name, Attribute.Unit)
-    if(ctx.CONTEXT() != null) attr = attr :+ Attribute(MandalaCompiler.Context_Attribute_Name, Attribute.Unit)
-    new Param {
-      override val name: String = visitName(ctx.name)
-      override val index: Int = nextIndex()
-      override val typ: Type = visitTypeRef(ctx.typeRef())
-      override val consumes: Boolean = ctx.CONSUME() != null
-      override val attributes: Seq[Attribute] = attr
-      override val src: SourceId = sourceIdFromContext(ctx)
+  override def visitParams(ctx: MandalaParser.ParamsContext): (Seq[Param], Set[String], Seq[OpCode]) = {
+    withFreshIndex{
+      ctx.p.asScala.map(visitParam).foldLeft(Seq.empty[Param],Set.empty[String], Seq.empty[OpCode]){
+        case ((pAggr,bAggr,cAggr),(param,bindings,code)) => (pAggr :+ param, bAggr++bindings, cAggr++code)
+      }
     }
   }
 
-  override def visitSimpleParam(ctx: MandalaParser.SimpleParamContext): Param = {
-    var attr = Seq.empty[Attribute]
-    if(ctx.IMPLICIT() != null) attr = attr :+ Attribute(MandalaCompiler.Implicit_Attribute_Name, Attribute.Unit)
-    if(ctx.CONTEXT() != null) attr = attr :+ Attribute(MandalaCompiler.Context_Attribute_Name, Attribute.Unit)
-    new Param {
-      override val name: String = visitName(ctx.name)
-      override val index: Int = nextIndex()
-      override val typ: Type = visitTypeRef(ctx.typeRef())
-      override val consumes: Boolean = true
-      override val attributes: Seq[Attribute] = attr
-      override val src: SourceId = sourceIdFromContext(ctx)
+  override def visitParam(ctx: MandalaParser.ParamContext): (Param, Set[String], Seq[OpCode]) = {
+    if(ctx.name() != null){
+      var attr = Seq.empty[Attribute]
+      if(ctx.IMPLICIT() != null) attr = attr :+ Attribute(MandalaCompiler.Implicit_Attribute_Name, Attribute.Unit)
+      if(ctx.CONTEXT() != null) attr = attr :+ Attribute(MandalaCompiler.Context_Attribute_Name, Attribute.Unit)
+      val param:Param = new Param {
+        override val name: String = visitName(ctx.name)
+        override val index: Int = nextIndex()
+        override val typ: Type = visitTypeRef(ctx.typeRef())
+        override val consumes: Boolean = ctx.CONSUME() != null
+        override val attributes: Seq[Attribute] = attr
+        override val src: SourceId = sourceIdFromContext(ctx)
+      }
+      (param, Set(param.name), Seq.empty)
+    } else {
+      withInspectMode(ctx.CONSUME() == null){
+        val (id, bindings, code, paramType) = visitPatternBinding(ctx, ctx.typeRef(), ctx.patterns())
+        val param:Param = new Param {
+          override val name: String = id.name
+          override val index: Int = nextIndex()
+          override val typ: Type = paramType
+          override val consumes: Boolean = ctx.CONSUME() != null
+          override val attributes: Seq[Attribute] = id.attributes
+          override val src: SourceId = sourceIdFromContext(ctx)
+        }
+        (param, bindings, code)
+      }
     }
-  }
 
+  }
 
   override def visitRet(ctx: MandalaParser.RetContext): Result = new Result {
     override val name: String = visitName(ctx.name)
@@ -140,32 +150,5 @@ trait SigCompiler extends CompilerToolbox {
     override val typ: Type = visitTypeRef(ctx.typeRef())
     override val attributes: Seq[Attribute] = Seq.empty
     override val src: SourceId = sourceIdFromContext(ctx)
-  }
-
-  private def visitBindings(ctx: MandalaParser.IdsContext): Seq[Binding] = {
-    withFreshIndex{
-      ctx.i.asScala.map(t => new Binding {
-        override val name: String = visitName(t)
-        override val index: Int = nextIndex()
-        override val attributes: Seq[Attribute] = Seq.empty
-        override val src: SourceId = sourceIdFromContext(ctx)
-      })
-    }
-  }
-
-  override def visitBindings(ctx: MandalaParser.BindingsContext): Seq[Binding] = {
-    withFreshIndex{
-      ctx.i.asScala.map(t => {
-        var attr = Seq.empty[Attribute]
-        if(t.IMPLICIT() != null) attr = attr :+ Attribute(MandalaCompiler.Implicit_Attribute_Name, Attribute.Unit)
-        if(t.CONTEXT() != null) attr = attr :+ Attribute(MandalaCompiler.Context_Attribute_Name, Attribute.Unit)
-        new Binding {
-          override val name: String = visitName(t.name())
-          override val index: Int = nextIndex()
-          override val attributes: Seq[Attribute] = attr
-          override val src: SourceId = sourceIdFromContext(ctx)
-        }
-      })
-    }
   }
 }

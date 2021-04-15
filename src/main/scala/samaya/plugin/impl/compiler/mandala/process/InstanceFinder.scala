@@ -1,17 +1,17 @@
 package samaya.plugin.impl.compiler.mandala.process
 
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, feedback}
 import samaya.plugin.impl.compiler.mandala.MandalaCompiler
 import samaya.plugin.impl.compiler.mandala.components.InstInfo
 import samaya.plugin.impl.compiler.mandala.components.instance.DefInstance
 import samaya.plugin.impl.compiler.mandala.components.module.MandalaModule
+import samaya.plugin.impl.compiler.mandala.components.clazz.Class
 import samaya.structure.{Attribute, Package}
 import samaya.structure.types.Type.RemoteLookup
 import samaya.structure.types.{CompLink, Func, SourceId, Type}
 import samaya.toolbox.process.TypeInference
 import samaya.types.Context
-
 import scala.annotation.tailrec
 
 class InstanceFinder(imported:Map[CompLink,Seq[InstInfo]], localized:Map[CompLink,Seq[InstInfo]]) {
@@ -108,8 +108,23 @@ class InstanceFinder(imported:Map[CompLink,Seq[InstInfo]], localized:Map[CompLin
           func.replaceContainedTypes(replaceFun)
       })
     } else {
+      val pkgName = ctx.pkg.packageOfLink(clazz).map(_.name+".").getOrElse("")
+      val cls = ctx.pkg.componentByLink(clazz) match {
+        case Some(cls:Class) => s"$pkgName${cls.name}[${clazzApplies.map(_.prettyString(ctx)).mkString(",")}]"
+        case None => "unknown"
+      }
+      if(candidates.isEmpty) {
+        feedback(LocatedMessage(s"Instance resolution for class $cls failed",src,Error, Compiler()))
+      } else {
+        val pretty = candidates.map{
+          case (matches, func) =>
+            //todo: we hav recursive pretty print -- how can we make better
+            val substitution = (matches ++ baseApplies).map(_.prettyString(ctx))
+            func.prettyString(ctx, substitution)
+        }
+        feedback(LocatedMessage(s"Instance resolution for class $cls produced multiple candidates: ${pretty.mkString(",")}",src,Error, Compiler()))
+      }
       //We have an ambiguity
-      feedback(LocatedMessage(s"${candidates.size} instances where available but 1 was expected",src,Error))
       None
     }
   }

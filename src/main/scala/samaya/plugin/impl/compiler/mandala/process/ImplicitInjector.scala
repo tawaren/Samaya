@@ -58,7 +58,7 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
     private def providedMap():Map[Type,Val] = providedStack.head
     private def record(typ:Type, place:Val): Unit = {
       if(providedStack.head.contains(typ)) {
-        feedback(LocatedMessage(s"The context value $place shadows previous context value ${providedStack.head(typ)} of the same type",place.src,Warning))
+        feedback(LocatedMessage(s"The context value $place shadows previous context value ${providedStack.head(typ)} of the same type",place.src,Warning, Compiler()))
       }
       providedStack = providedStack.head.updated(typ, place) +: providedStack.tail
     }
@@ -151,14 +151,20 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
       nStack
     }
 
+    override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: State): State = {
+      val nStack = super.inspectUnpack(res,src,origin,stack)
+      recordAll(res, nStack)
+      nStack
+    }
+
     override def switchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: State): State = {
       val nStack = super.switchAfter(res,src,branches,mode,origin,stack)
       recordAll(res, nStack)
       nStack
     }
 
-    override def inspectAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: State): State = {
-      val nStack = super.inspectAfter(res,src,branches,origin,stack)
+    override def inspectSwitchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: State): State = {
+      val nStack = super.inspectSwitchAfter(res,src,branches,origin,stack)
       recordAll(res, nStack)
       nStack
     }
@@ -205,20 +211,20 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
                           producingOpcodes = producingOpcodes :+ code
                           ret
                         case None =>
-                          feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error))
+                          feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error, Compiler()))
                           Val.unknown(p.name, src)
                       }
                     case _ =>
-                      feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error))
+                      feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error, Compiler()))
                       Val.unknown(p.name, src)
                   }
                   case _ =>
-                    feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error))
+                    feedback(LocatedMessage(s"Can not find or generate implicit for ${typ.prettyString(context)}",src,Error, Compiler()))
                     Val.unknown(p.name, src)
                 }
               }
             } else {
-              feedback(LocatedMessage("Only implicit parameters are allowed to be missing",src,Error))
+              feedback(LocatedMessage("Only implicit parameters are allowed to be missing",src,Error, Compiler()))
               Val.unknown(p.name, src)
             }
         }

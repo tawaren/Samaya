@@ -3,7 +3,7 @@ package samaya.plugin.impl.inter.json
 import java.io.OutputStream
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, readFromStream, writeToStream}
-import samaya.compilation.ErrorManager.{PlainMessage, Warning, feedback, unexpected}
+import samaya.compilation.ErrorManager.{InterfaceGen, InterfaceParsing, PlainMessage, Warning, feedback, unexpected}
 import samaya.plugin.impl.inter.json.JsonModel.{InterfaceModule, InterfaceTransaction}
 import samaya.structure.{Component, Interface, Meta, Module, ModuleInterface, Transaction, TransactionInterface}
 import samaya.plugin.service.{InterfaceEncoder, Selectors}
@@ -41,7 +41,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     inter match {
       case module: Module => serializeModuleInterface(module, codeHash, hasError, out)
       case transaction: Transaction => serializeTransactionInterface(transaction, codeHash, hasError, out)
-      case other => unexpected(s"Component $other can not be used in interface gen")
+      case other => unexpected(s"Component $other can not be used in interface gen", InterfaceGen())
     }
   }
 
@@ -50,7 +50,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceModule](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning, InterfaceParsing()))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new ModuleInterfaceImpl(baseLoc, interfaceAst)
@@ -71,7 +71,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     try {
       //Parse the input to an AST using Interface as parsing description
       val interfaceAst = readFromStream[InterfaceTransaction](file.content)
-      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning))
+      if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning, InterfaceParsing()))
       //convert the AST to the the internal shared representation of Modules
       val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
       val impl = new TransactionInterfaceImpl(baseLoc, interfaceAst)

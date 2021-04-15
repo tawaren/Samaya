@@ -3,11 +3,11 @@ package samaya.validation
 import java.io.DataOutputStream
 import java.security.{DigestOutputStream, MessageDigest}
 
-import com.rfksystems.blake2b.Blake2b
+import io.github.rctcwyvrn.blake3.Blake3
 import samaya.codegen.ComponentSerializer
 import samaya.compilation.ErrorManager
 import samaya.structure.{Component, Interface, LinkablePackage, Meta}
-import samaya.structure.types.Hash
+import samaya.structure.types.{Blake3OutputStream, Hash}
 import samaya.compilation.ErrorManager._
 import samaya.plugin.impl.compiler.mandala.components.module.MandalaModuleInterface
 import samaya.plugin.service.{ComponentValidator, InterfaceEncoder, LanguageCompiler}
@@ -23,7 +23,7 @@ object PackageValidator {
   //validate the package integrety
   def validatePackage(pkg: LinkablePackage): Unit = {
     if(pkg.name.length == 0 || pkg.name.charAt(0).isUpper) {
-      feedback(PlainMessage("Package names must start with a lowercase Character", Error))
+      feedback(PlainMessage("Package names must start with a lowercase Character", Error, Checking()))
     }
     //check that the hash was corectly computed
     validatePackageHash(pkg)
@@ -48,7 +48,7 @@ object PackageValidator {
     val sourceCode = comp.meta.sourceCode match {
       case Some(sc) => sc
       case None =>
-        feedback(PlainMessage(s"Can not recompile component ${pkg.location}/${comp.name} because source code is missing", Warning))
+        feedback(PlainMessage(s"Can not recompile component ${pkg.location}/${comp.name} because source code is missing", Warning, Checking()))
         return
     }
 
@@ -83,13 +83,13 @@ object PackageValidator {
         //      We should still be able to generate the interface but currently we are not
         validateCompiledInterface(comp, pkg, hasError, ccomp)
       case None =>
-        feedback(PlainMessage(s"Recompilation for module ${pkg.location}/${comp.name} failed", Error))
+        feedback(PlainMessage(s"Recompilation for module ${pkg.location}/${comp.name} failed", Error, Checking()))
     }
   }
 
   //validate the 3 different hashes for the 3 different categories
   private def validatePackageHash(pkg: LinkablePackage): Unit = {
-    val digest = MessageDigest.getInstance(Blake2b.BLAKE2_B_160)
+    val digest = Blake3.newInstance
     pkg.components.map(e => e.meta.interfaceHash).sorted.distinct.foreach(h => digest.update(h.data))
 
     pkg.dependencies.sortBy(p => p.name).distinct.foreach(p => {
@@ -97,8 +97,8 @@ object PackageValidator {
       digest.update(p.hash.data)
     })
 
-    if(pkg.hash != Hash.fromBytes(digest.digest())){
-      feedback(PlainMessage(s"Integrity for package ${pkg.location} violated", Error))
+    if(pkg.hash != Hash.fromBytes(digest.digest(Hash.len))){
+      feedback(PlainMessage(s"Integrity for package ${pkg.location} violated", Error, Checking()))
     }
   }
 
@@ -113,12 +113,12 @@ object PackageValidator {
   private def validateCompiledCode(component: Interface[Component], pkg: LinkablePackage, ccomp: Component): Unit = {
     component.meta.codeHash match {
       case Some(hash) =>
-        val digest = MessageDigest.getInstance(Blake2b.BLAKE2_B_160)
-        val stream = new DataOutputStream( new DigestOutputStream((_: Int) => {}, digest))
+        val digest = Blake3.newInstance
+        val stream = new DataOutputStream( new Blake3OutputStream((_: Int) => {}, digest))
         ComponentSerializer.serialize(stream, ccomp, component.meta.sourceHash, pkg)
         stream.close()
-        if(hash != Hash.fromBytes(digest.digest())) {
-          feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${component.name} produced wrong code hash", Error))
+        if(hash != Hash.fromBytes(digest.digest(Hash.len))) {
+          feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${component.name} produced wrong code hash", Error, Checking()))
         }
       case None => //Nothing to do for code less components
     }
@@ -127,15 +127,15 @@ object PackageValidator {
 
   //Hash the interface and compare it ti the recorded hash in the entry
   private def validateCompiledInterface(comp: Interface[Component], pkg: LinkablePackage, hasError:Boolean, ccomp: Interface[Component]): Unit = {
-    val digest = MessageDigest.getInstance(Blake2b.BLAKE2_B_160)
-    val stream = new DataOutputStream( new DigestOutputStream((_: Int) => {}, digest))
+    val digest = Blake3.newInstance
+    val stream = new DataOutputStream( new Blake3OutputStream((_: Int) => {}, digest))
     if(!InterfaceEncoder.serializeInterface(ccomp, comp.meta.codeHash, hasError, stream)){
       stream.close()
-      feedback(PlainMessage(s"Can not check interface for component ${pkg.location}/${comp.name} because interface serializer is missing", Warning))
+      feedback(PlainMessage(s"Can not check interface for component ${pkg.location}/${comp.name} because interface serializer is missing", Warning, Checking()))
     } else {
       stream.close()
-      if(comp.meta.interfaceHash != Hash.fromBytes(digest.digest())){
-        feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${comp.name} produced wrong interface hash", Error))
+      if(comp.meta.interfaceHash != Hash.fromBytes(digest.digest(Hash.len))){
+        feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${comp.name} produced wrong interface hash", Error, Checking()))
       }
     }
   }
@@ -146,9 +146,9 @@ object PackageValidator {
       case Some(code) =>
         val hash = Hash.fromInputSource(code)
         if(!meta.codeHash.contains(hash)) {
-          feedback(PlainMessage(s"Code source for $kind ${pkg.location}/$name produced wrong code hash", Error))
+          feedback(PlainMessage(s"Code source for $kind ${pkg.location}/$name produced wrong code hash", Error, Checking()))
         }
-      case None => feedback(PlainMessage(s"Can not check code integrity of entry ${pkg.location}/$name as code source is missing", Warning))
+      case None => feedback(PlainMessage(s"Can not check code integrity of entry ${pkg.location}/$name as code source is missing", Warning, Checking()))
     }
   }
 
@@ -157,16 +157,16 @@ object PackageValidator {
     meta.sourceCode match {
       case Some(sourceCode) =>
         if(meta.sourceHash != Hash.fromInputSource(sourceCode)) {
-          feedback(PlainMessage(s"Source code source for $kind ${pkg.location}/$name produced wrong source code hash", Error))
+          feedback(PlainMessage(s"Source code source for $kind ${pkg.location}/$name produced wrong source code hash", Error, Checking()))
         }
-      case None => feedback(PlainMessage(s"Can not check source code integrity of entry ${pkg.location}/${name} as source code source is missing", Warning))
+      case None => feedback(PlainMessage(s"Can not check source code integrity of entry ${pkg.location}/${name} as source code source is missing", Warning, Checking()))
     }
   }
 
   //Hash the interface file and compare it ti the recorded hash in the entry
   private def validateEntryInterface(meta: Meta, name:String, kind:String, pkg: LinkablePackage): Unit = {
     if(meta.interfaceHash != Hash.fromInputSource(meta.interface)){
-      feedback(PlainMessage(s"Interface source for $kind ${pkg.location}/$name produced wrong interface hash", Error))
+      feedback(PlainMessage(s"Interface source for $kind ${pkg.location}/$name produced wrong interface hash", Error, Checking()))
     }
   }
 

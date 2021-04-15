@@ -1,6 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, feedback}
 import samaya.plugin.impl.compiler.mandala.MandalaParser
 import samaya.plugin.impl.compiler.mandala.components.clazz.{Class, MandalaFunClassCompilerOutput, MandalaSigClassCompilerOutput}
 import samaya.structure.{Attribute, DataDef, FunctionDef, Generic, Module, ModuleEntry, Param, Result, SignatureDef}
@@ -18,7 +18,7 @@ trait ClassBuilder  extends CompilerToolbox{
       visitGenericArgs(ctx.genericArgs())
     }
     if(generics.isEmpty) {
-      feedback(LocatedMessage("Classes must have at least one generic arguments (use a module otherwise)", sourceIdFromContext(ctx), Error))
+      feedback(LocatedMessage("Classes must have at least one generic arguments (use a module otherwise)", sourceIdFromContext(ctx), Error, Compiler()))
     }
     withComponentBuilder(name) {
       withDefaultAccess(Global) {

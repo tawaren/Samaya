@@ -46,7 +46,7 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
         )
       )
       if(includes.getOrElse(Set.empty).size != parsed.includes.getOrElse(Set.empty).size) {
-        feedback(PlainMessage(s"Could not deserialize all includes", Warning))
+        feedback(PlainMessage(s"Could not deserialize all includes", Warning, Builder()))
       }
 
       val dependencies: Option[Set[LinkablePackage]] = toInputSources(parsed.dependencies, Some(Set(PackageEncoder.packageExtensionPrefix))).map(
@@ -55,25 +55,25 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
         )
       )
       if(dependencies.getOrElse(Set.empty).size != parsed.dependencies.getOrElse(Set.empty).size) {
-        feedback(PlainMessage(s"Could not deserialize all dependencies", Warning))
+        feedback(PlainMessage(s"Could not deserialize all dependencies", Warning, Builder()))
       }
       cycleBreaker = oldBreaker
       (includes, dependencies)
     } else {
-      feedback(PlainMessage(s"Cyclic dependencies are not allowed. $name depends on itself", Error))
+      feedback(PlainMessage(s"Cyclic dependencies are not allowed. $name depends on itself", Error, Builder()))
       (None, None)
     }
 
 
     //todo: if something gets lost we ned an error
-    val components: Option[Set[Path]] = parsed.components.map(
+    val components: Option[Set[Path]] = parsed.sources.map(
       s => s.toSet.flatMap(LocationResolver.parsePath)
     )
 
     val sourceIdent = LocationResolver.parsePath(parsed.locations.source)match {
       case Some(id) => id
       case None =>
-        ErrorManager.feedback(PlainMessage("Could not parse source path", ErrorManager.Error))
+        ErrorManager.feedback(PlainMessage("Could not parse source path", ErrorManager.Error, Builder()))
         return None
 
     }
@@ -81,35 +81,35 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
     val codeIdent = LocationResolver.parsePath(parsed.locations.code)match {
       case Some(id) => id
       case None =>
-        ErrorManager.feedback(PlainMessage("Could not parse code path", ErrorManager.Error))
+        ErrorManager.feedback(PlainMessage("Could not parse code path", ErrorManager.Error, Builder()))
         return None
     }
 
     val interfaceIdent = LocationResolver.parsePath(parsed.locations.interface)match {
       case Some(id) => id
       case None =>
-        ErrorManager.feedback(PlainMessage("Could not parse interface path", ErrorManager.Error))
+        ErrorManager.feedback(PlainMessage("Could not parse interface path", ErrorManager.Error, Builder()))
         return None
     }
 
     val sourceLocation: Location = LocationResolver.resolveLocation(workspaceLocation,sourceIdent) match {
       case Some(loc) => loc
       case None =>
-        ErrorManager.feedback(PlainMessage("Could not load source location", ErrorManager.Error))
+        ErrorManager.feedback(PlainMessage("Could not load source location", ErrorManager.Error, Builder()))
         return None
     }
 
     val codeLocation: Location = LocationResolver.resolveLocation(workspaceLocation,codeIdent, create = true)  match {
       case Some(loc) => loc
       case None =>
-        ErrorManager.feedback(PlainMessage("Could not load code location", ErrorManager.Error))
+        ErrorManager.feedback(PlainMessage("Could not load code location", ErrorManager.Error, Builder()))
         return None
     }
 
     val interfaceLocation: Location = LocationResolver.resolveLocation(workspaceLocation,interfaceIdent, create = true)  match {
       case Some(loc) => loc
       case None =>
-        ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error))
+        ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error, Builder()))
         return None
     }
     Some(new WorkspaceImpl(name, workspaceLocation, includes, dependencies, components, sourceLocation, codeLocation, interfaceLocation))

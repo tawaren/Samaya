@@ -32,7 +32,7 @@ object ModuleSerializer {
     //todo: asserts for lenghts
     def addModule(link:CompLink):Unit = link match {
       case CompLink.ByCode(hash) => modules.getOrElseUpdate(hash,modules.size+modOffset)
-      case CompLink.ByInterface(hash) => feedback(PlainMessage("By interface links are not allowed in finalized modules", Error))
+      case CompLink.ByInterface(hash) => feedback(PlainMessage("By interface links are not allowed in finalized modules", Error, CodeGen()))
     } //Note: Module0 is the local thats way +modOffset
 
     def addPerm(idx:Int, typ:Boolean, perm:Permission):Unit = {
@@ -51,7 +51,7 @@ object ModuleSerializer {
         typ match {
           case Type.GenericType(_,_) =>
             //todo: is this already checked elsewhere if not do so and remove
-            if(perm.isDefined) feedback(LocatedMessage("A Generic Type can not be referred by a permission", typ.src, Warning))
+            if(perm.isDefined) feedback(LocatedMessage("A Generic Type can not be referred by a permission", typ.src, Warning, CodeGen()))
             //We do not handle generics as we can get offset from type, no need to enter into map and complicate generic offset logic
             return
           case remote: Type.RemoteLookup[_] => addModule(remote.moduleRef)
@@ -214,13 +214,17 @@ object ModuleSerializer {
         val ctr = dataType.constructor(i).get
         //#[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash, Debug, Parsable, Serializable)]
         //pub struct Case {
-        //  pub fields:Vec<TypeRef>
+        //  pub fields:Vec<Field>
         val fields = ctr.fields.length
         out.writeByte(fields)
         for(i <- 0 until fields) {
+          //#[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash, Debug, Parsable, Serializable)]
+          //pub struct Field {
           val field = ctr.field(i).get
-          val typIdx:Byte = collector.typeIndex(field.typ)
-          out.writeByte(typIdx)
+          // pub indexed:Vec<u8>     //indexes this is part of
+          out.writeByte(0)
+          // pub typ:TypeRef
+          out.writeByte(collector.typeIndex(field.typ))
         }
         //}
       }
@@ -461,7 +465,7 @@ object ModuleSerializer {
           case AdtType.Remote(moduleHash, offset, _) => (imports.modIndex(moduleHash), offset)
           case LitType.Remote(moduleHash, offset, _) => (imports.modIndex(moduleHash), offset)
             //Please compiler
-          case _: Type.Projected => unexpected("should never happen")
+          case _: Type.Projected => unexpected("should never happen", CodeGen())
         }
         //  pub module:ModRef
         out.writeByte(mod)
@@ -474,7 +478,7 @@ object ModuleSerializer {
           out.writeByte(imports.typeIndex(t))
         }
       //}
-      case _:Type.Unknown => unexpected("Unknown type reached Serializer")
+      case _:Type.Unknown => unexpected("Unknown type reached Serializer", CodeGen())
     })
     //}
   }
@@ -501,7 +505,7 @@ object ModuleSerializer {
         case ImplFunc.Local(offset, _) => (1.toByte, 0.toByte, offset)
         case ImplFunc.Remote(moduleHash, offset, _) => (1.toByte, imports.modIndex(moduleHash), offset)
 
-        case _:Func.Unknown => unexpected("Unknown Function Reached Serializer")
+        case _:Func.Unknown => unexpected("Unknown Function Reached Serializer", CodeGen())
       }
       out.writeByte(caseIdx)
       //  pub module:ModRef

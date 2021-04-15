@@ -16,9 +16,10 @@ trait Transformer extends Traverser {
     case OpCode.Discard(trg, id) => transformDiscard(trg, id, stack)
     case OpCode.DiscardMany(trg, id) => transformDiscardMany(trg, id, stack)
     case OpCode.Unpack(res, src, mode, id) => transformUnpack(res, src, mode, id, stack)
+    case OpCode.InspectUnpack(res, src, id) => transformInspectUnpack(res, src, id, stack)
     case OpCode.Field(res, src, pos, mode, id) => transformField(res, src, pos, mode, id, stack)
     case OpCode.Switch(res, src, branches, mode, id) => transformSwitch(res, src, branches, mode, id, stack)
-    case OpCode.Inspect(res, src, branches, id) => transformInspect(res, src, branches, id, stack)
+    case OpCode.InspectSwitch(res, src, branches, id) => transformInspectSwitch(res, src, branches, id, stack)
     case OpCode.Pack(res, src, ctr, mode, id) => transformPack(res, src, ctr, mode, id, stack)
     case OpCode.Invoke(res, func, param, id) => transformInvoke(res, func, param, id, stack)
     case OpCode.TryInvoke(res, func, param, success, failure,  id) => transformTryInvoke(res, func, param, success, failure, id, stack)
@@ -39,9 +40,10 @@ trait Transformer extends Traverser {
   def transformDiscard(trg:Ref, origin:SourceId, stack: State):Option[Seq[OpCode]] = None
   def transformDiscardMany(trg:Seq[Ref], origin:SourceId, stack: State):Option[Seq[OpCode]] = None
   def transformUnpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: State):Option[Seq[OpCode]] = None
+  def transformInspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: State):Option[Seq[OpCode]] = None
   def transformField(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: State):Option[Seq[OpCode]] = None
   def transformSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: State):Option[Seq[OpCode]] = None
-  def transformInspect(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: State):Option[Seq[OpCode]] = None
+  def transformInspectSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: State):Option[Seq[OpCode]] = None
   def transformPack(res:TypedId, srcs:Seq[Ref], ctr:Id, mode:FetchMode, origin:SourceId, stack:State):Option[Seq[OpCode]] = None
   def transformInvoke(res: Seq[AttrId], func: Func, params: Seq[Ref], origin: SourceId, stack: State):Option[Seq[OpCode]] = None
   def transformTryInvoke(res: Seq[AttrId], func: Func, param: Seq[(Boolean, Ref)], success: (Seq[AttrId], Seq[OpCode]), failure: (Seq[AttrId], Seq[OpCode]), id: SourceId, stack: State):Option[Seq[OpCode]] = None

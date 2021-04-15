@@ -2,9 +2,9 @@ package samaya.build
 
 import java.security.MessageDigest
 
-import com.rfksystems.blake2b.Blake2b
+import io.github.rctcwyvrn.blake3.Blake3
 import samaya.structure.types.Hash
-import samaya.structure.{Component, LinkablePackage, Interface, ModuleInterface, TransactionInterface, Module, Package, Transaction}
+import samaya.structure.{Component, Interface, LinkablePackage, Module, ModuleInterface, Package, Transaction, TransactionInterface}
 import samaya.types.Location
 case class PartialPackage(
                            override val name: String,
@@ -14,7 +14,10 @@ case class PartialPackage(
   def withComponent(comp:Interface[Component]):PartialPackage = copy(components = components :+ comp)
 
   def toLinkablePackage(placement:Location): LinkablePackage = {
-    val digest = MessageDigest.getInstance(Blake2b.BLAKE2_B_160)
+
+
+
+    val digest = Blake3.newInstance
       components.map(e => e.meta.interfaceHash).sorted.distinct.foreach(h => digest.update(h.data))
       dependencies.sortBy(p => p.name).distinct.foreach(p => {
         digest.update(p.name.getBytes)
@@ -24,7 +27,7 @@ case class PartialPackage(
     new LinkablePackage(
       false,
       placement,
-      Hash.fromBytes(digest.digest()),
+      Hash.fromBytes(digest.digest(Hash.len)),
       name,
       components,
       dependencies,

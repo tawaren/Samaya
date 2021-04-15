@@ -1,6 +1,6 @@
 package samaya.toolbox.transform
 
-import samaya.compilation.ErrorManager.{Info, LocatedMessage, PlainMessage, feedback}
+import samaya.compilation.ErrorManager.{Checking, Info, LocatedMessage, PlainMessage, feedback}
 import samaya.structure.types._
 
 import scala.collection.immutable.ListMap
@@ -51,9 +51,10 @@ abstract class TransformTraverser extends Transformer {
       case ((acc, nStack), code@OpCode.Discard(trg, id)) => transform(nStack,acc,code, discard(trg, id, _))
       case ((acc, nStack), code@OpCode.DiscardMany(trgs, id)) => transform(nStack,acc,code, trgs.foldLeft(_) { (s, v) => discard(v, id, s) })
       case ((acc, nStack), code@OpCode.Unpack(res, src, mode, id)) => transform(nStack,acc,code,unpack(res, src, mode, id, _))
+      case ((acc, nStack), code@OpCode.InspectUnpack(res, src, id)) => transform(nStack,acc,code,inspectUnpack(res, src, id, _))
       case ((acc, nStack), code@OpCode.Field(res, src, pos, mode, id)) => transform(nStack,acc,code,field(res, src, pos, mode, id, _))
       case ((acc, nStack), OpCode.Switch(res, src, branches, mode, id)) => transformLocal(nStack,acc, transformBranchLocal(res, src, branches, Some(mode), id, _))
-      case ((acc, nStack), OpCode.Inspect(res, src, branches, id)) => transformLocal(nStack,acc, transformBranchLocal(res, src, branches, None, id, _))
+      case ((acc, nStack), OpCode.InspectSwitch(res, src, branches, id)) => transformLocal(nStack,acc, transformBranchLocal(res, src, branches, None, id, _))
       case ((acc, nStack), code@OpCode.Pack(res, src, tag, mode, id)) => transform(nStack,acc,code,pack(res, src, tag, mode, id, _))
       case ((acc, nStack), code@OpCode.Invoke(res, func, param, id)) => transform(nStack,acc,code,invoke(res, func, param, id, _))
       case ((acc, nStack), OpCode.TryInvoke(res, src, branches, success, failure, id)) => transformLocal(nStack,acc, transformTryInvokeLocal(res, Left(src), branches, success, failure, id, _))
@@ -77,7 +78,7 @@ abstract class TransformTraverser extends Transformer {
     val (isInspect, newState) = if(mode.isDefined) {
       (false, switchBefore(res, src, branches, mode.get, origin, stack))
     } else {
-      (true, inspectBefore(res, src, branches, origin, stack))
+      (true, inspectSwitchBefore(res, src, branches, origin, stack))
     }
 
     val branchStates = branches.zipWithIndex.map { case ((ctrName, (intro, code)), idx) =>
@@ -93,14 +94,14 @@ abstract class TransformTraverser extends Transformer {
     val fState = if(branchStates.nonEmpty) {
       traverseJoin(res.map(_.id), origin, branchStates.map(_._2))
     } else {
-      feedback(LocatedMessage("Empty branching detected", origin, Info))
+      feedback(LocatedMessage("Empty branching detected", origin, Info, Checking(10)))
       newState
     }
 
     if(!isInspect) {
       (OpCode.Switch(res, src, nBranches, mode.get, origin), switchAfter(res, src, nBranches, mode.get, origin, fState))
     } else {
-      (OpCode.Inspect(res, src, nBranches, origin), inspectAfter(res, src, nBranches, origin, fState))
+      (OpCode.InspectSwitch(res, src, nBranches, origin), inspectSwitchAfter(res, src, nBranches, origin, fState))
     }
   }
 

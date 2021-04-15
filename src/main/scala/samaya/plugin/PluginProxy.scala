@@ -12,7 +12,7 @@ trait PluginProxy {
   protected def select(sel:PluginType#Selector):Option[PluginType] =  {
     val res = PluginManager.getPlugin(category, sel)
     if(res.isEmpty) {
-      feedback(PlainMessage(s"No Plugin found satisfying selector: $sel", Warning))
+      feedback(PlainMessage(s"No Plugin found satisfying selector: $sel", Warning, Always))
     }
     res
   }
@@ -20,7 +20,7 @@ trait PluginProxy {
   protected def selectAll(sel:PluginType#Selector):Seq[PluginType] = {
     val res = PluginManager.getPlugins(category, sel)
     if(res.isEmpty) {
-      feedback(PlainMessage(s"No Plugin found satisfying selector: $sel", Warning))
+      feedback(PlainMessage(s"No Plugin found satisfying selector: $sel", Warning, Always))
     }
     res
   }

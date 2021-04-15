@@ -1,6 +1,6 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, feedback}
 import samaya.plugin.impl.compiler.mandala.{MandalaCompiler, MandalaParser}
 import samaya.plugin.impl.compiler.mandala.MandalaParser.InstanceContext
 import samaya.plugin.impl.compiler.mandala.components.instance.{ImplInstance, Instance, MandalaDefInstanceCompilerOutput, MandalaImplInstanceCompilerOutput}
@@ -16,7 +16,7 @@ trait InstanceBuilder extends CompilerToolbox{
 
   private def resolveLinks(ctx:InstanceContext):Option[(Map[String,Int], CompLink, CompLink)] = {
     val parts = ctx.compRef().path().part.asScala.map(visitName)
-    val (path,targets) = resolveImport(parts, isEntryPath = false)
+    val (path,targets) = resolveImport(parts, None, isEntryPath = false)
     val funLinks = targets.flatMap{
       case cls:FunClass =>
         val paramCounts = cls.functions.map(
@@ -34,9 +34,9 @@ trait InstanceBuilder extends CompilerToolbox{
     if(funLinks.size != 1 || sigLinks.size != 1) {
       val sourceId = sourceIdFromContext(ctx)
       if(targets.isEmpty && path.init.nonEmpty) {
-        feedback(LocatedMessage(s"Component ${path.init.mkString(".")} is missing in workspace", sourceId, Error))
+        feedback(LocatedMessage(s"Component ${path.init.mkString(".")} is missing in workspace", sourceId, Error, Compiler()))
       } else {
-        feedback(LocatedMessage(s"Class ${path.mkString(".")} does not exist", sourceId, Error))
+        feedback(LocatedMessage(s"Class ${path.mkString(".")} does not exist", sourceId, Error, Compiler()))
       }
       None
     } else {
@@ -73,7 +73,7 @@ trait InstanceBuilder extends CompilerToolbox{
             ctx.instanceEntry().asScala.flatMap(visitInstanceEntry)
           }
           if (implementInfos.map(_._1).distinct.size != implementInfos.size) {
-            feedback(LocatedMessage("Alias defined multiple times", sourceId, Error))
+            feedback(LocatedMessage("Alias defined multiple times", sourceId, Error, Compiler()))
           }
           val (impl, implMapping) = implInstance(name, localGenerics, sigClassLink, mode, classApplies, implementInfos, sourceId)
 
@@ -118,7 +118,7 @@ trait InstanceBuilder extends CompilerToolbox{
             ctx.instanceEntry().asScala.flatMap(visitInstanceEntry)
           }
           if (implementInfos.map(_._1).distinct.size != implementInfos.size) {
-            feedback(LocatedMessage("Alias defined multiple times", sourceId, Error))
+            feedback(LocatedMessage("Alias defined multiple times", sourceId, Error, Compiler()))
           }
 
           val implMapping:Map[String,Int] = env.pkg.componentByLink(sigLink) match {
@@ -129,7 +129,7 @@ trait InstanceBuilder extends CompilerToolbox{
             case _ =>
               //todo: can this happen or is this an unexpected
               //  Try to provoke
-              feedback(LocatedMessage("Can not resolve implemented signature",sourceId,Error))
+              feedback(LocatedMessage("Can not resolve implemented signature",sourceId,Error, Compiler()))
               Map.empty
           }
 
@@ -185,7 +185,7 @@ trait InstanceBuilder extends CompilerToolbox{
         case _ =>
           //todo: can this happen or is this an unexpected
           //  Try to provoke
-          feedback(LocatedMessage("Can not resolve implemented signature",srcId,Error))
+          feedback(LocatedMessage("Can not resolve implemented signature",srcId,Error, Compiler()))
           Map.empty
       }
       (new MandalaImplInstanceCompilerOutput(
@@ -258,7 +258,7 @@ trait InstanceBuilder extends CompilerToolbox{
       case _ =>
         //todo: can this happen or is this an unexpected
         //  Try to provoke
-        feedback(LocatedMessage("Can not resolve implement target",srcId,Error))
+        feedback(LocatedMessage("Can not resolve implement target",srcId,Error, Compiler()))
         None
     }
   }

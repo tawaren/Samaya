@@ -1,6 +1,5 @@
 package samaya.compilation
 
-import javax.lang.model.util.Elements.Origin
 import samaya.structure.types.{Region, SourceId}
 
 import scala.util.DynamicVariable
@@ -13,84 +12,120 @@ object ErrorManager {
   case object Fatal extends ErrorLevel
   case object Info extends ErrorLevel
 
+  private val priorityOrdering = Ordering.by[Priority,Int](_.primary).thenComparingInt(_.secondary)
+
+  sealed trait Priority extends Comparable[Priority]{
+    def primary:Int
+    def secondary:Int
+    override def compareTo(o: Priority): Int = priorityOrdering.compare(this,o)
+  }
+
+  //Special is excluded
+  case object Always extends Priority{override def primary: Int = -1; override def secondary: Int = 0}
+
+  case class Builder(override val secondary: Int = 100) extends Priority{override def primary: Int = 7}
+  case class Deployer(override val secondary: Int = 100) extends Priority{override def primary: Int = 6}
+  case class SourceParsing(override val secondary: Int = 100) extends Priority{override def primary: Int = 5}
+  case class Compiler(override val secondary: Int = 100) extends Priority{override def primary: Int = 4}
+  case class InterfaceParsing(override val secondary: Int = 100) extends Priority{override def primary: Int = 3}
+  case class Checking(override val secondary: Int = 100) extends Priority{override def primary: Int = 2}
+  case class InterfaceGen(override val secondary: Int = 100) extends Priority{override def primary: Int = 1}
+  case class CodeGen(override val secondary: Int = 100) extends Priority{override def primary: Int = 0}
+
+  case object Unused extends Priority{override def primary: Int = -1; override def secondary: Int = 0}
+
   trait Message {
     def level:ErrorLevel
+    def priority:Priority
   }
 
   private trait ErrorHandler {
     def record(err:Message)
+    def finish()
   }
 
   private val logger:DynamicVariable[ErrorHandler] = new DynamicVariable(ConsoleLogger)
-  private val formatter:DynamicVariable[ErrorFormatter] = new DynamicVariable(InterpolationFormatter)
-
-  implicit class FormatHelper(val sc: StringContext) extends AnyVal {
-    //will still compile but gives a feedback to the programmer
-    def info(args: Any*): Message = formatter.value.generateMessage(sc,Info,args:_*)
-    //will still compile but issue a warning
-    def warn(args: Any*): Message = formatter.value.generateMessage(sc,Warning,args:_*)
-    //will not compile and tell the programmer why
-    def error(args: Any*): Message = formatter.value.generateMessage(sc,Error,args:_*)
-    //makes continuation impossible
-    def fatal(args: Any*): Message = formatter.value.generateMessage(sc,Fatal,args:_*)
-  }
 
   case class ExceptionError(error:Exception) extends Message {
     override def toString: String = error.toString
     override def level: ErrorLevel = Fatal
+    override val priority: Priority = Always
   }
 
-  case class PlainMessage(msg:String, level:ErrorLevel) extends Message {
+  case class PlainMessage(msg:String, level:ErrorLevel, override val priority: Priority) extends Message {
     override def toString: String = level +": "+ msg
   }
 
-  case class LocatedMessage(msg:String, origin:Region, level:ErrorLevel) extends Message {
+  case class LocatedMessage(msg:String, origin:Region, level:ErrorLevel, override val priority: Priority) extends Message {
     override def toString: String = s"$level: ${origin.start} $msg"
   }
 
   object LocatedMessage {
-    def apply(msg:String, sources:Seq[SourceId], level:ErrorLevel):Seq[LocatedMessage] = sources.map(LocatedMessage(msg, _,  level))
-    def apply(msg:String, source:SourceId, level:ErrorLevel):LocatedMessage = LocatedMessage(msg, source.origin,  level)
+    def apply(msg:String, sources:Seq[SourceId], level:ErrorLevel, priority: Priority):Seq[LocatedMessage] = sources.map(LocatedMessage(msg, _,  level, priority))
+    def apply(msg:String, source:SourceId, level:ErrorLevel, priority: Priority):LocatedMessage = LocatedMessage(msg, source.origin,  level, priority)
   }
 
-  private case class UnexpectedErrorException(err:String) extends RuntimeException(err)
+  private case class UnexpectedErrorException(err:String, priority: Priority) extends RuntimeException(err)
+
+  def newPlainErrorScope[T]( b: => T): T = {
+    val delayer = new DelayedPriorityLogger(logger.value)
+    try {
+      val res = logger.withValue(delayer)(b)
+      delayer.finish()
+      res
+    } catch {
+      case exp@UnexpectedErrorException(err,priority) =>
+        delayer.record(PlainMessage(err,Fatal,priority))
+        delayer.finish()
+        throw exp;
+      case other:Exception =>
+        other.printStackTrace()
+        delayer.record(ExceptionError(other))
+        delayer.finish()
+        throw other;
+    }
+  }
 
   //todo: Have a version in a file Module context
   def canProduceErrors(b: => Unit): Boolean = {
     val handler = new CheckedHandler(logger.value)
+    val delayer = new DelayedPriorityLogger(handler)
     try {
-      logger.withValue(handler)(b)
+      logger.withValue(delayer)(b)
+      delayer.finish()
     } catch {
-      case exp@UnexpectedErrorException(err) =>
-        //Todo: Only if enabled
-        exp.printStackTrace()
-        handler.record(PlainMessage(err,Fatal))
-
+      case UnexpectedErrorException(err, priority) =>
+        delayer.record(PlainMessage(err,Fatal,priority))
+        delayer.finish()
       case other:Exception =>
         //Todo: Only if enabled
         other.printStackTrace()
-        handler.record(ExceptionError(other))
+        delayer.record(ExceptionError(other))
+        delayer.finish()
     }
     handler.hasError
   }
 
   def producesErrorValue[T]( b: => T): Option[T] = {
     val handler = new CheckedHandler(logger.value)
+    val delayer = new DelayedPriorityLogger(handler)
     try {
-      val res = logger.withValue(handler)(b)
+      val res = logger.withValue(delayer)(b)
+      delayer.finish()
       if(handler.hasError){
         None
       } else {
         Some(res)
       }
     } catch {
-      case exp@UnexpectedErrorException(err) =>
-        exp.printStackTrace()
-        handler.record(PlainMessage(err,Fatal))
+      case UnexpectedErrorException(err,priority) =>
+        delayer.record(PlainMessage(err,Fatal,priority))
+        delayer.finish()
         None
       case other:Exception =>
         other.printStackTrace()
-        handler.record(ExceptionError(other))
+        delayer.record(ExceptionError(other))
+        delayer.finish()
         None
     }
   }
@@ -107,8 +142,8 @@ object ErrorManager {
     err.foreach(feedback)
   }
 
-  def unexpected(err:String): Nothing = {
-    throw UnexpectedErrorException(err)
+  def unexpected(err:String, priority: Priority): Nothing = {
+    throw UnexpectedErrorException(err, priority)
   }
 
   //default impls
@@ -125,21 +160,27 @@ object ErrorManager {
         case Info => println(s"$BLUE$err$RESET")
       }
     }
+    //Nothing todo
+    override def finish(): Unit = ()
   }
 
-  private object InterpolationFormatter extends ErrorFormatter {
-    //todo: Make one that supports:
-    //      Printing the whole function / adt / error / line & highlight the specified parts
-    //      use the position infos in the Module to find the corresponding Function
-    //      prints each function... only once and highlights
-    //    Options: %c( ...... ) //after %c all the positions follow: c refers to context: adt, fun, error
-    //                          // each context is printed once if .... refers to multiple instances
-    //             %l( ...... ) //after %l all the positions follow: l refers to the line
-    //                          // each line is printed once if .... refers to multiple instances
-    //             %b( ...... ) //after %b all the positions follow: b refers to the block
-    //                          // each block is printed once if .... refers to multiple disconnected instances (for connected the common parent is printed)
-    override def generateMessage(sc: StringContext, level: ErrorLevel, args: Any*): Message = {
-      PlainMessage(sc.s(args:_*),level)
+  private class DelayedPriorityLogger(parent:ErrorHandler) extends ErrorHandler {
+    private var highestPrio:Priority = Unused
+    private var messages = Seq[Message]()
+    override def record(err: Message): Unit = {
+      if(err.priority == Always) parent.record(err)
+      val res = highestPrio.compareTo(err.priority)
+      if(res == 0) {
+        messages = messages :+ err
+      } else if(res < 0) {
+        highestPrio = err.priority
+        messages = Seq(err)
+      }
+    }
+    override def finish(): Unit = {
+      messages.foreach(parent.record)
+      messages = Seq()
+      parent.finish()
     }
   }
 
@@ -153,6 +194,7 @@ object ErrorManager {
       }
       parent.record(err)
     }
+    override def finish(): Unit = parent.finish()
   }
 
 }

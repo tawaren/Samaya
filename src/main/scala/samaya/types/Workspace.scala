@@ -16,8 +16,8 @@ trait Workspace {
   //name of the resulting package
   //defaults to workspace name if not explicitly provided
   def name:String
-  //components contained in the package
-  def components: Option[Set[Path]]
+  //sources contained in the package
+  def sources: Option[Set[Path]]
   // the place to look for sources
   def sourceLocation:Location
   //targets

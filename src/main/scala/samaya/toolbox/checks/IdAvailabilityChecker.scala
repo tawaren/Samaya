@@ -1,6 +1,6 @@
 package samaya.toolbox.checks
 
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, PlainMessage, feedback}
+import samaya.compilation.ErrorManager.{Checking, Error, LocatedMessage, PlainMessage, feedback}
 import samaya.structure.types._
 import samaya.toolbox.process.TypeInference
 import samaya.toolbox.track.ValueTracker
@@ -8,7 +8,8 @@ import samaya.toolbox.track.ValueTracker
 import scala.collection.immutable.ListMap
 
 trait IdAvailabilityChecker extends ValueTracker{
-
+  private final val Priority = 150;
+  
   private def useInfo(src:Set[SourceId]):String = {
     src.map(_.origin.start.localRefString).mkString(",")
   }
@@ -17,7 +18,7 @@ trait IdAvailabilityChecker extends ValueTracker{
     def checkId(id:Ref):Unit = {
 
       if(!stack.exists(stack.resolve(id))){
-        feedback(LocatedMessage(s"No value is bound to the name ${id.name} in the current scope", id.src, Error))
+        feedback(LocatedMessage(s"No value is bound to the name ${id.name} in the current scope", id.src, Error, Checking(Priority)))
       }
     }
 
@@ -28,7 +29,7 @@ trait IdAvailabilityChecker extends ValueTracker{
     val ids = res.map(_.id)
     if(ids.distinct.size != res.size) {
       ids.groupBy(v => v).filter(_._2.size >= 2).map(_._2.map(_.src).toSet).foreach{ vs =>
-        feedback(LocatedMessage(s"Name is used twice (${useInfo(vs)}) as an OpCode return binding", src, Error))
+        feedback(LocatedMessage(s"Name is used twice (${useInfo(vs)}) as an OpCode return binding", src, Error, Checking(Priority)))
       }
     }
   }
@@ -42,6 +43,12 @@ trait IdAvailabilityChecker extends ValueTracker{
     checkDuplicates(origin,res)
     stack.checkId(src)
     super.unpack(res, src, mode, origin, stack)
+  }
+
+  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    checkDuplicates(origin,res)
+    stack.checkId(src)
+    super.inspectUnpack(res, src, origin, stack)
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
@@ -103,10 +110,10 @@ trait IdAvailabilityChecker extends ValueTracker{
     super.switchBefore(res, src, branches, mode, origin, stack)
   }
 
-  override def inspectBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+  override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
     checkDuplicates(origin,res)
     stack.checkId(src)
-    super.inspectBefore(res, src, branches, origin, stack)
+    super.inspectSwitchBefore(res, src, branches, origin, stack)
   }
 
   override def project(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {

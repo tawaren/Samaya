@@ -1,7 +1,7 @@
 package samaya.plugin.impl.compiler.mandala.compiler
 
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
-import samaya.compilation.ErrorManager.{Error, LocatedMessage, feedback}
+import samaya.compilation.ErrorManager.{Compiler, Error, LocatedMessage, feedback}
 import samaya.plugin.impl.compiler.mandala.{Environment, MandalaBaseVisitor, MandalaParser}
 import samaya.structure.{Component, Interface}
 import samaya.structure.types._
@@ -15,7 +15,7 @@ trait CompilerToolbox extends MandalaBaseVisitor[Any] {
   def build(comp:Component,src:SourceId): Option[Interface[Component]] = {
     val key = (comp.name, comp.classifier)
     if(entries.contains(key)) {
-      feedback(LocatedMessage(s"Component with name ${comp.name} and classifier ${comp.classifier} already exists",src,Error))
+      feedback(LocatedMessage(s"Component with name ${comp.name} and classifier ${comp.classifier} already exists",src,Error, Compiler()))
     } else {
       entries = entries + key
     }

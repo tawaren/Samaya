@@ -1,7 +1,7 @@
 package samaya.structure.types
 
 import scala.collection.immutable.ListMap
-import samaya.compilation.ErrorManager.unexpected
+import samaya.compilation.ErrorManager.{Always, unexpected}
 
 
 sealed trait OpCode {
@@ -50,9 +50,10 @@ object OpCode {
   case class Discard(src:Ref, id:SourceId) extends OpCode with ZeroResOpcodes with ZeroSrcOpcodes
   case class DiscardMany(params:Seq[Ref], id:SourceId) extends OpCode with ZeroResOpcodes
   case class Unpack(rets:Seq[AttrId], override val src:Ref, mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes
+  case class InspectUnpack(rets:Seq[AttrId], override val src:Ref, id:SourceId) extends OpCode with SingleSourceOpcodes
   case class Field(override val ret:AttrId, override val src:Ref, pos:Id, mode:FetchMode, id:SourceId) extends OpCode with SingleResOpcodes with SingleSourceOpcodes
   case class Switch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
-  case class Inspect(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
+  case class InspectSwitch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
   case class Pack(override val ret:TypedId, params:Seq[Ref], tag:Id, mode:FetchMode, id:SourceId) extends OpCode with SingleTypedResOpcodes
   case class Invoke(rets:Seq[AttrId], func:Func, params:Seq[Ref], id:SourceId) extends OpCode
   case class TryInvoke(rets:Seq[AttrId], func:Func, override val essentialParams:Seq[(Boolean,Ref)], success:(Seq[AttrId],Seq[OpCode]), failure:(Seq[AttrId],Seq[OpCode]), id:SourceId) extends OpCode with EssentialSourceOpcodes
@@ -62,7 +63,7 @@ object OpCode {
   case class UnProject(override val ret:AttrId, override val src:Ref, id:SourceId) extends OpCode with SingleResOpcodes with SingleSourceOpcodes
   case class RollBack(rets:Seq[AttrId], params:Seq[Ref], retTypes:Seq[Type], id:SourceId) extends OpCode
   trait VirtualOpcode extends OpCode {
-    override def rets: Seq[AttrId] = unexpected("virtual opcodes do not have returns")
+    override def rets: Seq[AttrId] = unexpected("virtual opcodes do not have returns", Always)
     override val isVirtual:Boolean = true
   }
 }

@@ -4,7 +4,7 @@ import java.io.DataOutputStream
 
 import samaya.codegen.{ComponentSerializer, ModuleSerializer, NameGenerator}
 import samaya.compilation.ErrorManager
-import samaya.compilation.ErrorManager.unexpected
+import samaya.compilation.ErrorManager.{Builder, unexpected}
 import samaya.plugin.service.{ComponentValidator, DebugAssembler, InterfaceEncoder, LanguageCompiler, LocationResolver}
 import samaya.structure.types.Hash
 import samaya.structure.{Component, Meta}
@@ -46,7 +46,7 @@ object ComponentBuilder {
     }
 
     if(!(finalPkg eq partialPkg)){
-      unexpected(s"Compilation for module ${source.identifier} produced stale package")
+      unexpected(s"Compilation for module ${source.identifier} produced stale package", Builder())
     }
 
     partialPkg
@@ -92,7 +92,7 @@ object ComponentBuilder {
     //todo: get default from config ("json")
     val out = LocationResolver.resolveSink(interface, Identifier(NameGenerator.generateInterfaceName(inter.name,inter.classifier), InterfaceEncoder.interfaceExtensionPrefix+".json")) match {
       case Some(value) => value
-      case None => unexpected("Interface file output could not be written");//todo: error
+      case None => unexpected("Interface file output could not be written", Builder());//todo: error
     }
     //todo: check the boolean and throw on false
     val hash = Hash.writeAndHash(out, InterfaceEncoder.serializeInterface(inter, codeHash, hasError, _))
