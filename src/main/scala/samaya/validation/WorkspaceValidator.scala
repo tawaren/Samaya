@@ -6,7 +6,7 @@ import samaya.types.Workspace
 object WorkspaceValidator {
   //validate the package integrety
   def validateWorkspace(wsp:Workspace): Unit = {
-    if(wsp.name.length == 0 || wsp.name.charAt(0).isUpper) {
+    if(wsp.name.isEmpty || wsp.name.charAt(0).isUpper) {
       feedback(PlainMessage(s"Workspace ${wsp.workspaceLocation} names must start with a lowercase Character", Error, Checking()))
     }
 

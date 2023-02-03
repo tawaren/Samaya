@@ -55,7 +55,9 @@ object RollbackFiller extends EntryTransformer {
     override def transformRollback(rets: Seq[AttrId], params: Seq[Ref], types: Seq[Type], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       if(params.isEmpty) {
         val consumes = stack.slots.keys.filter(v => stack.getStatus(v) == Owned && !stack.getType(v).hasCap(context, Capability.Drop))
-        Some(Seq(OpCode.RollBack(rets,consumes.toSeq,types,origin)))
+        //We need to sort to make compilation result deterministic as stack.slots.keys is not guaranteed to be a deterministic iterator
+        val sorted_consumes = consumes.toSeq.sortWith(_.name <= _.name)
+        Some(Seq(OpCode.RollBack(rets,sorted_consumes,types,origin)))
       } else {
         None
       }

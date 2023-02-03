@@ -5,10 +5,10 @@ import JsonModel._
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager._
 import samaya.plugin.service.WorkspaceEncoder.WorkSpaceExtension
-import samaya.plugin.service.{LocationResolver, PackageEncoder, Selectors, WorkspaceEncoder}
-import samaya.structure.{LinkablePackage, Package}
+import samaya.plugin.service.{AddressResolver, PackageEncoder, Selectors, WorkspaceEncoder}
+import samaya.structure.{ContentAddressable, LinkablePackage, Package}
 import samaya.types
-import samaya.types.{Identifier, InputSource, Location, Path}
+import samaya.types.{Address, Identifier, InputSource, Directory}
 
 //A Workspace Manager for a json description of a package
 class JsonWorkspaceEncoder extends WorkspaceEncoder {
@@ -21,26 +21,26 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
     }
   }
 
-  var cycleBreaker:Set[(Location,String)] = Set.empty
+  var cycleBreaker:Set[(Directory,String)] = Set.empty
 
   def deserializeWorkspace(file: InputSource): Option[types.Workspace] = {
     //parse the package with Package as description
     val parsed = readFromStream[Workspace](file.content)
     val name: String = parsed.name
-    val workspaceLocation: Location = file.location
+    val workspaceLocation: Directory = file.location
 
-    def toInputSources(paths:Option[Seq[String]], extensionFilter:Option[Set[String]]): Option[Set[InputSource]] = {
+    def toContent[T <: ContentAddressable](paths:Option[Seq[String]], loader:AddressResolver.Loader[T], extensionFilter:Option[Set[String]]): Option[Set[T]] = {
       paths.map(p => p
         .toSet[String]
-        .flatMap(LocationResolver.parsePath)
-        .flatMap(l =>  LocationResolver.resolveSource(workspaceLocation,l, extensionFilter))
+        .flatMap(AddressResolver.parsePath)
+        .flatMap(l =>  AddressResolver.resolve(workspaceLocation,l, loader,extensionFilter))
       )
     }
 
     val oldBreaker = cycleBreaker
     val (includes, dependencies) = if(!oldBreaker.contains((workspaceLocation, name))) {
       cycleBreaker = oldBreaker + ((workspaceLocation, name))
-      val includes: Option[Set[types.Workspace]] = toInputSources(parsed.includes, Some(Set(WorkspaceEncoder.workspaceExtensionPrefix))).map(
+      val includes: Option[Set[types.Workspace]] = toContent(parsed.includes, AddressResolver.InputLoader, Some(Set(WorkspaceEncoder.workspaceExtensionPrefix))).map(
         inputs => inputs.flatMap(
           input => WorkspaceEncoder.deserializeWorkspace(input)
         )
@@ -49,11 +49,7 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
         feedback(PlainMessage(s"Could not deserialize all includes", Warning, Builder()))
       }
 
-      val dependencies: Option[Set[LinkablePackage]] = toInputSources(parsed.dependencies, Some(Set(PackageEncoder.packageExtensionPrefix))).map(
-        inputs => inputs.flatMap(
-          input => PackageEncoder.deserializePackage(input)
-        )
-      )
+      val dependencies: Option[Set[LinkablePackage]] = toContent(parsed.dependencies, PackageEncoder.Loader, Some(Set(PackageEncoder.packageExtensionPrefix)))
       if(dependencies.getOrElse(Set.empty).size != parsed.dependencies.getOrElse(Set.empty).size) {
         feedback(PlainMessage(s"Could not deserialize all dependencies", Warning, Builder()))
       }
@@ -66,11 +62,11 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
 
 
     //todo: if something gets lost we ned an error
-    val components: Option[Set[Path]] = parsed.sources.map(
-      s => s.toSet.flatMap(LocationResolver.parsePath)
+    val components: Option[Set[Address]] = parsed.sources.map(
+      s => s.toSet.flatMap(AddressResolver.parsePath)
     )
 
-    val sourceIdent = LocationResolver.parsePath(parsed.locations.source)match {
+    val sourceIdent = AddressResolver.parsePath(parsed.locations.source)match {
       case Some(id) => id
       case None =>
         ErrorManager.feedback(PlainMessage("Could not parse source path", ErrorManager.Error, Builder()))
@@ -78,35 +74,35 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
 
     }
 
-    val codeIdent = LocationResolver.parsePath(parsed.locations.code)match {
+    val codeIdent = AddressResolver.parsePath(parsed.locations.code)match {
       case Some(id) => id
       case None =>
         ErrorManager.feedback(PlainMessage("Could not parse code path", ErrorManager.Error, Builder()))
         return None
     }
 
-    val interfaceIdent = LocationResolver.parsePath(parsed.locations.interface)match {
+    val interfaceIdent = AddressResolver.parsePath(parsed.locations.interface)match {
       case Some(id) => id
       case None =>
         ErrorManager.feedback(PlainMessage("Could not parse interface path", ErrorManager.Error, Builder()))
         return None
     }
 
-    val sourceLocation: Location = LocationResolver.resolveLocation(workspaceLocation,sourceIdent) match {
+    val sourceLocation: Directory = AddressResolver.resolveDirectory(workspaceLocation,sourceIdent) match {
       case Some(loc) => loc
       case None =>
         ErrorManager.feedback(PlainMessage("Could not load source location", ErrorManager.Error, Builder()))
         return None
     }
 
-    val codeLocation: Location = LocationResolver.resolveLocation(workspaceLocation,codeIdent, create = true)  match {
+    val codeLocation: Directory = AddressResolver.resolveDirectory(workspaceLocation,codeIdent, create = true)  match {
       case Some(loc) => loc
       case None =>
         ErrorManager.feedback(PlainMessage("Could not load code location", ErrorManager.Error, Builder()))
         return None
     }
 
-    val interfaceLocation: Location = LocationResolver.resolveLocation(workspaceLocation,interfaceIdent, create = true)  match {
+    val interfaceLocation: Directory = AddressResolver.resolveDirectory(workspaceLocation,interfaceIdent, create = true)  match {
       case Some(loc) => loc
       case None =>
         ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error, Builder()))

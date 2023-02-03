@@ -33,6 +33,10 @@ trait ClassBuilder  extends CompilerToolbox{
       build(funComponent, src) match {
         case Some(funClsInter) =>
           val SigComponents = withComponentBuilder(name) {
+            if(funClsInter.link.isInstanceOf[CompLink.ByCode]){
+              println(funClsInter.getClass)
+              println("Ups")
+            }
             sigClass(name, generics, rawFunComponents, funClsInter.link, mode, src)
           }
           build(SigComponents, src)

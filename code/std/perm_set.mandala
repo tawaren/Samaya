@@ -1,0 +1,446 @@
+import Capability.Cap
+import Capability.createPerm
+import Capability.createFor as capCreate
+
+import PermAssociation
+import core.sys.Sys._
+
+module PermSet1 {
+    global data PermSet1[phantom P1]
+
+    global function perm1[G, P1](cap:Cap[G,PermSet1[P1]]) = createPerm[G,P1,PermSet1[P1]](cap)
+
+    instance Perm1Select[P] for PermAssociation[P,PermSet1[P]] {
+        implement perm[G] with perm1[G,P]
+    }
+}
+
+module PermSet2 {
+    global data PermSet2[phantom P1, phantom P2]
+    global function perm1[G, P1, P2](cap:Cap[G,PermSet2[P1,P2]]) = createPerm[G,P1,PermSet2[P1,P2]](cap)
+    global function perm2[G, P1, P2](cap:Cap[G,PermSet2[P1,P2]]) = createPerm[G,P2,PermSet2[P1,P2]](cap)
+
+    instance Perm1Select[P1,P2] for PermAssociation[P1,PermSet2[P1,P2]] {
+        implement perm[G] with perm1[G,P1,P2]
+    }
+
+    instance Perm2Select[P1,P2] for PermAssociation[P2,PermSet2[P1,P2]] {
+        implement perm[G] with perm2[G,P1,P2]
+    }
+}
+
+module PermSet3 {
+    global data PermSet3[phantom P1, phantom P2, phantom P3]
+    global function perm1[G, P1, P2, P3](cap:Cap[G,PermSet3[P1,P2,P3]]) = createPerm[G,P1,PermSet3[P1,P2,P3]](cap)
+    global function perm2[G, P1, P2, P3](cap:Cap[G,PermSet3[P1,P2,P3]]) = createPerm[G,P2,PermSet3[P1,P2,P3]](cap)
+    global function perm3[G, P1, P2, P3](cap:Cap[G,PermSet3[P1,P2,P3]]) = createPerm[G,P3,PermSet3[P1,P2,P3]](cap)
+
+    instance Perm1Select[P1,P2,P3] for PermAssociation[P1,PermSet3[P1,P2,P3]] {
+        implement perm[G] with perm1[G,P1,P2,P3]
+    }
+
+    instance Perm2Select[P1,P2,P3] for PermAssociation[P2,PermSet3[P1,P2,P3]] {
+        implement perm[G] with perm2[G,P1,P2,P3]
+    }
+
+    instance Perm3Select[P1,P2,P3] for PermAssociation[P3,PermSet3[P1,P2,P3]] {
+        implement perm[G] with perm3[G,P1,P2,P3]
+    }
+}
+
+module PermSet4 {
+    global data PermSet4[phantom P1, phantom P2, phantom P3, phantom P4]
+    global function perm1[G, P1, P2, P3, P4](cap:Cap[G,PermSet4[P1,P2,P3,P4]]) = createPerm[G,P1,PermSet4[P1,P2,P3,P4]](cap)
+    global function perm2[G, P1, P2, P3, P4](cap:Cap[G,PermSet4[P1,P2,P3,P4]]) = createPerm[G,P2,PermSet4[P1,P2,P3,P4]](cap)
+    global function perm3[G, P1, P2, P3, P4](cap:Cap[G,PermSet4[P1,P2,P3,P4]]) = createPerm[G,P3,PermSet4[P1,P2,P3,P4]](cap)
+    global function perm4[G, P1, P2, P3, P4](cap:Cap[G,PermSet4[P1,P2,P3,P4]]) = createPerm[G,P4,PermSet4[P1,P2,P3,P4]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4] for PermAssociation[P1,PermSet4[P1,P2,P3,P4]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4] for PermAssociation[P2,PermSet4[P1,P2,P3,P4]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4] for PermAssociation[P3,PermSet4[P1,P2,P3,P4]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4] for PermAssociation[P4,PermSet4[P1,P2,P3,P4]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4]
+    }
+}
+
+module PermSet5 {
+    global data PermSet5[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5]
+    global function perm1[G, P1, P2, P3, P4, P5](cap:Cap[G,PermSet5[P1,P2,P3,P4,P5]]) = createPerm[G,P1,PermSet5[P1,P2,P3,P4,P5]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5](cap:Cap[G,PermSet5[P1,P2,P3,P4,P5]]) = createPerm[G,P2,PermSet5[P1,P2,P3,P4,P5]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5](cap:Cap[G,PermSet5[P1,P2,P3,P4,P5]]) = createPerm[G,P3,PermSet5[P1,P2,P3,P4,P5]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5](cap:Cap[G,PermSet5[P1,P2,P3,P4,P5]]) = createPerm[G,P4,PermSet5[P1,P2,P3,P4,P5]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5](cap:Cap[G,PermSet5[P1,P2,P3,P4,P5]]) = createPerm[G,P5,PermSet5[P1,P2,P3,P4,P5]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4,P5] for PermAssociation[P1,PermSet5[P1,P2,P3,P4,P5]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5] for PermAssociation[P2,PermSet5[P1,P2,P3,P4,P5]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5] for PermAssociation[P3,PermSet5[P1,P2,P3,P4,P5]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5] for PermAssociation[P4,PermSet5[P1,P2,P3,P4,P5]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5] for PermAssociation[P5,PermSet5[P1,P2,P3,P4,P5]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5]
+    }
+}
+
+module PermSet6 {
+    global data PermSet6[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5, phantom P6]
+    global function perm1[G, P1, P2, P3, P4, P5, P6](cap:Cap[G,PermSet6[P1,P2,P3,P4,P5,P6]]) = createPerm[G,P1,PermSet6[P1,P2,P3,P4,P5,P6]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5, P6](cap:Cap[G,PermSet6[P1,P2,P3,P4,P5,P6]]) = createPerm[G,P2,PermSet6[P1,P2,P3,P4,P5,P6]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5, P6](cap:Cap[G,PermSet6[P1,P2,P3,P4,P5,P6]]) = createPerm[G,P3,PermSet6[P1,P2,P3,P4,P5,P6]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5, P6](cap:Cap[G,PermSet6[P1,P2,P3,P4,P5,P6]]) = createPerm[G,P4,PermSet6[P1,P2,P3,P4,P5,P6]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5, P6](cap:Cap[G,PermSet6[P1,P2,P3,P4,P5,P6]]) = createPerm[G,P5,PermSet6[P1,P2,P3,P4,P5,P6]](cap)
+    global function perm6[G, P1, P2, P3, P4, P5, P6](cap:Cap[G,PermSet6[P1,P2,P3,P4,P5,P6]]) = createPerm[G,P6,PermSet6[P1,P2,P3,P4,P5,P6]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4,P5,P6] for PermAssociation[P1,PermSet6[P1,P2,P3,P4,P5,P6]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5,P6]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5,P6] for PermAssociation[P2,PermSet6[P1,P2,P3,P4,P5,P6]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5,P6]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5,P6] for PermAssociation[P3,PermSet6[P1,P2,P3,P4,P5,P6]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5,P6]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5,P6] for PermAssociation[P4,PermSet6[P1,P2,P3,P4,P5,P6]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5,P6]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5,P6] for PermAssociation[P5,PermSet6[P1,P2,P3,P4,P5,P6]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5,P6]
+    }
+
+    instance Perm6Select[P1,P2,P3,P4,P5,P6] for PermAssociation[P6,PermSet6[P1,P2,P3,P4,P5,P6]] {
+        implement perm[G] with perm6[G,P1,P2,P3,P4,P5,P6]
+    }
+}
+
+module PermSet7 {
+    global data PermSet7[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5, phantom P6, phantom P7]
+    global function perm1[G, P1, P2, P3, P4, P5, P6, P7](cap:Cap[G,PermSet7[P1,P2,P3,P4,P5,P6,P7]]) = createPerm[G,P1,PermSet7[P1,P2,P3,P4,P5,P6,P7]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5, P6, P7](cap:Cap[G,PermSet7[P1,P2,P3,P4,P5,P6,P7]]) = createPerm[G,P2,PermSet7[P1,P2,P3,P4,P5,P6,P7]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5, P6, P7](cap:Cap[G,PermSet7[P1,P2,P3,P4,P5,P6,P7]]) = createPerm[G,P3,PermSet7[P1,P2,P3,P4,P5,P6,P7]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5, P6, P7](cap:Cap[G,PermSet7[P1,P2,P3,P4,P5,P6,P7]]) = createPerm[G,P4,PermSet7[P1,P2,P3,P4,P5,P6,P7]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5, P6, P7](cap:Cap[G,PermSet7[P1,P2,P3,P4,P5,P6,P7]]) = createPerm[G,P5,PermSet7[P1,P2,P3,P4,P5,P6,P7]](cap)
+    global function perm6[G, P1, P2, P3, P4, P5, P6, P7](cap:Cap[G,PermSet7[P1,P2,P3,P4,P5,P6,P7]]) = createPerm[G,P6,PermSet7[P1,P2,P3,P4,P5,P6,P7]](cap)
+    global function perm7[G, P1, P2, P3, P4, P5, P6, P7](cap:Cap[G,PermSet7[P1,P2,P3,P4,P5,P6,P7]]) = createPerm[G,P7,PermSet7[P1,P2,P3,P4,P5,P6,P7]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4,P5,P6,P7] for PermAssociation[P1,PermSet7[P1,P2,P3,P4,P5,P6,P7]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5,P6,P7]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5,P6,P7] for PermAssociation[P2,PermSet7[P1,P2,P3,P4,P5,P6,P7]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5,P6,P7]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5,P6,P7] for PermAssociation[P3,PermSet7[P1,P2,P3,P4,P5,P6,P7]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5,P6,P7]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5,P6,P7] for PermAssociation[P4,PermSet7[P1,P2,P3,P4,P5,P6,P7]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5,P6,P7]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5,P6,P7] for PermAssociation[P5,PermSet7[P1,P2,P3,P4,P5,P6,P7]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5,P6,P7]
+    }
+
+    instance Perm6Select[P1,P2,P3,P4,P5,P6,P7] for PermAssociation[P6,PermSet7[P1,P2,P3,P4,P5,P6,P7]] {
+        implement perm[G] with perm6[G,P1,P2,P3,P4,P5,P6,P7]
+    }
+
+    instance Perm7Select[P1,P2,P3,P4,P5,P6,P7] for PermAssociation[P7,PermSet7[P1,P2,P3,P4,P5,P6,P7]] {
+        implement perm[G] with perm7[G,P1,P2,P3,P4,P5,P6,P7]
+    }
+}
+
+module PermSet8 {
+    global data PermSet8[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5, phantom P6, phantom P7, phantom P8]
+    global function perm1[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P1,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P2,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P3,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P4,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P5,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+    global function perm6[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P6,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+    global function perm7[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P7,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+    global function perm8[G, P1, P2, P3, P4, P5, P6, P7, P8](cap:Cap[G,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]]) = createPerm[G,P8,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P1,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P2,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P3,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P4,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P5,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+
+    instance Perm6Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P6,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm6[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+
+    instance Perm7Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P7,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm7[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+
+    instance Perm8Select[P1,P2,P3,P4,P5,P6,P7,P8] for PermAssociation[P8,PermSet8[P1,P2,P3,P4,P5,P6,P7,P8]] {
+        implement perm[G] with perm8[G,P1,P2,P3,P4,P5,P6,P7,P8]
+    }
+}
+
+module PermSet9 {
+    global data PermSet9[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5, phantom P6, phantom P7, phantom P8, phantom P9]
+    global function perm1[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P1,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P2,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P3,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P4,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P5,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm6[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P6,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm7[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P7,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm8[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P8,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+    global function perm9[G, P1, P2, P3, P4, P5, P6, P7, P8, P9](cap:Cap[G,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]]) = createPerm[G,P9,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]](cap)
+
+
+    instance Perm1Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P1,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P2,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P3,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P4,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P5,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm6Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P6,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm6[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm7Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P7,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm7[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm8Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P8,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm8[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+
+    instance Perm9Select[P1,P2,P3,P4,P5,P6,P7,P8,P9] for PermAssociation[P9,PermSet9[P1,P2,P3,P4,P5,P6,P7,P8,P9]] {
+        implement perm[G] with perm9[G,P1,P2,P3,P4,P5,P6,P7,P8,P9]
+    }
+}
+
+module PermSet10 {
+    global data PermSet10[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5, phantom P6, phantom P7, phantom P8, phantom P9, phantom P10]
+    global function perm1[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P1,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P2,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P3,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P4,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P5,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm6[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P6,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm7[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P7,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm8[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P8,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm9[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P9,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+    global function perm10[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10](cap:Cap[G,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]]) = createPerm[G,P10,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P1,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P2,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P3,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P4,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P5,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm6Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P6,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm6[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm7Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P7,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm7[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm8Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P8,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm8[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm9Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P9,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm9[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+
+    instance Perm10Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10] for PermAssociation[P10,PermSet10[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]] {
+        implement perm[G] with perm10[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10]
+    }
+}
+
+module PermSet11 {
+    global data PermSet11[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5, phantom P6, phantom P7, phantom P8, phantom P9, phantom P10, phantom P11]
+    global function perm1[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P1,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P2,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P3,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P4,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P5,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm6[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P6,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm7[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P7,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm8[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P8,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm9[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P9,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm10[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P10,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+    global function perm11[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11](cap:Cap[G,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]]) = createPerm[G,P11,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P1,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P2,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P3,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P4,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P5,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm6Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P6,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm6[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm7Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P7,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm7[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm8Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P8,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm8[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm9Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P9,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm9[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm10Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P10,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm10[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+
+    instance Perm11Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11] for PermAssociation[P11,PermSet11[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]] {
+        implement perm[G] with perm11[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11]
+    }
+}
+
+module PermSet12 {
+    global data PermSet12[phantom P1, phantom P2, phantom P3, phantom P4, phantom P5, phantom P6, phantom P7, phantom P8, phantom P9, phantom P10, phantom P11, phantom P12]
+    global function perm1[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P1,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm2[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P2,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm3[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P3,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm4[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P4,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm5[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P5,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm6[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P6,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm7[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P7,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm8[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P8,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm9[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P9,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm10[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P10,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm11[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P11,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+    global function perm12[G, P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12](cap:Cap[G,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]]) = createPerm[G,P12,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]](cap)
+
+    instance Perm1Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P1,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm1[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm2Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P2,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm2[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm3Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P3,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm3[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm4Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P4,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm4[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm5Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P5,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm5[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm6Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P6,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm6[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm7Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P7,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm7[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm8Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P8,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm8[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm9Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P9,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm9[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm10Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P10,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm10[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm11Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P11,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm11[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+
+    instance Perm12Select[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12] for PermAssociation[P12,PermSet12[P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]] {
+        implement perm[G] with perm12[G,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12]
+    }
+}

@@ -2,15 +2,15 @@ package samaya.plugin.impl.location.file
 
 import java.io.File
 
-import samaya.types.{Identifier, Location}
+import samaya.types.{Identifier, Directory}
 
-class FileLocation(val path:Seq[Identifier], val file:File) extends Location{
+class FileDirectory(val path:Seq[Identifier], val file:File) extends Directory{
   override def name: String = file.getName
   override def toString: String = path.mkString("/")
 
-  def canEqual(other: Any): Boolean = other.isInstanceOf[FileLocation]
+  def canEqual(other: Any): Boolean = other.isInstanceOf[FileDirectory]
   override def equals(other: Any): Boolean = other match {
-    case that: FileLocation =>
+    case that: FileDirectory =>
       (that canEqual this) &&
         file == that.file
     case _ => false

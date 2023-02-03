@@ -1,0 +1,4 @@
+samaya.plugin.impl.location.file.FileAddressResolver
+samaya.plugin.impl.location.relative.RelativeAddressParser
+samaya.plugin.impl.location.content.local.ContentAddressEncoder
+samaya.plugin.impl.location.hybrid.HybridAddressResolver

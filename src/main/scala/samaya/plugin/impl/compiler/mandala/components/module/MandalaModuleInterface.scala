@@ -5,7 +5,7 @@ import samaya.structure.Module.Mode
 import samaya.structure._
 import samaya.structure.types.{CompLink, SourceId}
 
-class MandalaModuleInterface(override val meta:Meta, private val module: MandalaModule) extends MandalaModule with Interface[MandalaModule] {
+class MandalaModuleInterface(override val meta:Meta, /*private*/ val module: MandalaModule) extends MandalaModule with Interface[MandalaModule] {
   override def link: CompLink = meta.link
   override def name: String = module.name
   override def language: String = module.language

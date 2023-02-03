@@ -5,7 +5,7 @@ import java.io.{File, FileInputStream, InputStream}
 import samaya.types.{Identifier, InputSource}
 
 
-class FileSource(override val location:FileLocation, override val identifier:Identifier, val file:File) extends InputSource{
+class FileSource(override val location:FileDirectory, override val identifier:Identifier, val file:File) extends InputSource{
   override def content: InputStream = new FileInputStream(file)
 
   def canEqual(other: Any): Boolean = other.isInstanceOf[FileSource]
@@ -20,5 +20,7 @@ class FileSource(override val location:FileLocation, override val identifier:Ide
     val state = Seq(file)
     state.map(_.hashCode()).foldLeft(0)((a, b) => 31 * a + b)
   }
+
+  override def toString: String = file.getAbsolutePath
 }
 

@@ -1,0 +1,50 @@
+import core.Id._
+import core.sys.Ids._
+import core.sys.Sys._
+import core.Equal._
+import core.Equal
+
+module SecureMessage {
+
+    global local(create) data Signed[T](source:Id, msg:T)
+    global(create) local data Sealed[T](target:Id, msg:T)
+
+    global guarded[S](create) data StaticSigned[phantom S, T](msg:T)
+    global(create) guarded[S] data StaticSealed[phantom S, T](msg:T)
+
+    //Used to make sure something is delivered exactly once even if it is not linear
+    //  use: sign(src, deliverOnce(nonLinearMessage))
+    global linear data Once[T](msg:T)
+
+    global function sign[T](source:PrivateId, consume msg:T):Signed[T] = Signed#(idFromPrivate(source), msg)
+
+    global function signer[T](msg:Signed[T]):Id {
+        inspect msg with Signed(src, _) => src
+    }
+
+    global function signedMessage[T](msg:Signed[T]):T {
+        match msg with Signed(_, msg) => msg
+    }
+
+    global function seal[T](target:Id, consume msg:T):Sealed[T] = Sealed#(target, msg)
+
+    global transactional function unseal[T](receiver:PrivateId, consume msg:Sealed[T]):T {
+        match msg with Sealed(target, msg) => ensure target == idFromPrivate(receiver) in msg
+    }
+
+    global function receiver[T](msg:Sealed[T]):Id {
+        inspect msg with Sealed(rev, _) => rev
+    }
+
+    //Todo: Have static helper functions
+
+    global function deliverOnce[T](consume msg:T):Once[T] = Once#(msg)
+
+    global function sealedEntry[persisted T](target:Id, entryId:PrivateId, consume msg:T):Entry[Sealed[T]] = Entry#(entryId, seal(target, msg))
+
+    global transactional function unsealEntry[persisted T](receiver:PrivateId, consume entry:Entry[Sealed[T]]):(PrivateId, T) {
+        match entry with Entry(entryId, sealed) => (entryId, unseal(receiver, sealed))
+    }
+
+
+}

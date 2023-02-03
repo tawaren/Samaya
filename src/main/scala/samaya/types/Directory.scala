@@ -1,5 +1,5 @@
 package samaya.types
 
-trait Location {
+trait Directory {
   def name:String
 }

@@ -1,18 +1,18 @@
 package samaya.validation
 
-import java.io.DataOutputStream
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataOutputStream, InputStream, OutputStream}
 import java.security.{DigestOutputStream, MessageDigest}
-
 import io.github.rctcwyvrn.blake3.Blake3
-import samaya.codegen.ComponentSerializer
+import samaya.codegen.{ComponentSerializer, ModuleSerializer, NameGenerator}
 import samaya.compilation.ErrorManager
 import samaya.structure.{Component, Interface, LinkablePackage, Meta}
 import samaya.structure.types.{Blake3OutputStream, Hash}
 import samaya.compilation.ErrorManager._
 import samaya.plugin.impl.compiler.mandala.components.module.MandalaModuleInterface
-import samaya.plugin.service.{ComponentValidator, InterfaceEncoder, LanguageCompiler}
-import samaya.types.InputSource
+import samaya.plugin.service.{AddressResolver, ComponentValidator, InterfaceEncoder, LanguageCompiler}
+import samaya.types.{Directory, Identifier, InputSource, OutputTarget}
 
+import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 
 
@@ -22,7 +22,7 @@ object PackageValidator {
 
   //validate the package integrety
   def validatePackage(pkg: LinkablePackage): Unit = {
-    if(pkg.name.length == 0 || pkg.name.charAt(0).isUpper) {
+    if(pkg.name.isEmpty || pkg.name.charAt(0).isUpper) {
       feedback(PlainMessage("Package names must start with a lowercase Character", Error, Checking()))
     }
     //check that the hash was corectly computed
@@ -34,13 +34,51 @@ object PackageValidator {
     for (comp <- pkg.components) {
       //Check that the module is valid
       ComponentValidator.validateComponent(comp, pkg)
-      //Check that the Hash of the entry was correcty computed
-      validateEntryHash(comp.meta, comp.name, "module", pkg)
+      //Check that the Hash of the entry was correctly computed
+      validateEntryHash(comp.meta, comp.name, "module", pkg, comp.isVirtual)
       //Check that source compiles to byte code & interface
       validateCompilation(comp, pkg, compiled, recompileCache)
     }
 
   }
+
+  /*
+  class MemoryOutPutDebug extends OutputTarget{
+    private val out:OutputStream = new OutputStream {
+      var count = 0
+      override def write(b: Int): Unit = {
+        if(count == 603) throw new Exception()
+        count += 1
+      }
+    }
+    override def write[T](writer: OutputStream => T): T = try {
+      writer(out)
+    } finally {
+      out.close()
+    }
+
+    override def toInputSource: InputSource = null
+  }
+ */
+  //Helpers to have in memory Input/Output
+  class MemoryOutPut extends OutputTarget{
+    private val out = new ByteArrayOutputStream();
+    override def write[T](writer: OutputStream => T): T = try {
+      writer(out)
+    } finally {
+      out.close()
+    }
+
+    override def toInputSource: InputSource = new InputSource {
+      private val data = out.toByteArray
+      override val identifier:Identifier = Identifier(System.identityHashCode(data).toString)
+      override def content: InputStream = new ByteArrayInputStream(data)
+      override def location: Directory = new Directory {
+        override def name: String = "memory"
+      }
+    }
+  }
+
   //checks that the presented files are really the output of a correct compilation
   // can detect manipulations of code after compilation
   private def validateCompilation(comp: Interface[Component], pkg: LinkablePackage, compiled:mutable.Set[InputSource], recompilationCache:mutable.Map[CacheKey, (Boolean,Interface[Component])]): Unit = {
@@ -57,11 +95,52 @@ object PackageValidator {
       //todo: we should be able to disable the code part if the byte code is not their
       //       Note: we can still compile against it: we can even deploy if the dependencies are already deployed
       LanguageCompiler.compileAndBuildFully(sourceCode,pkg)(ccomp => {
-        val hasError = ErrorManager.canProduceErrors(ComponentValidator.validateComponent(ccomp, pkg))
-        val inter = ccomp.toInterface(comp.meta)
-        recompilationCache.put(CacheKey(ccomp.name, ccomp.language, ccomp.version, ccomp.classifier),(hasError,inter))
-        //we return same package as it does not change in validation mode
-        (pkg, Some(inter))
+        recompilationCache.get(CacheKey(ccomp.name, ccomp.language, ccomp.version, ccomp.classifier)) match {
+          case Some((_,inter)) => (pkg, Some(inter))
+          case None =>
+            val hasError = ErrorManager.canProduceErrors(ComponentValidator.validateComponent(ccomp, pkg))
+
+            val codeSource = if(ccomp.isVirtual || hasError) {
+              None
+            } else {
+              val out = new MemoryOutPut()
+              out.write(wOut => {
+                val dOut = new DataOutputStream(wOut)
+                try {
+                  ComponentSerializer.serialize(dOut, ccomp, sourceCode.hash, pkg)
+                } finally {
+                  dOut.close()
+                }
+              })
+              Some(out.toInputSource)
+            }
+
+            val out = new MemoryOutPut()
+            out.write(wOut => {
+              val dOut = new DataOutputStream(wOut)
+              try {
+                InterfaceEncoder.serializeInterface(ccomp,  codeSource.map(_.hash), hasError, dOut)
+              } finally {
+                dOut.close()
+              }
+            })
+            val interfaceSource = out.toInputSource
+
+            val meta = Meta(
+              codeSource.map(_.hash),
+              interfaceSource.hash,
+              sourceCode.hash,
+              interfaceSource,
+              codeSource,
+              Some(sourceCode)
+            )
+
+            val inter = ccomp.toInterface(meta)
+
+            recompilationCache.put(CacheKey(ccomp.name, ccomp.language, ccomp.version, ccomp.classifier),(hasError,inter))
+            //we return same package as it does not change in validation mode
+            (pkg, Some(inter))
+        }
       })
       compiled.add(sourceCode)
     }
@@ -72,16 +151,33 @@ object PackageValidator {
     //        but every sane developer will first deploy into a test net or a simulated local net
     recompilationCache.get(CacheKey(comp.name, comp.language, comp.version, comp.classifier)) match {
       case Some((hasError, ccomp)) =>
-        //check that the result of the compiler match the values from the entry
-        //todo: we should be able to disable the code part if the byte code is not their
-        //       Note: we can still compile against it: we can even deploy if the dependencies are already deployed
-        if(!comp.isVirtual) {
-          validateCompiledCode(comp, pkg, ccomp)
+        if(hasError){
+          feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${comp.name} produced error and can not be deployed", Warning, Checking()))
         }
 
-        //todo: what if we did not produce code
-        //      We should still be able to generate the interface but currently we are not
-        validateCompiledInterface(comp, pkg, hasError, ccomp)
+        //check that the result of the compiler match the values from the entry
+        if(!comp.isVirtual) {
+          if(comp.meta.codeHash != ccomp.meta.codeHash){
+            val cbytes = comp.meta.code.get.content.readAllBytes()
+            val ccbytes = ccomp.meta.code.get.content.readAllBytes()
+            println(comp.name)
+            println(cbytes.length)
+            println(ccbytes.length)
+
+            for(((a,b),i) <- cbytes.zip(ccbytes).zipWithIndex){
+              if(a != b) {
+                println(i+": "+a+" <-> "+b)
+              }
+            }
+
+            feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${comp.name} produced wrong code hash", Error, Checking()))
+          }
+        }
+
+        if(comp.meta.interfaceHash != ccomp.meta.interfaceHash){
+          feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${comp.name} produced wrong interface hash", Error, Checking()))
+        }
+
       case None =>
         feedback(PlainMessage(s"Recompilation for module ${pkg.location}/${comp.name} failed", Error, Checking()))
     }
@@ -97,55 +193,23 @@ object PackageValidator {
       digest.update(p.hash.data)
     })
 
-    if(pkg.hash != Hash.fromBytes(digest.digest(Hash.len))){
+    if(pkg.hash != Hash.fromBytes(digest.digest(Hash.byteLen))){
       feedback(PlainMessage(s"Integrity for package ${pkg.location} violated", Error, Checking()))
     }
   }
 
   //validate the 3 different hashes for all the entries
-  private def validateEntryHash(meta: Meta, name:String, kind:String, pkg: LinkablePackage): Unit = {
+  private def validateEntryHash(meta: Meta, name:String, kind:String, pkg: LinkablePackage, isVirtual:Boolean): Unit = {
     validateEntryInterface(meta, name, kind, pkg)
-    validateEntryCode(meta, name, kind, pkg)
+    if(!isVirtual) validateEntryCode(meta, name, kind, pkg)
     validateEntrySource(meta, name, kind,  pkg)
-  }
-
-  //Hash the code and compare it to the recorded hash in the entry
-  private def validateCompiledCode(component: Interface[Component], pkg: LinkablePackage, ccomp: Component): Unit = {
-    component.meta.codeHash match {
-      case Some(hash) =>
-        val digest = Blake3.newInstance
-        val stream = new DataOutputStream( new Blake3OutputStream((_: Int) => {}, digest))
-        ComponentSerializer.serialize(stream, ccomp, component.meta.sourceHash, pkg)
-        stream.close()
-        if(hash != Hash.fromBytes(digest.digest(Hash.len))) {
-          feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${component.name} produced wrong code hash", Error, Checking()))
-        }
-      case None => //Nothing to do for code less components
-    }
-
-  }
-
-  //Hash the interface and compare it ti the recorded hash in the entry
-  private def validateCompiledInterface(comp: Interface[Component], pkg: LinkablePackage, hasError:Boolean, ccomp: Interface[Component]): Unit = {
-    val digest = Blake3.newInstance
-    val stream = new DataOutputStream( new Blake3OutputStream((_: Int) => {}, digest))
-    if(!InterfaceEncoder.serializeInterface(ccomp, comp.meta.codeHash, hasError, stream)){
-      stream.close()
-      feedback(PlainMessage(s"Can not check interface for component ${pkg.location}/${comp.name} because interface serializer is missing", Warning, Checking()))
-    } else {
-      stream.close()
-      if(comp.meta.interfaceHash != Hash.fromBytes(digest.digest(Hash.len))){
-        feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${comp.name} produced wrong interface hash", Error, Checking()))
-      }
-    }
   }
 
   //Hash the byte code file and compare it ti the recorded hash in the entry
   private def validateEntryCode(meta: Meta, name:String, kind:String, pkg: LinkablePackage): Unit = {
     meta.code match {
       case Some(code) =>
-        val hash = Hash.fromInputSource(code)
-        if(!meta.codeHash.contains(hash)) {
+        if(!meta.codeHash.contains(code.hash)) {
           feedback(PlainMessage(s"Code source for $kind ${pkg.location}/$name produced wrong code hash", Error, Checking()))
         }
       case None => feedback(PlainMessage(s"Can not check code integrity of entry ${pkg.location}/$name as code source is missing", Warning, Checking()))
@@ -165,7 +229,7 @@ object PackageValidator {
 
   //Hash the interface file and compare it ti the recorded hash in the entry
   private def validateEntryInterface(meta: Meta, name:String, kind:String, pkg: LinkablePackage): Unit = {
-    if(meta.interfaceHash != Hash.fromInputSource(meta.interface)){
+    if(meta.interfaceHash != meta.interface.hash){
       feedback(PlainMessage(s"Interface source for $kind ${pkg.location}/$name produced wrong interface hash", Error, Checking()))
     }
   }

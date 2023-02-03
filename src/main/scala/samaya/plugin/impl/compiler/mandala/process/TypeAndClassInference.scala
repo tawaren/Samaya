@@ -84,7 +84,7 @@ class TypeAndClassInference(instanceFinder:InstanceFinder) extends EntryTransfor
       func match {
         case func: DefinedFunc[_] =>
           func.getComponent(context) match {
-            //This is save as funcs can not be ocal
+            //This is save as funcs can not be local
             // If we are in a class then we have no bodies and thus never end up here
             // If we are not in a class then the func always points to a remote (where we already have the interface)
             case Some(cls:Class with Interface[_]) =>

@@ -148,7 +148,7 @@ prio0: exp
      ;
 
 exp: lit                                                #Literal
-    | LET topPatterns EQ bind=tailExp IN exec=tailExp  #Let
+    | LET topPatterns EQ bind=tailExp IN exec=tailExp   #Let
     | ENSURE argExp IN exec=tailExp                     #Ensure
     | MATCH argExp WITH branches                        #Switch
     | INSPECT argExp WITH branches                      #Inspect
@@ -168,6 +168,7 @@ exp: lit                                                #Literal
     | baseRef args                                  #Invoke
     | ROLLBACK typeRefArgs?                         #Rollback
     | name                                          #Symbol
+    //Todo: why not argExp for the next two?
     | exp typeHint                                  #Typed
     | exp DOT name                                  #Get
     ;

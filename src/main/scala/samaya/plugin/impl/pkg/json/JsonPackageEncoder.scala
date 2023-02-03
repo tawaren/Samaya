@@ -6,10 +6,10 @@ import samaya.codegen.{ModuleSerializer, NameGenerator}
 import samaya.compilation.ErrorManager.{Always, unexpected}
 import samaya.plugin.service.PackageEncoder.PackageExtension
 import samaya.structure.{Interface, LinkablePackage, Meta, ModuleInterface, Transaction, TransactionInterface}
-import samaya.plugin.service.{InterfaceEncoder, LocationResolver, PackageEncoder, Selectors}
+import samaya.plugin.service.{InterfaceEncoder, AddressResolver, PackageEncoder, Selectors}
 import samaya.structure.types.Hash
 import samaya.structure
-import samaya.types.{Identifier, InputSource, Location, Path, Workspace}
+import samaya.types.{Identifier, InputSource, Directory, Address, Workspace}
 import samaya.validation.PackageValidator
 
 //A Package Manager for a json description of a package
@@ -34,8 +34,8 @@ class JsonPackageEncoder extends PackageEncoder {
     //base path
     val pkgFolder = pkg.path match {
       case Some(path) =>
-        LocationResolver.parsePath(path) match {
-          case Some(parsedPath) => LocationResolver.resolveLocation(file.location,parsedPath) match {
+        AddressResolver.parsePath(path) match {
+          case Some(parsedPath) => AddressResolver.resolveDirectory(file.location,parsedPath) match {
             case Some(base) => base
             case None => return None
           }
@@ -45,35 +45,35 @@ class JsonPackageEncoder extends PackageEncoder {
     }
 
     //parse the paths
-    val codeIdent = LocationResolver.parsePath(pkg.locations.code) match {
+    val codeIdent = AddressResolver.parsePath(pkg.locations.code) match {
       case Some(f) => f
       case None => return None
     }
 
-    val interfaceIdent = LocationResolver.parsePath(pkg.locations.interface) match {
+    val interfaceIdent = AddressResolver.parsePath(pkg.locations.interface) match {
       case Some(f) => f
       case None => return None
     }
 
-    val sourceIdent = LocationResolver.parsePath(pkg.locations.source) match {
+    val sourceIdent = AddressResolver.parsePath(pkg.locations.source) match {
       case Some(f) => f
       case None => return None
     }
 
     //find the location where the byte code files for the package are/shpuld be stored
-    val codeLoc = LocationResolver.resolveLocation(pkgFolder,codeIdent) match {
+    val codeLoc = AddressResolver.resolveDirectory(pkgFolder,codeIdent) match {
       case Some(f) => f
       case None => return None
     }
 
     //find the location where the module interface files for the package are/shpuld be stored
-    val interfaceLoc = LocationResolver.resolveLocation(pkgFolder,interfaceIdent) match {
+    val interfaceLoc = AddressResolver.resolveDirectory(pkgFolder,interfaceIdent) match {
       case Some(f) => f
       case None => return None
     }
 
     //find the location where the source files for the package are stored
-    val sourceLoc = LocationResolver.resolveLocation(pkgFolder,sourceIdent) match {
+    val sourceLoc = AddressResolver.resolveDirectory(pkgFolder,sourceIdent) match {
       case Some(f) => f
       case None => return None
     }
@@ -82,20 +82,13 @@ class JsonPackageEncoder extends PackageEncoder {
     val packages = pkg.dependencies.map(dep => {
 
       //parse the paths
-      val depIdent = LocationResolver.parsePath(dep) match {
+      val depIdent = AddressResolver.parsePath(dep) match {
         case Some(f) => f
         case None => return None
       }
 
-      //find the location of the dependency
-      val dependecyFile = LocationResolver.resolveSource(pkgFolder,depIdent,Some(Set(PackageEncoder.packageExtensionPrefix))) match {
-        case Some(f) => f
-        case None =>
-          return None
-      }
-
-      //register the dependency (returns the Package object)
-      PackageEncoder.deserializePackage(dependecyFile) match {
+      //resolve and register the dependency (returns the Package object)
+      AddressResolver.resolve(pkgFolder,depIdent, PackageEncoder.Loader, Some(Set(PackageEncoder.packageExtensionPrefix))) match {
         case Some(r) => r
         case None => return None
       }
@@ -136,20 +129,21 @@ class JsonPackageEncoder extends PackageEncoder {
     Some(newPkg)
   }
 
-  private def buildMeta(link:StrongLink, codeLoc:Location, sourceLoc:Location, interfaceLoc:Location):Meta = {
+  private def buildMeta(link:StrongLink, codeLoc:Directory, sourceLoc:Directory, interfaceLoc:Directory):Meta = {
     //get the byte code File
-    val codeSource = LocationResolver.resolveSource(codeLoc, Path(NameGenerator.generateCodeName(link.name,  link.info.classifier)), Some(Set(ModuleSerializer.codeExtension)))
+    val codeSource = AddressResolver.resolve(codeLoc, Address(NameGenerator.generateCodeName(link.name,  link.info.classifier)), AddressResolver.InputLoader, Some(Set(ModuleSerializer.codeExtension)))
     //get the source File
     val sourceId = link.source match {
       case Some(Source(name, Some(extension))) => Identifier(name, extension)
       case Some(Source(name, None)) => Identifier(name)
       case None => unexpected("I hope we do not need this", Always)//Identifier(m.name, m.info.classifier)
     }
-    val sourceCodeSource = LocationResolver.resolveSource(sourceLoc, Path(sourceId))
+    val sourceCodeSource = AddressResolver.resolve(sourceLoc, Address(sourceId), AddressResolver.InputLoader)
     //get the interface File
-    val interfaceSource = LocationResolver.resolveSource(
+    val interfaceSource = AddressResolver.resolve(
       interfaceLoc,
-      Path(NameGenerator.generateInterfaceName(link.name,  link.info.classifier)),
+      Address(NameGenerator.generateInterfaceName(link.name,  link.info.classifier)),
+      AddressResolver.InputLoader,
       Some(Set(InterfaceEncoder.interfaceExtensionPrefix))
     )
 
@@ -167,10 +161,10 @@ class JsonPackageEncoder extends PackageEncoder {
     }
   }
 
-  override def serializePackage(pkg: structure.LinkablePackage, workspace: Workspace): Boolean = {
-    val out = LocationResolver.resolveSink(workspace.workspaceLocation, Identifier(pkg.name, PackageExtension(Json))).getOrElse(throw new Exception("NEED CUSTOM"))
+  override def serializePackage(pkg: structure.LinkablePackage, workspace: Workspace): Option[InputSource] = {
+    val out = AddressResolver.resolveSink(workspace.workspaceLocation, Identifier(pkg.name, PackageExtension(Json))).getOrElse(throw new Exception("NEED CUSTOM"))
     val repr = Serializer.toPackageRepr(pkg, workspace)
     out.write(writeToStream[Package](repr,_))
-    true
+    Some(out.toInputSource)
   }
 }

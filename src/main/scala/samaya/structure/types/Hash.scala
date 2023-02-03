@@ -4,7 +4,6 @@ import java.io.{DataOutputStream, FilterInputStream, FilterOutputStream, InputSt
 import java.math.BigInteger
 import java.security.{DigestInputStream, DigestOutputStream, MessageDigest}
 import java.util
-
 import io.github.rctcwyvrn.blake3.Blake3
 import org.apache.commons.codec.binary.Hex
 import samaya.types.{InputSource, OutputTarget}
@@ -25,7 +24,9 @@ case class Hash(data:Array[Byte]) {
 }
 
 object Hash {
-  val len:Int = 20
+  val byteLen:Int = 20
+  val charLen:Int = byteLen*2
+
   def fromBytes(data: Array[Byte]): Hash = Hash(data)
   def fromString(hash:String):Hash = Hash(Hex.decodeHex(hash))
 
@@ -35,21 +36,7 @@ object Hash {
     val digestStream = new Blake3InputStream(input.content, digest)
     while (digestStream.read() > -1) {}
     digestStream.close()
-    fromBytes(digest.digest(Hash.len))
-  }
-
-
-  def writeAndHash(out:OutputTarget, writer:OutputStream => Unit):Hash =  {
-    out.write(out => {
-      val digest = Blake3.newInstance
-      val stream = new Blake3OutputStream(out, digest)
-      try {
-        writer(stream)
-      } finally {
-        stream.close()
-      }
-      fromBytes(digest.digest(Hash.len))
-    })
+    fromBytes(digest.digest(Hash.byteLen))
   }
 
   implicit val byteOrdering:Ordering[Hash] = new Ordering[Hash] {

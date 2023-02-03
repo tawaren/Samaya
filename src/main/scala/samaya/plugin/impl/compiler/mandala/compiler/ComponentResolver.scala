@@ -232,6 +232,7 @@ trait ComponentResolver extends CompilerToolbox {
   //The resolver algorithms
   def resolveType(importPath:Seq[String],compApplies:Option[Seq[Type]], applies:Option[Seq[Type]], sourceId:SourceId): Type = {
     val start = importPath.head
+
     //If it is just a name not a path it can refer to local declarations
     if(importPath.size == 1) {
       //May be from local scope

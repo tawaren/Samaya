@@ -1,0 +1,22 @@
+import core.Id
+import core.Id._
+import Capability._
+import core.sys.Sys._
+import core.Equal._
+import core.Bool._
+
+//Todo: This could be more generic allowing for Perm -> Perm
+class PermAssociation[P, PS] {
+    //Does not need to be guarded, as createPerm already is and toPerm is save
+    // Meaning an adversary can not type savely implement it unless using toPerm & createPerm
+    function perm[G](cap:Cap[G,PS]):Perm[G,P]
+}
+
+module Permission {
+    instance ToPerm[P] for PermAssociation[P,P] {
+        implement perm[G] with toPerm[G,P]
+    }
+}
+
+
+
