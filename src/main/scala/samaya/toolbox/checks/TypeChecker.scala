@@ -91,13 +91,13 @@ trait TypeChecker extends TypeTracker{
 
   private def checkFunctionCall(func: Func, params: Seq[Ref], stack: Stack, origin:SourceId):Unit = {
     val paramInfo = func.paramInfo(context)
-    paramInfo.zip(params).zipWithIndex.foreach{case (tv,idx) => {
+    paramInfo.zip(params).zipWithIndex.foreach{case (tv,idx) =>
       val pType = stack.getType(tv._2)
       val loc = tv._2.src
       if(pType != tv._1._1) {
         feedback(LocatedMessage(s"${indexToString(idx+1)} parameter value for function call ${func.prettyString(context,gens)} has the wrong type: expected ${tv._1._1.prettyString(context, gens)}, provided ${pType.prettyString(context, gens)}", loc, Error, Checking(Priority)))
       }
-    }}
+    }
     SignatureValidator.validateFunction(func,parametrization,context)
   }
 

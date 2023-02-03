@@ -1,0 +1,40 @@
+import sys.Bool
+import sys.Data
+import sys.IntI16
+
+system module IntI16 {
+
+    type I16 = IntI16.I16
+
+    global function joinHash(op1:I16, op2:I16):Data.Data20 = Data.joinHash(IntI16.hash(op1), IntI16.hash(op2))
+
+    instance HashForI16 for Hash[I16]{
+        implement hash with IntI16.hash
+        implement joinHash with joinHash
+    }
+
+    instance EqForI16 for Equal[I16]{
+        implement eq with IntI16.eq
+    }
+
+    instance BitOpsForI16 for BitOps[I16]{
+        implement and with IntI16.and
+        implement or with IntI16.or
+        implement xor with IntI16.xor
+        implement not with IntI16.not
+    }
+
+    instance ArithForI16 for Arith[I16] {
+        implement add with IntI16.add
+        implement sub with IntI16.sub
+        implement mul with IntI16.mul
+        implement div with IntI16.div
+    }
+
+    instance CompareForI16 for Compare[I16] {
+        implement lt with IntI16.lt
+        implement lte with IntI16.lte
+        implement gt with IntI16.gt
+        implement gte with IntI16.gte
+    }
+}

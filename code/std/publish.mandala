@@ -1,0 +1,12 @@
+import core.sys.Sys._
+import core.Id
+
+//todo: can we have a version we can clean up if no longer needed
+module Publish {
+    global relevant data Shared[relevant T](val:T)
+    type Public[relevant persisted T] = Entry[Shared[T]]
+
+    global function share[relevant persisted T](id:Id.Private, consume val:T):Public[T] = Entry#(id, Shared#(val))
+    global function get[relevant persisted T](Public[T](_,v)):T = v.val
+
+}

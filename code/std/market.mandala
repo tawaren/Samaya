@@ -1,0 +1,38 @@
+import SubjectLock._
+import Subject._
+import core.Equal
+import core.Equal._
+//Todo: can we somehow view Projected as companion of projected types implicitly??
+//      would need compiler knowledge about how to find std lib stuff
+//      may be usefull anyway in case we want auto import operators like == (now we need import core.Equal._)
+import core.Projected._
+import core.Id
+import core.Id.EqForPrivateId
+import core.sys.Sys._
+
+
+module Market {
+
+    global(create, inspect) local(consume) linear data Offer[O,value P](offer:O, owner:Subject, pay:project(P))
+
+    //Todo: Note that the persist is a bit confusing, as P is only used in a project(T)
+    //      Maybe allow Phantoms in project
+    global function offer[persisted O,persisted P](consume offer:O, owner:Subject, id:Id.Private, pay:project(P)) = Entry#(id,Offer#(offer,owner,pay))
+
+    global function request[persisted O,persisted P](entry:Entry[Offer[O,P]]):project(P) = inspect entry with Entry(_,val) => val.pay
+    global function owner[persisted O,persisted P](entry:Entry[Offer[O,P]]):Subject = inspect entry with Entry(_,val) => val.owner
+
+    global transactional function accept[persisted O,persisted P](consume entry:Entry[Offer[O,P]], consume pay:P, implicit context consume eq:Equal[P].eq):(o:O, res:Entry[Locked[P]]){
+        let Entry(loc, Offer(off, owner, p)) = entry in
+        ensure project(pay) == p in
+        (off, lockEntry(owner,loc,pay))
+    }
+
+     global transactional function withdraw[persisted O,persisted P](consume entry:Entry[Offer[O,P]], auth:Authorization):(id:Id.Private, val:O) {
+        let Entry(loc, Offer(off, owner, _)) = entry in
+        ensure checkAuthorization(owner, auth) in (loc, off)
+     }
+
+
+    //todo: acceptPartial -- Nice case for fungible N/A
+}

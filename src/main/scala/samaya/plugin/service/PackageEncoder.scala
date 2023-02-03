@@ -3,6 +3,7 @@ package samaya.plugin.service
 import samaya.plugin.service.category.PackageEncodingPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure.LinkablePackage
+import samaya.structure.types.Hash
 import samaya.types.{InputSource, Workspace}
 
 trait PackageEncoder extends Plugin{
@@ -16,10 +17,14 @@ trait PackageEncoder extends Plugin{
   //todo: make a simple deserialize and do the rest in a common part
   def deserializePackage(input:InputSource): Option[LinkablePackage]
   //writes output
-  def serializePackage(pkg: LinkablePackage, workspace: Workspace): Boolean
+  def serializePackage(pkg: LinkablePackage, workspace: Workspace): Option[InputSource]
 }
 
 object PackageEncoder extends PackageEncoder with PluginProxy{
+
+  object Loader extends AddressResolver.Loader[LinkablePackage] {
+    override def load(src: InputSource): Option[LinkablePackage] = deserializePackage(src)
+  }
 
   val packageExtensionPrefix = "pkg"
 
@@ -40,13 +45,13 @@ object PackageEncoder extends PackageEncoder with PluginProxy{
     select(Selectors.PackageDeserializationSelector(input)).flatMap(r => r.deserializePackage(input))
   }
 
-  override def serializePackage(pkg: LinkablePackage, workspace:Workspace): Boolean  = {
+  override def serializePackage(pkg: LinkablePackage, workspace:Workspace): Option[InputSource]  = {
     //todo: get default from config
     serializePackage(pkg, workspace,PackageExtension("json"))
   }
 
-  def serializePackage(pkg: LinkablePackage, workspace: Workspace, format:String): Boolean  = {
-    select(Selectors.PackageSerializationSelector(format)).exists(r => r.serializePackage(pkg, workspace))
+  def serializePackage(pkg: LinkablePackage, workspace: Workspace, format:String): Option[InputSource]  = {
+    select(Selectors.PackageSerializationSelector(format)).flatMap(r => r.serializePackage(pkg, workspace))
   }
 
 }

@@ -1,0 +1,26 @@
+import Bool.Bool
+import Data._
+
+system(5) module IntU8 {
+    global external(1) primitive data U8
+
+    global external function eq(num1:U8, num2:U8):(res:Bool)
+    global external function lt(num1:U8, num2:U8):(res:Bool)
+    global external function lte(num1:U8, num2:U8):(res:Bool)
+    global external function gt(num1:U8, num2:U8):(res:Bool)
+    global external function gte(num1:U8, num2:U8):(res:Bool)
+
+    global transactional external function add(num1:U8, num2:U8):(res:U8)
+    global transactional external function sub(num1:U8, num2:U8):(res:U8)
+    global transactional external function div(num1:U8, num2:U8):(res:U8)
+    global transactional external function mul(num1:U8, num2:U8):(res:U8)
+
+    global external function and(num1:U8, num2:U8):(res:U8)
+    global external function or(num1:U8, num2:U8):(res:U8)
+    global external function xor(num1:U8, num2:U8):(res:U8)
+    global external function not(num1:U8):(res:U8)
+
+    global external function toData(num:U8):(res:Data1)
+    global external function fromData(dat:Data1):(res:U8)
+    global external function hash(num:U8):(res:Data20)
+}

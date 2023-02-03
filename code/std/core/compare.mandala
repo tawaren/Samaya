@@ -1,0 +1,8 @@
+import sys.Bool.Bool
+
+class Compare[T] {
+    guarded[T](define) function lt(op1:T, op2:T):Bool
+    guarded[T](define) function lte(op1:T, op2:T):Bool
+    guarded[T](define) function gt(op1:T, op2:T):Bool
+    guarded[T](define) function gte(op1:T, op2:T):Bool
+}

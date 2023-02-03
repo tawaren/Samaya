@@ -1,0 +1,36 @@
+import core.Bool.Bool
+import core.Data20.Data20
+import core.Equal
+
+//Todo: Shall we have a default trait??
+//      Also numerics and bool can default to 0/false
+module Option {
+    global primitive data Option[T]{
+        Some(inner:T)
+        None
+    }
+
+    global function isNone[T](op1:Option[T]):Bool{
+         inspect op1 with
+             | None => Bool#True
+             | Some(_) => Bool#False
+    }
+
+    global function isSome[T](op1:Option[T]):Bool{
+         inspect op1 with
+             | None => Bool#False
+             | Some(_) => Bool#True
+    }
+
+    global function optionEq[T](op1:Option[T], op2:Option[T], implicit consume eqFun:Equal.eq):Bool {
+         inspect op1 with
+             | None => isNone(op2)
+             | Some(v1) => inspect op2 with
+                | None => Bool#False
+                | Some(v2) => eqFun(v1,v2)
+    }
+
+    instance EqForOption[T] for Equal[Option[T]] {
+        implement eq with optionEq[T]
+    }
+}

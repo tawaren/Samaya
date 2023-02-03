@@ -1,0 +1,29 @@
+import sys.Bool
+import sys.Data._
+import sys.Ids
+import sys.Unsafe
+
+system module Id {
+
+    //just delegates
+    type Public = Ids.Id
+    type Private = Ids.PrivateId
+    type PrivateModule = Ids.PrivateModuleId
+    type PublicModule = Ids.ModuleId
+
+    instance EqForPublicId for Equal[Public]{
+        implement eq with Ids.eqId
+    }
+
+    instance EqForPrivateId for Equal[Private]{
+        implement eq with Ids.eqPrivateId
+    }
+
+    instance EqForPublicModuleId for Equal[PublicModule]{
+        implement eq with Ids.eqModuleId
+    }
+
+    instance EqForPrivateModuleId for Equal[PrivateModule]{
+        implement eq with Ids.eqPrivateModuleId
+    }
+}

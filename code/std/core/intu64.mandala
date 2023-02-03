@@ -1,0 +1,40 @@
+import sys.Bool
+import sys.Data
+import sys.IntU64
+
+system module IntU64 {
+
+    type U64 = IntU64.U64
+
+    global function joinHash(op1:U64, op2:U64):Data.Data20 = Data.joinHash(IntU64.hash(op1), IntU64.hash(op2))
+
+    instance HashForU64 for Hash[U64]{
+        implement hash with IntU64.hash
+        implement joinHash with joinHash
+    }
+
+    instance EqForU64 for Equal[U64]{
+        implement eq with IntU64.eq
+    }
+
+    instance BitOpsForU64 for BitOps[U64]{
+        implement and with IntU64.and
+        implement or with IntU64.or
+        implement xor with IntU64.xor
+        implement not with IntU64.not
+    }
+
+    instance ArithForU64 for Arith[U64] {
+        implement add with IntU64.add
+        implement sub with IntU64.sub
+        implement mul with IntU64.mul
+        implement div with IntU64.div
+    }
+
+    instance CompareForU64 for Compare[U64] {
+        implement lt with IntU64.lt
+        implement lte with IntU64.lte
+        implement gt with IntU64.gt
+        implement gte with IntU64.gte
+    }
+}

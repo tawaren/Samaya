@@ -1,0 +1,6 @@
+class Arith[T] {
+   guarded[T](define) transactional function add(op1:T, op2:T):T
+   guarded[T](define) transactional function sub(op1:T, op2:T):T
+   guarded[T](define) transactional function mul(op1:T, op2:T):T
+   guarded[T](define) transactional function div(op1:T, op2:T):T
+}

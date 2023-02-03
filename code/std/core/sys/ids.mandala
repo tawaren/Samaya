@@ -1,0 +1,34 @@
+import Bool._
+import Data._
+
+system(11) module Ids {
+    local external(20) standard data PrivateId
+    local standard data PrivateModuleId(id:PrivateId)
+    type Id = project(PrivateId)
+    type ModuleId = project(PrivateModuleId)
+
+    global external function moduleId():PrivateModuleId
+
+    global external function idFromData(dat:Data20):Id
+    global external function idToData(id:Id):Data20
+    global external function moduleIdFromData(dat:Data20):ModuleId
+    global external function moduleIdToData(id:ModuleId):Data20
+
+    global external function eqId(id1:Id, id2:Id):Bool
+    global external function eqModuleId(id1:ModuleId, id2:ModuleId):Bool
+
+    global external function privateIdDerive(priv:PrivateId, hash:Hash):PrivateId
+    global external function idDerive(id:Id, hash:Hash):Id
+    global external function privateModuleIdDerive(priv:PrivateModuleId, hash:Hash):PrivateId
+    global external function moduleIdDerive(id:ModuleId, hash:Hash):Id
+
+    global function idFromPrivate(priv:PrivateId):Id = project(priv)
+    global function moduleIdFromPrivate(priv:PrivateModuleId):ModuleId = project(priv)
+
+    global function privateIdToData(priv:PrivateId):Data20 = idToData(project(priv))
+    global function privateModuleIdToData(priv:PrivateModuleId):Data20 = idToData(project(priv.id))
+
+    global function eqPrivateId(id1:PrivateId, id2:PrivateId):Bool = eqId(project(id1), project(id2))
+    global function eqPrivateModuleId(id1:PrivateModuleId, id2:PrivateModuleId):Bool= eqModuleId(project(id1), project(id2))
+}
+

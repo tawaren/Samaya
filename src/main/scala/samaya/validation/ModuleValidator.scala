@@ -145,6 +145,7 @@ object ModuleValidator {
 
   //public so it can be shared with Transaction Validator
   def validateFunction(src:SourceId, function:FunctionSig, context: Context, name:String, defineAllowed:Boolean = false):Unit = {
+    //Enforce that they are ordered
     processOrdered[Generic](function.generics,function.generic, g => {})
 
     if(defineAllowed){

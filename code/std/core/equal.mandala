@@ -1,0 +1,5 @@
+import sys.Bool.Bool
+
+class Equal[T] {
+   guarded[T](define) function eq(op1:T, op2:T):Bool
+}

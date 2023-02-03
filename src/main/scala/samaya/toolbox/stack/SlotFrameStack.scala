@@ -3,6 +3,8 @@ package samaya.toolbox.stack
 import samaya.structure.types.{AttrId, Id, Ref, SourceId, Val}
 import samaya.toolbox.stack.SlotFrameStack.SlotDomain
 
+import scala.collection.immutable.ListMap
+
 object SlotFrameStack {
   trait SlotDomain[V] {
     //merges two values from different branches

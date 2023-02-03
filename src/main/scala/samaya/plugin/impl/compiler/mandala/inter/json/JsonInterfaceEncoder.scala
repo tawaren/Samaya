@@ -1,9 +1,8 @@
 package samaya.plugin.impl.compiler.mandala.inter.json
 
 import java.io.OutputStream
-
 import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, readFromStream, writeToStream}
-import samaya.compilation.ErrorManager.{InterfaceGen, InterfaceParsing, PlainMessage, Warning, feedback, unexpected}
+import samaya.compilation.ErrorManager.{ExceptionError, InterfaceGen, InterfaceParsing, PlainMessage, Warning, feedback, unexpected}
 import samaya.plugin.impl.compiler.mandala.MandalaCompiler
 import samaya.plugin.impl.compiler.mandala.components.clazz
 import JsonModel.{Applied, Implement, InstanceEntry, InterfaceFunClass, InterfaceInstance, InterfaceMandalaModule, InterfaceSigClass, TypeAlias}
@@ -149,8 +148,11 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       generics = cls.generics.map(toGenericRepr),
       signatures = signatures,
       datatypes = datatypes,
+      //Todo: Why does this trigger -- do we deserialize wrongly somwhere??
       classTarget = cls.clazzLink match {
-        case CompLink.ByCode(_) => unexpected("class targets should refer to classes", InterfaceGen());
+        case CompLink.ByCode(_) =>
+          println(cls.clazzLink)
+          unexpected("class targets should refer to classes", InterfaceGen());
         case CompLink.ByInterface(hash) => hash.toString
       },
     )
@@ -184,7 +186,10 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       //return the module on success
       Some(new DefInstanceInterface(meta,impl))
     } catch {
-      case _:Exception => None
+      case e:Exception =>
+        e.printStackTrace()
+        feedback(ExceptionError(e))
+        None
     }
   }
 
@@ -199,7 +204,9 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       //return the module on success
       Some(new FunClassInterface(meta,impl))
     } catch {
-      case _:Exception => None
+      case e:Exception =>
+        feedback(ExceptionError(e))
+        None
     }
   }
 
@@ -214,7 +221,9 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       //return the module on success
       Some(new SigClassInterface(meta,impl))
     } catch {
-      case _:Exception => None
+      case e:Exception =>
+        feedback(ExceptionError(e))
+        None
     }
   }
 
@@ -229,7 +238,9 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       //return the module on success
       Some(new MandalaModuleInterface(meta,impl))
     } catch {
-      case _:Exception => None
+      case e:Exception =>
+        feedback(ExceptionError(e))
+        None
     }
   }
 

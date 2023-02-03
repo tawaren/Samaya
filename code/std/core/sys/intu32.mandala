@@ -1,0 +1,26 @@
+import Bool.Bool
+import Data._
+
+system(7) module IntU32 {
+    global external(4) primitive data U32
+
+    global external function eq(num1:U32, num2:U32):(res:Bool)
+    global external function lt(num1:U32, num2:U32):(res:Bool)
+    global external function lte(num1:U32, num2:U32):(res:Bool)
+    global external function gt(num1:U32, num2:U32):(res:Bool)
+    global external function gte(num1:U32, num2:U32):(res:Bool)
+
+    global transactional external function add(num1:U32, num2:U32):(res:U32)
+    global transactional external function sub(num1:U32, num2:U32):(res:U32)
+    global transactional external function div(num1:U32, num2:U32):(res:U32)
+    global transactional external function mul(num1:U32, num2:U32):(res:U32)
+
+    global external function and(num1:U32, num2:U32):(res:U32)
+    global external function or(num1:U32, num2:U32):(res:U32)
+    global external function xor(num1:U32, num2:U32):(res:U32)
+    global external function not(num1:U32):(res:U32)
+
+    global external function toData(num:U32):(res:Data4)
+    global external function fromData(dat:Data4):(res:U32)
+    global external function hash(num:U32):(res:Data20)
+}

@@ -20,27 +20,31 @@ class DefInstanceInterfaceImpl(override val location: JsonLocation, input:JsonMo
   }
 
   override val classTarget: CompLink = CompLink.ByInterface(Hash.fromString(input.classTarget))
-  override val classApplies: Seq[Type] = input.applies.map(TypeBuilder.toType(_, location.descendProperty("class_applies")))
+  override val classApplies: Seq[Type] = TypeBuilder.inContext(generics){
+    input.applies.map(TypeBuilder.toType(_, location.descendProperty("class_applies")))
+  }
 
   //Todo: Not nice:
   // Improve if SigImplement becomes a proper ModuleEntry -- Sadly this currently requires position which makes no sense for non manifested ones
   override val implements: Seq[SigImplement] = {
     val implLoc = location.descendProperty("implements")
     input.implements.map{
-      case Implement(name,generics,fun,impl) =>
+      case Implement(name,impl_generics,fun,impl) =>
         val loc = implLoc.descendProperty(name)
         val src = new InputSourceId(Region(loc,loc))
         val genLoc = implLoc.descendProperty("generics")
-        val gens = generics.zipWithIndex.map(gi => GenericImpl(genLoc.descendProperty(gi._1.name), gi._1,gi._2))
-        val nFun = fun match {
-          case Applied(Some(module), entryIndex, applies) => StdFunc.Remote(CompLink.fromString(module), entryIndex, applies.map(TypeBuilder.toType(_,src)))(src)
-          case Applied(None, entryIndex, applies) => StdFunc.Local(entryIndex, applies.map(TypeBuilder.toType(_,src)))(src)
+        val gens = impl_generics.zipWithIndex.map(gi => GenericImpl(genLoc.descendProperty(gi._1.name), gi._1,gi._2))
+        TypeBuilder.inContext(gens) {
+          val nFun = fun match {
+              case Applied(Some(module), entryIndex, applies) => StdFunc.Remote(CompLink.fromString(module), entryIndex, applies.map(TypeBuilder.toType(_, src)))(src)
+              case Applied(None, entryIndex, applies) => StdFunc.Local(entryIndex, applies.map(TypeBuilder.toType(_, src)))(src)
+          }
+          val nImpl = impl match {
+              case Applied(Some(module), entryIndex, applies) => ImplFunc.Remote(CompLink.fromString(module), entryIndex, applies.map(TypeBuilder.toType(_,src)))(src)
+              case Applied(None, entryIndex, applies) => ImplFunc.Local(entryIndex, applies.map(TypeBuilder.toType(_,src)))(src)
+          }
+          SigImplement(name,gens,nFun,nImpl,src)
         }
-        val nImpl = impl match {
-          case Applied(Some(module), entryIndex, applies) => ImplFunc.Remote(CompLink.fromString(module), entryIndex, applies.map(TypeBuilder.toType(_,src)))(src)
-          case Applied(None, entryIndex, applies) => ImplFunc.Local(entryIndex, applies.map(TypeBuilder.toType(_,src)))(src)
-        }
-        SigImplement(name,gens,nFun,nImpl,src)
     }
   }
 

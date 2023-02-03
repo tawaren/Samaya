@@ -2,10 +2,9 @@ package samaya.plugin.impl.compiler.mandala
 
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import samaya.build.desc.Dependency
-import samaya.compilation.ErrorManager.{canProduceErrors, newPlainErrorScope, producesErrorValue}
+import samaya.compilation.ErrorManager.{newPlainErrorScope, producesErrorValue}
 import samaya.plugin.impl.compiler.common.BasicErrorListener
 import samaya.plugin.impl.compiler.mandala.compiler.MandalaBaseCompiler
-import samaya.plugin.impl.compiler.mandala.components.InstInfo
 import samaya.plugin.impl.compiler.mandala.process.{ImplicitInjector, InstanceFinder, TypeAndClassInference}
 import samaya.plugin.service.Selectors.{CompilerSelectorByMeta, CompilerSelectorBySource}
 import samaya.plugin.service.{LanguageCompiler, Selectors}

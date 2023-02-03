@@ -1,0 +1,28 @@
+import std.Asset.Asset
+import MandalaKitten.Kitten
+import UzhToken.UZH
+import std.Token._
+import std.core.IntU128.U128
+import std.Market._
+import std.SubjectLock._
+import std.core.sys.Sys._
+import std.Subject._
+import std.Publish._
+
+transactional transaction OfferKitten(consume kitten:Entry[Locked[Asset[Kitten]]], price:U128, auth:Authorization):Entry[Offer[Asset[Kitten], Token[UZH]]]{
+  let (kittenLoc, from, plainKitten) = unlockEntry(kitten, auth) in
+  let tokenPrice = <Token[UZH]>#(<price>) in
+  offer(plainKitten, from, kittenLoc, tokenPrice)
+}
+
+transactional transaction BuyKitten(consume offer:Entry[Offer[Asset[Kitten], Token[UZH]]], consume coins:Entry[Locked[Token[UzhToken.UZH]]], auth:Authorization, context consume gen:IdGenerator):
+                                    (change:Entry[Locked[Token[UzhToken.UZH]]], pay:Entry[Locked[Token[UzhToken.UZH]]], kitten:Entry[Locked[Asset[Kitten]]]) {
+  let (senderLoc, from, allTokens) = unlockEntry(coins, auth) in
+  let amount = >request(offer).amount< in
+  let (rem,send) = split(allTokens, amount) in
+  let (kitten, pay) = accept(offer, send) in
+  let (receiverLoc, _) = uniqueID(gen) in
+  let changeEntry = lockEntry(from,senderLoc,rem) in
+  let receiverEntry = lockEntry(from,receiverLoc,kitten) in
+  (changeEntry, pay, receiverEntry)
+}

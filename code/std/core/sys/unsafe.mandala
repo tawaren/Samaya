@@ -1,0 +1,12 @@
+system(14) module Unsafe {
+    local external(0) standard temporary data Unsafe[phantom T]
+
+    //Todo: Limit all these to Value (Same in Sanskrit Script)
+    local external function _unProject[T](t:project(T)):(res:T)
+    local external function _packUnsafe[T](t:T):(res:Unsafe[T])
+    local external function _unpackUnsafe[T](t:Unsafe[T]):(res:T)
+    //Todo: add a special copyVoitaile -- can copy Sigs Non-Values --Is marked as ExtraDangerous -- as it can trick resource costs
+    local external function _copy[T](t:T):(res:T)
+    local external function _consume[T](consume t:T):()
+
+}

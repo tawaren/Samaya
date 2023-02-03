@@ -118,7 +118,8 @@ object Func {
     def onDef[T](context: Context, fallback: T, f: (D, Type => Type) => T): T = {
       getEntry(context)  match {
         case Some(func) => f(func, adaptLocals)
-        case None => fallback
+        case None =>
+          fallback
       }
     }
   }

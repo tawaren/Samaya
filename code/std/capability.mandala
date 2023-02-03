@@ -1,0 +1,65 @@
+import core.Id
+import core.Id._
+import core.sys.Sys._
+import core.Equal._
+import core.Bool._
+
+/*
+Best Practices for Highest Security:
+As callee / implementer:
+ Always request Handle[O,P] where O is the entry you access and P the Permission you use
+ Only when more than 1 Permission is needed request additional Permissions as read only params (never consume them)
+  In that case ensure checkPerm(handle,extraPerm) returns true before you take any action that requires extraPerm
+ Only when you need one or more Permissions for longer and want to store them for later use then request the corresponding Cap
+  Note: You should prefer requesting the Handler/Perm each time as an argument over storing the Cap (because the later can be seen as security risk unless really necessary)
+        Only if the former is not possible or overly complicated should you consider the second
+As caller:
+ When only 1 Perm always pass a Handle, if non available, create 1 over createHandle
+ When more than 1 Perm pass the additional perms as read only, never pass them to a consume (except for trying to steal the perm for later use their is never a reason to consume it)
+ Only ever pass a Cap when you intend to give access permanently to the receiver
+*/
+
+//Provides the basic types and functions for Capabilities and Permissions and Handles
+//The advanced functionality for Perm deriviation is in Permission
+module Capability {
+     global(inspect,consume) guarded[G](create) data Cap[phantom G, phantom PD](id:Id.Public)
+
+     //By making them affine we can pass them as read only parameters and be sure that they do not escape (be stolenn)
+     //  But it needs checking that the target is read only (a good compiler should warn - if not)
+     //We further Add temporary as a second line of defense. it somehow escapes the calling function it is at least ensured that it can not escape the transaction
+     //The reason we do not make it unbound is that createPerm/extractHandle need to return it
+     global(inspect,consume) local(create) temporary data Perm[phantom G, phantom P](id:Id.Public)
+
+     //Is the preferred way to pass down Permissions because:
+     // 1: It ensures that the access check was made and not accidentally is omitted
+     // 2: The Permission can not be extracted and thus can never escape (except by G -- which is the issuer and could just create it anyways)
+     // The only reason we need Permissions as standalone data type is for the cases where we need more than one permission to achieve something
+     global(inspect,consume) local(create) temporary data Handle[persisted G, phantom P](entry:Entry[G])
+
+     //Helpers to extract Ids & create Caps -- Not needed but convenient
+     global function capId[G,PD](cap:Cap[G,PD]) = cap.id
+     global function permId[G,P](perm:Perm[G,P]) = perm.id
+     global function handleId[persisted G,P](handle:Handle[G,P]) = inspect handle with Handle(entry) => entryId(entry)
+
+     guarded[G] function createCap[G,P](id:Id.Public) = Cap[G,P]#(id)
+     guarded[G] function createEntryCap[persisted G,P](entry:Entry[G]) = Cap[G,P]#(entryId(entry))
+
+     //TODO: Descs
+     guarded[PD] function createPerm[G, P, PD](cap:Cap[G,PD]) = Perm[G,P]#(capId(cap))
+     global function toPerm[G, P](cap:Cap[G,P]) = Perm[G,P]#(capId(cap))
+
+     global transactional function createHandle[persisted G,P](consume entry:Entry[G], perm:Perm[G,P]):Handle[G,P] {
+        ensure entryId(entry) == permId(perm) in Handle#(entry)
+     }
+
+     global transactional function checkPerm[persisted G,P1,P2](handle:Handle[G, P1], perm:Perm[G,P2]):Bool {
+        handleId(handle) == permId(perm)
+     }
+
+     //This function allows to read inside, then modify and repack
+     // It is guarded to ensure that nobody can get the Perm (unless it could anyways)
+     // This ensures that we can pass in Handlers as consume without risk of permission stealing
+     guarded[G] function extractHandle[persisted G,P](consume Handle[G,P](entry)):(Entry[G], Perm[G,P]) {
+        (entry,Perm#(entryId(entry)))
+     }
+}

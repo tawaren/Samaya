@@ -7,7 +7,7 @@ import samaya.structure.LinkablePackage
 // todo: if we do the convention stuff we can ask the plugin for defaults
 trait Workspace {
   //the folder in which we operate
-  def workspaceLocation:Location
+  def workspaceLocation:Directory
   //dependencies
   //local dependency that are recompiled
   def includes:Option[Set[Workspace]]
@@ -17,10 +17,10 @@ trait Workspace {
   //defaults to workspace name if not explicitly provided
   def name:String
   //sources contained in the package
-  def sources: Option[Set[Path]]
+  def sources: Option[Set[Address]]
   // the place to look for sources
-  def sourceLocation:Location
+  def sourceLocation:Directory
   //targets
-  def codeLocation:Location
-  def interfaceLocation:Location
+  def codeLocation:Directory
+  def interfaceLocation:Directory
 }

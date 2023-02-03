@@ -1,0 +1,40 @@
+import sys.Bool
+import sys.Data
+import sys.IntI128
+
+system module IntI128 {
+
+    type I128 = IntI128.I128
+
+    global function joinHash(op1:I128, op2:I128):Data.Data20 = Data.joinHash(IntI128.hash(op1), IntI128.hash(op2))
+
+    instance HashForI128 for Hash[I128]{
+        implement hash with IntI128.hash
+        implement joinHash with joinHash
+    }
+
+    instance EqForI128 for Equal[I128]{
+        implement eq with IntI128.eq
+    }
+
+    instance BitOpsForI128 for BitOps[I128]{
+        implement and with IntI128.and
+        implement or with IntI128.or
+        implement xor with IntI128.xor
+        implement not with IntI128.not
+    }
+
+    instance ArithForI128 for Arith[I128] {
+        implement add with IntI128.add
+        implement sub with IntI128.sub
+        implement mul with IntI128.mul
+        implement div with IntI128.div
+    }
+
+    instance CompareForI128 for Compare[I128] {
+        implement lt with IntI128.lt
+        implement lte with IntI128.lte
+        implement gt with IntI128.gt
+        implement gte with IntI128.gte
+    }
+}

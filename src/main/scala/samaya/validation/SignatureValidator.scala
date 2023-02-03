@@ -117,8 +117,8 @@ object SignatureValidator {
         feedback(LocatedMessage("Generic with requested index does not exist", t.src, Error, Checking()))
       }
 
-      case _:Type.Unknown => feedback(LocatedMessage("Requested type is unknown", t.src, Error, Checking(30)))
-
+      case _:Type.Unknown =>
+        feedback(LocatedMessage("Requested type is unknown", t.src, Error, Checking(30)))
     }
   }
 

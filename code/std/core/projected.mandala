@@ -1,0 +1,46 @@
+import sys.Unsafe
+import sys.Bool.Bool
+import sys.Data.Data20
+
+system module Projected {
+
+    type Projected[T] = project(T)
+
+    //This is safe as return is a primitive -- meaning no value can be extracted from T and leaked
+    global function projectedEq[T](op1:project(T), op2:project(T), implicit consume eqFun:Equal.eq):Bool {
+        let unOp1 = Unsafe._unProject(op1) in
+        let unOp2 = Unsafe._unProject(op2) in
+        let res = eqFun(unOp1,unOp2) in
+        let () = Unsafe._consume(unOp1) in
+        let () = Unsafe._consume(unOp2) in
+        res
+    }
+
+    //This is safe as return is a primitive -- meaning no value can be extracted from T and leaked
+    global function projectedHash[T](op1:project(T), implicit consume hashFun:Hash.hash):Data20 {
+        let unOp1 = Unsafe._unProject(op1) in
+        let res = hashFun(unOp1) in
+        let () = Unsafe._consume(unOp1) in
+        res
+    }
+
+    //This is safe as return is a primitive -- meaning no value can be extracted from T and leaked
+    global function projectedJoinHash[T](op1:project(T), op2:project(T), implicit consume hashFun:Hash.joinHash):Data20 {
+        let unOp1 = Unsafe._unProject(op1) in
+        let unOp2 = Unsafe._unProject(op2) in
+        let res = hashFun(unOp1,unOp2) in
+        let () = Unsafe._consume(unOp1) in
+        let () = Unsafe._consume(unOp2) in
+        res
+    }
+
+    instance EqForProjected[T] for Equal[project(T)]{
+        implement eq with projectedEq[T]
+    }
+
+    instance HashForProjected[T] for Hash[project(T)]{
+        implement hash with projectedHash[T]
+        implement joinHash with projectedJoinHash[T]
+    }
+
+}

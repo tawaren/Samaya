@@ -1,0 +1,32 @@
+import sys.Data
+import sys.IntU8
+
+system module Bool {
+
+    type Bool = sys.Bool.Bool
+
+    global function hash(op1:Bool):Data.Data20 {
+         if op1
+          then IntU8.hash(1)
+          else IntU8.hash(0)
+    }
+
+    global function joinHash(op1:Bool, op2:Bool):Data.Data20 = Data.joinHash(hash(op1), hash(op2))
+
+    instance HashForBool for Hash[Bool]{
+        implement hash with hash
+        implement joinHash with joinHash
+    }
+
+    instance EqForBool for Equal[Bool]{
+        implement eq with sys.Bool.eq
+    }
+
+    instance BitOpsForBool for BitOps[Bool]{
+        implement and with sys.Bool.and
+        implement or with sys.Bool.or
+        implement xor with sys.Bool.xor
+        implement not with sys.Bool.not
+    }
+
+}

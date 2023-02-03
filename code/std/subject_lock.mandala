@@ -1,0 +1,31 @@
+import Subject._
+import core.Id
+import core.Id._
+import Either.Either
+import core.sys.Sys.Entry
+import core.Equal._
+
+
+module SubjectLock {
+    //Warning: If a Locked#(id,val) is generated and nobody can generate an auth token for the id then val is lost forever
+    global(create) local(consume, inspect) data Locked[T](owner:Subject, val:T)
+
+    global function lock[T](owner:Subject, consume val:T) = Locked#(owner, val)
+
+    global transactional function unlock[T](consume Locked[T](owner, val) , auth:Authorization):(Subject,T) {
+        ensure checkAuthorization(owner,auth) in
+        (owner, val)
+    }
+
+    global function safeUnlock[T](consume locked:Locked[T], auth:Authorization):Either[T, Locked[T]] {
+        try unlock($locked, auth) with
+          | success(_, val) => Either#Left(val)
+          | failure(lock) => Either#Right(lock)
+    }
+
+    global function lockEntry[persisted T](owner:Subject, id:Id.Private, consume val:T) = Entry#(id, Locked#(owner,val))
+
+    global transactional function unlockEntry[persisted T](consume Entry[Locked[T]](id, locked), auth:Authorization):(id:Id.Private, owner:Subject, val:T){
+        let (owner, val) = unlock(locked, auth) in (id, owner, val)
+    }
+}

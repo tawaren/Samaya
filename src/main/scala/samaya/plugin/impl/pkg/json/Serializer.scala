@@ -1,23 +1,23 @@
 package samaya.plugin.impl.pkg.json
 
 import samaya.plugin.impl.pkg.json.JsonModel.Source
-import samaya.plugin.service.LocationResolver
+import samaya.plugin.service.AddressResolver
 import samaya.structure.{Component, Interface}
 import samaya.structure
-import samaya.types.{Identifier, Workspace}
+import samaya.types.{Address, Identifier, Workspace}
 
 object Serializer {
 
   def toPackageRepr(pkg: structure.LinkablePackage, workspace: Workspace): JsonModel.Package = {
-    val basePath = LocationResolver.serialize(None, pkg.location, None)
-    val dependencies = pkg.dependencies.map(d => LocationResolver.serialize(Some(pkg.location), d.location, Some(d.name)))
+    val basePath = AddressResolver.serializeDirectory(None, pkg.location)
+    val dependencies = pkg.dependencies.flatMap(d => AddressResolver.serializeAddress(Some(pkg.location),d))
     JsonModel.Package(
       name = pkg.name,
       hash = pkg.hash.toString,
       components = pkg.components.map(toCompRepr),
       path = basePath,
       locations = toLocationsRepl(workspace),
-      dependencies = dependencies.map(l => l.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")))
+      dependencies = dependencies
     )
   }
 
@@ -50,9 +50,9 @@ object Serializer {
   }
 
   def toLocationsRepl(workspace: Workspace): JsonModel.Locations = {
-    val interface = LocationResolver.serialize(Some(workspace.workspaceLocation), workspace.interfaceLocation, None)
-    val code = LocationResolver.serialize(Some(workspace.workspaceLocation), workspace.codeLocation, None)
-    val source = LocationResolver.serialize(Some(workspace.workspaceLocation), workspace.sourceLocation, None)
+    val interface = AddressResolver.serializeDirectory(Some(workspace.workspaceLocation), workspace.interfaceLocation)
+    val code = AddressResolver.serializeDirectory(Some(workspace.workspaceLocation), workspace.codeLocation)
+    val source = AddressResolver.serializeDirectory(Some(workspace.workspaceLocation), workspace.sourceLocation)
     JsonModel.Locations(
       interface = interface.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),
       code = code.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),

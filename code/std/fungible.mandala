@@ -1,0 +1,7 @@
+import core.IntU128.U128
+
+class Fungible[T] {
+   global transactional function split(consume item:T, split:U128):(reminder:T, extracted:T)
+   global transactional function merge(consume item1:T, consume item2:T):T
+   global function amount(item:T):U128
+}

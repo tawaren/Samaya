@@ -1,0 +1,26 @@
+import Bool.Bool
+import Data._
+
+system(1) module IntI16 {
+    global external(2) primitive data I16
+
+    global external function eq(num1:I16, num2:I16):(res:Bool)
+    global external function lt(num1:I16, num2:I16):(res:Bool)
+    global external function lte(num1:I16, num2:I16):(res:Bool)
+    global external function gt(num1:I16, num2:I16):(res:Bool)
+    global external function gte(num1:I16, num2:I16):(res:Bool)
+
+    global transactional external function add(num1:I16, num2:I16):(res:I16)
+    global transactional external function sub(num1:I16, num2:I16):(res:I16)
+    global transactional external function div(num1:I16, num2:I16):(res:I16)
+    global transactional external function mul(num1:I16, num2:I16):(res:I16)
+
+    global external function and(num1:I16, num2:I16):(res:I16)
+    global external function or(num1:I16, num2:I16):(res:I16)
+    global external function xor(num1:I16, num2:I16):(res:I16)
+    global external function not(num1:I16):(res:I16)
+
+    global external function toData(num:I16):(res:Data2)
+    global external function fromData(dat:Data2):(res:I16)
+    global external function hash(num:I16):(res:Data20)
+}

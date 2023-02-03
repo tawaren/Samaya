@@ -1,0 +1,40 @@
+import sys.Bool
+import sys.Data
+import sys.IntU32
+
+system module IntU32 {
+
+    type U32 = IntU32.U32
+
+    global function joinHash(op1:U32, op2:U32):Data.Data20 = Data.joinHash(IntU32.hash(op1), IntU32.hash(op2))
+
+    instance HashForU32 for Hash[U32]{
+        implement hash with IntU32.hash
+        implement joinHash with joinHash
+    }
+
+    instance EqForU32 for Equal[U32]{
+        implement eq with IntU32.eq
+    }
+
+    instance BitOpsForU32 for BitOps[U32]{
+        implement and with IntU32.and
+        implement or with IntU32.or
+        implement xor with IntU32.xor
+        implement not with IntU32.not
+    }
+
+    instance ArithForU32 for Arith[U32] {
+        implement add with IntU32.add
+        implement sub with IntU32.sub
+        implement mul with IntU32.mul
+        implement div with IntU32.div
+    }
+
+    instance CompareForU32 for Compare[U32] {
+        implement lt with IntU32.lt
+        implement lte with IntU32.lte
+        implement gt with IntU32.gt
+        implement gte with IntU32.gte
+    }
+}

@@ -1,0 +1,6 @@
+class BitOps[T] {
+   guarded[T](define) function and(op1:T, op2:T):T
+   guarded[T](define) function or(op1:T, op2:T):T
+   guarded[T](define) function xor(op1:T, op2:T):T
+   guarded[T](define) function not(op:T):T
+}

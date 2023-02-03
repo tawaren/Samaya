@@ -120,7 +120,7 @@ trait SigCompiler extends CompilerToolbox {
       if(ctx.CONTEXT() != null) attr = attr :+ Attribute(MandalaCompiler.Context_Attribute_Name, Attribute.Unit)
       val param:Param = new Param {
         override val name: String = visitName(ctx.name)
-        override val index: Int = nextIndex()
+        override val index: Int =  nextIndex()
         override val typ: Type = visitTypeRef(ctx.typeRef())
         override val consumes: Boolean = ctx.CONSUME() != null
         override val attributes: Seq[Attribute] = attr

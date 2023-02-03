@@ -2,9 +2,13 @@ package samaya.plugin.impl.inter.json
 
 import samaya.structure.types.{Accessibility, Capability, Permission}
 import samaya.structure
-import samaya.structure.{Attribute, Generic, Param, Result}
+import samaya.structure.{Attribute, Generic, Param, Result, SignatureDef}
 
-case class FunctionSigImpl(override val location: JsonLocation, input:JsonModel.FunctionSignature) extends structure.FunctionSig with JsonSource {
+//We implement SignatureDef eagerly: Not all FunctionSigImpl are technically SignatureDef
+// However, the type SignatureDef is only relevant if its used as a type
+//  And whenever FunctionSigImpl is used as type it is a  SignatureDef
+// Alternative would have been duplicating the code or making it not a case class
+case class FunctionSigImpl(override val location: JsonLocation, input:JsonModel.FunctionSignature) extends structure.FunctionSig with SignatureDef with JsonSource {
   override val index: Int = input.offset
   override val name: String = input.name
   override val position: Int = input.position

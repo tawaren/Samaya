@@ -1,0 +1,84 @@
+//Todo: Reenable
+/*import core.sys.Sys._
+import core.sys.Sys
+import Capability._
+import core.Id._
+import core.Id
+//Todo: copy needed stuff to core
+import core.sys.Ids.privateToPublic
+import Fungible
+import core.Arith._
+import core.Compare._
+import core.BitOps._
+import core.IntU128._
+
+module Purse {
+    local linear data Purse[F](f:F)
+    type PurseEntry[persisted F] = Entry[Purse[F]]
+    //caps
+    //local data Master Todo: Have an non-external data Type must have a constructor
+    local data Master()
+    local data Deposit()
+    local data Withdraw()
+
+    type MasterCap[F] = Cap[Purse[F],Master]
+    type DepositCap[F] = Cap[Purse[F],Deposit]
+    type WithdrawCap[F] = Cap[Purse[F],Withdraw]
+
+
+    global function createDepositCap[F](cap:MasterCap[F]) = DepositCap[F]#(cap.id,Deposit#())
+    global function createWithdrawCap[F](cap:MasterCap[F]) = WithdrawCap[F]#(cap.id,Withdraw#())
+
+    global function createDepositPerm[F](cap:MasterCap[F]):Perm[Purse[F], Deposit] = createPerm(cap)
+    global function createWithdrawPerm[F](cap:MasterCap[F]):Perm[Purse[F],Withdraw] = createPerm(cap)
+
+    instance DepositPermSelect for PermAssociation[Deposit,Master] {
+        implement perm[F] with createDepositPerm[F]
+    }
+
+    instance WithdrawPermSelect for PermAssociation[Withdraw,Master] {
+        implement perm[F] with createWithdrawPerm[F]
+    }
+
+    global transactional function createPurse[persisted F](consume f:F, implicit context consume gen:IdGenerator):(PurseEntry[F],MasterCap[F],IdGenerator){
+        let (id, newGen) = uniqueID(gen) in
+        (Entry#(id, Purse#(f)), MasterCap[F]#(privateToPublic(id),Master#()),newGen)
+    }
+
+    global transactional function dispose[persisted F](consume purse:PurseEntry[F], cap:MasterCap[F]):F {
+        ensure checkAccess(purse,cap) in purse.val.f
+
+    }
+
+    global transactional function deposit[persisted F](consume purse:PurseEntry[F], consume f:F, cap:DepositCap[F], implicit context consume merge:Fungible[F].merge):PurseEntry[F] {
+        ensure checkAccess(purse,cap) in
+        let (id, p)@purse in Entry#(id,Purse#(merge(p.f,f)))
+    }
+
+    global transactional function withdraw[persisted F](consume purse:PurseEntry[F], amount:U128, cap:WithdrawCap[F], implicit context consume split:Fungible[F].split):(PurseEntry[F],F) {
+        ensure checkAccess(purse,cap) in
+        let (id, p)@purse in
+        let (rem, ext) = split(p.f, amount) in
+        (Entry#(id,Purse#(rem)), ext)
+    }
+}
+
+
+module Allowance {
+
+    //allowanceCap
+    local linear data Allowance(amount:U128)
+
+    type AllowanceCap[F] = Cap[Purse.Purse[F],Nested[Allowance,Purse.Withdraw]]
+
+    global transactional function withdraw[persisted F](consume purse:Purse.PurseEntry[F], amount:U128, consume cap:AllowanceCap[F], implicit context consume split:Fungible[F].split):(Purse.PurseEntry[F],AllowanceCap[F],F) {
+        ensure checkAccess(purse,cap) in
+        let (state, withdrawCap) = extractInner(cap) in
+        ensure state.amount <= amount in
+        let (rem, ext) = Purse.withdraw(purse, amount, withdrawCap) in
+        let newCap = createFor(rem,Allowance#(state.amount - amount),withdrawCap) in
+        (rem, newCap ,ext)
+    }
+}
+
+*/

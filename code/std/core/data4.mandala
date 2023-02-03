@@ -1,0 +1,18 @@
+import sys.Bool
+import sys.Data
+
+system module Data4 {
+
+    type Data4 = Data.Data4
+
+    global function joinHash(op1:Data4, op2:Data4):Data.Hash = Data.joinHash(Data.hash4(op1), Data.hash4(op2))
+
+    instance HashForData4 for Hash[Data4]{
+        implement hash with Data.hash4
+        implement joinHash with joinHash
+    }
+
+    instance EqForData4 for Equal[Data4]{
+        implement eq with Data.eq4
+    }
+}

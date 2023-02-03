@@ -1,7 +1,9 @@
 package samaya.plugin.service
 
-import samaya.structure.Component
-import samaya.types.{Identifier, InputSource, Location, Path}
+import samaya.plugin.service.AddressResolver.SerializerMode
+import samaya.structure.{Component, ContentAddressable}
+import samaya.structure.types.Hash
+import samaya.types.{Address, Directory, Identifier, InputSource}
 
 //todo: Shall we make seperate objects and subfolders
 //   Shall we merge certain selectors that hav same layout??
@@ -18,6 +20,10 @@ object Selectors {
   //A Interface loading Task description intended for selecting the appropriate plugin
   case class WorkspaceDeserializationSelector(source:InputSource) extends WorkspaceSelector
 
+  sealed trait DependenciesSelector
+  //A Interface loading Task description intended for selecting the appropriate plugin
+  case class DependenciesDeserializationSelector(source:InputSource) extends DependenciesSelector
+
   sealed trait PackageSelector
   //A Package loading Task description intended for selecting the appropriate plugin
   case class PackageDeserializationSelector(source:InputSource) extends PackageSelector
@@ -31,14 +37,25 @@ object Selectors {
   case object TransactionDeployerSelector extends DeployerSelector
 
 
-  sealed trait LocationSelector
+  sealed trait AddressSelector
   //A Location resolution Task description intended for selecting the appropriate plugin
-  case class Lookup(parent:Location, path:Path) extends LocationSelector
-  case class List(parent:Location) extends LocationSelector
-  case class Serialize(parent:Option[Location], target: Location) extends LocationSelector
-  case class Parse(name:String) extends LocationSelector
+  sealed trait LookupMode
+  case object LocationLookupMode extends LookupMode
+  case object SourceLookupMode extends LookupMode
+  case object SinkLookupMode extends LookupMode
 
-  case object Default extends LocationSelector
+  case class Lookup(parent:Directory, path:Address, mode:LookupMode) extends AddressSelector
+  case class List(parent:Directory) extends AddressSelector
+  case class SerializeAddress(parent:Option[Directory], target: ContentAddressable, mode:SerializerMode) extends AddressSelector
+  case class SerializeDirectory(parent:Option[Directory], target: Directory) extends AddressSelector
+  case class Parse(name:String) extends AddressSelector
+
+  case object Default extends AddressSelector
+
+
+  sealed trait ContentSelector
+  //A Content resolution Task description intended for selecting the appropriate plugin
+  case class UpdateContentIndex(context:Option[Directory]) extends ContentSelector
 
   trait CompilerSelector
   case class CompilerSelectorByMeta(language:String, version:String, classifier:Set[String]) extends CompilerSelector

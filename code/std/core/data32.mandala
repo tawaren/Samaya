@@ -1,0 +1,18 @@
+import sys.Bool
+import sys.Data
+
+system module Data32 {
+
+    type Data32 = Data.Data32
+
+    global function joinHash(op1:Data32, op2:Data32):Data.Hash = Data.joinHash(Data.hash32(op1), Data.hash32(op2))
+
+    instance HashForData32 for Hash[Data32]{
+        implement hash with Data.hash32
+        implement joinHash with joinHash
+    }
+
+    instance EqForData32 for Equal[Data32]{
+        implement eq with Data.eq32
+    }
+}

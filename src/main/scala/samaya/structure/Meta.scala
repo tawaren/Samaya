@@ -6,7 +6,7 @@ import samaya.types.InputSource
 
 
 case class Meta(
-  codeHash:Option[Hash],
+  codeHash:Option[Hash], //Only None if the compilation failed or it is Virtual
   interfaceHash:Hash,
   sourceHash:Hash,
   interface:InputSource,

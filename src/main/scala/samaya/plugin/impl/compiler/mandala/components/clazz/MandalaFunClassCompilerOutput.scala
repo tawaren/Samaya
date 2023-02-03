@@ -11,5 +11,7 @@ class MandalaFunClassCompilerOutput(
                                      override val src:SourceId
 ) extends FunClass {
   override val isVirtual: Boolean = true
-  override def toInterface(meta: Meta): Interface[FunClass] = new FunClassInterface(meta, this)
+  override def toInterface(meta: Meta): Interface[FunClass] = {
+    new FunClassInterface(meta, this)
+  }
 }

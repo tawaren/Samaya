@@ -50,12 +50,14 @@ class MandalaModuleInterfaceImpl(override val location: JsonLocation, input:Json
         val src = new InputSourceId(Region(loc,loc))
         val genLoc = implLoc.descendProperty("generics")
         val gens = generics.zipWithIndex.map(gi => GenericImpl(genLoc.descendProperty(gi._1.name), gi._1,gi._2))
-        val typ = TypeBuilder.toType(target, src)
-        entry.TypeAlias(name,gens,typ,src)
+        TypeBuilder.inContext(gens){
+          val typ = TypeBuilder.toType(target, src)
+          entry.TypeAlias(name,gens,typ,src)
+        }
     }
   }
 
 
   override def toInterface(meta: Meta): Interface[MandalaModule] = new MandalaModuleInterface(meta, this)
-  override def isVirtual: Boolean = true
+  override def isVirtual: Boolean = input.link.isEmpty
 }

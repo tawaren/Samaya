@@ -6,7 +6,7 @@ import samaya.types.{InputSource, Workspace}
 
 
 //a plugin description for managing (parsing and validating) interface descriptions
-trait WorkspaceEncoder extends Plugin{
+trait WorkspaceEncoder extends Plugin {
 
   override type Selector = Selectors.WorkspaceSelector
 

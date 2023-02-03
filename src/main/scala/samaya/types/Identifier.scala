@@ -16,8 +16,6 @@ object Identifier {
   case class Specific(override val name:String, extensionString:String) extends Identifier {
     override def extension: Option[String] = Some(extensionString)
   }
-
-
   def apply(name:String): General = Identifier.General(name)
   def apply(name:String, extension:String): Specific = Identifier.Specific(name, extension)
 }

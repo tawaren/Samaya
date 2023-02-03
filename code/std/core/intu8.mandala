@@ -1,0 +1,40 @@
+import sys.Bool
+import sys.Data
+import sys.IntU8
+
+system module IntU8 {
+
+    type U8 = IntU8.U8
+
+    global function joinHash(op1:U8, op2:U8):Data.Data20 = Data.joinHash(IntU8.hash(op1), IntU8.hash(op2))
+
+    instance HashForU8 for Hash[U8]{
+        implement hash with IntU8.hash
+        implement joinHash with joinHash
+    }
+
+    instance EqForU8 for Equal[U8]{
+        implement eq with IntU8.eq
+    }
+
+    instance BitOpsForU8 for BitOps[U8]{
+        implement and with IntU8.and
+        implement or with IntU8.or
+        implement xor with IntU8.xor
+        implement not with IntU8.not
+    }
+
+    instance ArithForU8 for Arith[U8] {
+        implement add with IntU8.add
+        implement sub with IntU8.sub
+        implement mul with IntU8.mul
+        implement div with IntU8.div
+    }
+
+    instance CompareForU8 for Compare[U8] {
+        implement lt with IntU8.lt
+        implement lte with IntU8.lte
+        implement gt with IntU8.gt
+        implement gte with IntU8.gte
+    }
+}
