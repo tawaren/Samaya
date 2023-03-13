@@ -3,6 +3,7 @@ plugins {
     id 'scala'
     id 'antlr'
     id 'idea'
+    id 'application'
     id "com.github.johnrengelman.shadow" version "6.0.0"
 }
 
@@ -59,3 +60,5 @@ generateGrammarSource {
 clean.doLast {
     file('generated-src').deleteDir()
 }
+
+mainClassName = 'samaya.Main'
