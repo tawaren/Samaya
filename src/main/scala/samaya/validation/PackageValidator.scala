@@ -1,18 +1,15 @@
 package samaya.validation
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataOutputStream, InputStream, OutputStream}
-import java.security.{DigestOutputStream, MessageDigest}
-import io.github.rctcwyvrn.blake3.Blake3
-import samaya.codegen.{ComponentSerializer, ModuleSerializer, NameGenerator}
+import ky.korins.blake3.Blake3
+import samaya.codegen.ComponentSerializer
 import samaya.compilation.ErrorManager
 import samaya.structure.{Component, Interface, LinkablePackage, Meta}
-import samaya.structure.types.{Blake3OutputStream, Hash}
+import samaya.structure.types.Hash
 import samaya.compilation.ErrorManager._
-import samaya.plugin.impl.compiler.mandala.components.module.MandalaModuleInterface
-import samaya.plugin.service.{AddressResolver, ComponentValidator, InterfaceEncoder, LanguageCompiler}
+import samaya.plugin.service.{ComponentValidator, InterfaceEncoder, LanguageCompiler}
 import samaya.types.{Directory, Identifier, InputSource, OutputTarget}
 
-import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 
 
@@ -166,7 +163,7 @@ object PackageValidator {
 
             for(((a,b),i) <- cbytes.zip(ccbytes).zipWithIndex){
               if(a != b) {
-                println(i+": "+a+" <-> "+b)
+                println(i.toString+": "+a+" <-> "+b)
               }
             }
 
@@ -185,7 +182,7 @@ object PackageValidator {
 
   //validate the 3 different hashes for the 3 different categories
   private def validatePackageHash(pkg: LinkablePackage): Unit = {
-    val digest = Blake3.newInstance
+    val digest = Blake3.newHasher()
     pkg.components.map(e => e.meta.interfaceHash).sorted.distinct.foreach(h => digest.update(h.data))
 
     pkg.dependencies.sortBy(p => p.name).distinct.foreach(p => {
@@ -193,7 +190,7 @@ object PackageValidator {
       digest.update(p.hash.data)
     })
 
-    if(pkg.hash != Hash.fromBytes(digest.digest(Hash.byteLen))){
+    if(pkg.hash != Hash.fromBytes(digest.done(Hash.byteLen))){
       feedback(PlainMessage(s"Integrity for package ${pkg.location} violated", Error, Checking()))
     }
   }

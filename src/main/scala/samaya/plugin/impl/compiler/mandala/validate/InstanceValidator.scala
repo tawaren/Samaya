@@ -61,7 +61,7 @@ object InstanceValidator {
               case sig:SigType =>
                 sig.getEntry(plainContext) match {
                   case Some(sigDef) if sigDef.name == name  =>
-                  case None => feedback(LocatedMessage("Instance implements must return a signature with the same name aas the implement",sig.src,Error, Checking()))
+                  case _ => feedback(LocatedMessage("Instance implements must return a signature with the same name aas the implement",sig.src,Error, Checking()))
                 }
                 sig.getComponent(plainContext) match {
                   case Some(sigCls:SigClass) => if(sigCls.clazzLink != inst.classTarget){

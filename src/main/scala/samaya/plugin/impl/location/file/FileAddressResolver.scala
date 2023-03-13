@@ -193,7 +193,7 @@ class FileAddressResolver extends AddressResolver{
     val file = new File(userDir)
     if(!file.exists()) return None
     if(!file.isDirectory) return None
-    val path = file.getCanonicalPath.split(Pattern.quote(File.separator)).map(Identifier.General)
+    val path = file.getCanonicalPath.split(Pattern.quote(File.separator)).map(Identifier.General).toSeq
     Some(new FileDirectory(path, file))
   }
 
@@ -209,7 +209,7 @@ class FileAddressResolver extends AddressResolver{
         } else {
           Identifier.General(nameExt(0))
         }
-        Some(Address.Absolute(FileAddressResolver.Protocoll,pathIds :+ lastId))
+        Some(Address.Absolute(FileAddressResolver.Protocoll,(pathIds :+ lastId).toSeq))
       case _ => None
     }
   }

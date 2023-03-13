@@ -86,9 +86,9 @@ abstract class TransformTraverser extends Transformer {
       transformBlockLocal(intro, code, res.map(_.id), caseId, newState, state => caseStart(intro, src, ctrName, mode, caseId, state))
     }.toSeq
 
-    val nBranches = branches.zip(branchStates.map(_._1)).map{
+    val nBranches = ListMap.from(branches.zip(branchStates.map(_._1)).map{
       case ((ctr,(param, _)),block) => (ctr,(param, block))
-    }
+    })
 
     //traverseJoin is only defined for non empty branches
     val fState = if(branchStates.nonEmpty) {

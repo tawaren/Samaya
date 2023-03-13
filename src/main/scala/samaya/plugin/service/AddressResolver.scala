@@ -8,6 +8,7 @@ import samaya.structure.ContentAddressable
 import samaya.structure.types.Hash
 import samaya.types.{Address, Directory, Identifier, InputSource, OutputTarget}
 
+import scala.reflect.ClassTag
 import scala.util.matching.Regex
 
 //A plugin interface to resolve Locations
@@ -55,6 +56,8 @@ object AddressResolver extends AddressResolver with PluginProxy{
   def getProtocolHeader(protocolName:String):String = protocolName+"://"
 
   type PluginType = AddressResolver
+  override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
+
   override def category: PluginCategory[PluginType] = AddressResolverPluginCategory
 
   def provideDefault():Option[Directory] = {

@@ -6,7 +6,7 @@ import samaya.structure.{Attribute, Constructor, DataDef, Field, Generic}
 import samaya.structure.types.Permission.{Consume, Create, Inspect}
 import samaya.structure.types.{Accessibility, Capability, Permission, SourceId, Type}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait DataCompiler extends CompilerToolbox {
   self: CapabilityCompiler with PermissionCompiler with ComponentBuilder with ComponentResolver=>
@@ -70,14 +70,14 @@ trait DataCompiler extends CompilerToolbox {
           val fs = ctx.fields()
           val fields = if(fs == null) Seq.empty else fs.f.asScala
           withFreshIndex {
-            fields.map(visitField)
+            fields.map(visitField).toSeq
           }
         }
         override val src: SourceId = sourceIdFromContext(ctx)
       })
     } else if(ctx.c != null && ctx.c.size() > 0){
       withFreshIndex{
-        ctx.c.asScala.map(visitCtr)
+        ctx.c.asScala.map(visitCtr).toSeq
       }
     } else {
       Seq(new Constructor {
@@ -98,7 +98,7 @@ trait DataCompiler extends CompilerToolbox {
       val fs = ctx.fields()
       val fields = if(fs == null) Seq.empty else fs.f.asScala
       withFreshIndex{
-        fields.map(visitField)
+        fields.map(visitField).toSeq
       }
     }
     override val src: SourceId = sourceIdFromContext(ctx)

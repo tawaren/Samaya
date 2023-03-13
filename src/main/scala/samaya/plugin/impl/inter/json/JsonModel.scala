@@ -1,7 +1,8 @@
 package samaya.plugin.impl.inter.json
 
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import com.github.plokhotnyuk.jsoniter_scala.macros.CodecMakerConfig
 import samaya.structure
 import samaya.structure.Attribute
 
@@ -45,7 +46,7 @@ object JsonModel {
   case class InterfaceModule(name:String, link: Option[String], mode:structure.Module.Mode, hadError:Boolean, language:String, version:String, classifier:Set[String], attributes:Seq[Attribute], functions: Seq[FunctionSignature], implements: Seq[FunctionSignature], datatypes: Seq[DataSignature], sigtypes: Seq[FunctionSignature])
   case class InterfaceTransaction(name:String, link: Option[String], hadError:Boolean, language:String, version:String, classifier:Set[String], attributes:Seq[Attribute], transactional:Boolean, params:Seq[Param], returns:Seq[Return])
 
-  implicit val moduleCodec: JsonValueCodec[InterfaceModule] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))
-  implicit val transactionCodec: JsonValueCodec[InterfaceTransaction] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))
+  implicit val moduleCodec: JsonValueCodec[InterfaceModule] = JsonCodecMaker.make(CodecMakerConfig.withAllowRecursiveTypes(true))
+  implicit val transactionCodec: JsonValueCodec[InterfaceTransaction] = JsonCodecMaker.make(CodecMakerConfig.withAllowRecursiveTypes(true))
 
 }

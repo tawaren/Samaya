@@ -9,7 +9,7 @@ plugins {
 group 'Samaya'
 version '1.0-SNAPSHOT'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 17
 
 repositories {
     mavenLocal()
@@ -31,14 +31,15 @@ sourceSets {
 }
 
 dependencies {
-    implementation 'org.scala-lang:scala-library:2.12.10'
+    implementation 'org.scala-lang:scala-library:2.13.10'
     testImplementation 'junit:junit:4.12'
-    compile group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-macros_2.12', version: '0.49.1'
-    compile group: 'com.github.plokhotnyuk.jsoniter-scala', name: 'jsoniter-scala-core_2.12', version: '0.49.1'
-    antlr "org.antlr:antlr4:4.7.1"
-    compile "org.antlr:antlr4-runtime:4.7.1"
-    compile 'commons-codec:commons-codec:1.14'
-    compile 'io.github.rctcwyvrn:blake3:1.3'
+    implementation 'com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_2.13:2.21.3'
+    compileOnly 'com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-macros_2.13:2.21.3'
+
+    antlr "org.antlr:antlr4:4.12.0"
+    implementation 'org.antlr:antlr4-runtime:4.12.0'
+    implementation 'commons-codec:commons-codec:1.15'
+    implementation 'ky.korins:blake3_2.11:2.9.0'
 }
 
 generateGrammarSource {

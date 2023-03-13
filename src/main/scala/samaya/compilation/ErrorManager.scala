@@ -40,8 +40,8 @@ object ErrorManager {
   }
 
   private trait ErrorHandler {
-    def record(err:Message)
-    def finish()
+    def record(err:Message): Unit
+    def finish(): Unit
   }
 
   private val logger:DynamicVariable[ErrorHandler] = new DynamicVariable(ConsoleLogger)
@@ -53,7 +53,7 @@ object ErrorManager {
   }
 
   case class PlainMessage(msg:String, level:ErrorLevel, override val priority: Priority) extends Message {
-    override def toString: String = level +": "+ msg
+    override def toString: String = level.toString +": "+ msg
   }
 
   case class LocatedMessage(msg:String, origin:Region, level:ErrorLevel, override val priority: Priority) extends Message {

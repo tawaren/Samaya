@@ -7,7 +7,7 @@ import samaya.structure.{Attribute, Result}
 import samaya.structure.types.{Id, SourceId, Type}
 import samaya.toolbox.process.TypeInference
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait TransactionBuilder extends CompilerToolbox{
   self: ExpressionBuilder with ComponentBuilder with SigCompiler =>
@@ -19,9 +19,9 @@ trait TransactionBuilder extends CompilerToolbox{
       val (funParams, bodyBindings, processors) = visitParams(ctx.params())
       val (resResults, body) = if(ctx.rets() != null) {
         val res = withFreshIndex{
-          ctx.rets().r.asScala.map(visitRet)
+          ctx.rets().r.asScala.map(visitRet).toSeq
         }
-        val defaultIds = res.map(b => Id(b.name, b.src))
+        val defaultIds = res.map(b => Id(b.name, b.src)).toSeq
         val code = withDefaultReturns(defaultIds){
           processBody(ctx.funBody, bodyBindings)
         }

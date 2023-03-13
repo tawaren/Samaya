@@ -1,7 +1,7 @@
 package samaya.plugin.impl.compiler.mandala.inter.json
 
 import java.io.OutputStream
-import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, readFromStream, writeToStream}
+import com.github.plokhotnyuk.jsoniter_scala.core._
 import samaya.compilation.ErrorManager.{ExceptionError, InterfaceGen, InterfaceParsing, PlainMessage, Warning, feedback, unexpected}
 import samaya.plugin.impl.compiler.mandala.MandalaCompiler
 import samaya.plugin.impl.compiler.mandala.components.clazz
@@ -76,7 +76,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
           Implement(name,generics.map(toGenericRepr),fun,impl)
       }
     )
-    writeToStream[InterfaceInstance](repr, out, WriterConfig(indentionStep = 2))
+    writeToStream[InterfaceInstance](repr, out, WriterConfig.withIndentionStep(2))
     true
   }
 
@@ -109,7 +109,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       instances = instances,
       typeAlias = typeAlias,
     )
-    writeToStream[InterfaceMandalaModule](repr, out, WriterConfig(indentionStep = 2))
+    writeToStream[InterfaceMandalaModule](repr, out, WriterConfig.withIndentionStep(2))
     true
   }
 
@@ -127,7 +127,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       generics = cls.generics.map(toGenericRepr),
       functions = functions,
     )
-    writeToStream[InterfaceFunClass](repr, out, WriterConfig(indentionStep = 2))
+    writeToStream[InterfaceFunClass](repr, out, WriterConfig.withIndentionStep(2))
     true
   }
 
@@ -156,7 +156,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
         case CompLink.ByInterface(hash) => hash.toString
       },
     )
-    writeToStream[InterfaceSigClass](repr, out, WriterConfig(indentionStep = 2))
+    writeToStream[InterfaceSigClass](repr, out, WriterConfig.withIndentionStep(2))
     true
   }
 

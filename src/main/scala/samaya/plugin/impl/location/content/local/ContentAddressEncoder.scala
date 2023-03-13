@@ -32,6 +32,7 @@ class ContentAddressEncoder extends AddressResolver{
   }
 
 
+  //Todo: Implement using Indexer
   override def resolveDirectory(parent: Directory, path: Address, create: Boolean): Option[Directory] = None
   override def resolve[T <: ContentAddressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T], extensionFilter: Option[Set[String]]): Option[T] = None
   override def resolveSink(parent: Directory, ident: Identifier.Specific): Option[OutputTarget] = None

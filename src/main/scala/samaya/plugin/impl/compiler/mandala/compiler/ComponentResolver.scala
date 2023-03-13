@@ -10,7 +10,7 @@ import samaya.structure.types.{AdtType, Capability, DefinedType, Func, ImplFunc,
 import samaya.structure.{Attribute, Component, DataDef, FunctionDef, Generic, ImplementDef, Interface, Module, Package, SignatureDef}
 import samaya.toolbox.process.TypeInference
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait ComponentResolver extends CompilerToolbox {
   self: ComponentBuilder with CapabilityCompiler =>
@@ -126,7 +126,7 @@ trait ComponentResolver extends CompilerToolbox {
   }
 
   override def visitImport_(ctx: MandalaParser.Import_Context): Unit = {
-    val elems = ctx.path().part.asScala.map(visitName)
+    val elems = ctx.path().part.asScala.map(visitName).toSeq
     val src = sourceIdFromContext(ctx);
     if(ctx.wildcard() != null) {
       addWildCardImport(elems, src)
@@ -142,19 +142,19 @@ trait ComponentResolver extends CompilerToolbox {
 
 
   override def visitTypeRefArgs(ctx: MandalaParser.TypeRefArgsContext): Seq[Type] = {
-    ctx.targs.asScala.map(visitTypeRef)
+    ctx.targs.asScala.map(visitTypeRef).toSeq
   }
 
   private def extractBaseRef(ctx: MandalaParser.BaseRefContext): (Seq[String],Option[Seq[Type]], Option[Seq[Type]]) = {
     var parts = ctx.path().part.asScala.map(visitName)
-    val applies = if(ctx.targs == null) None else Some(ctx.targs.targs.asScala.map(visitTypeRef))
+    val applies = if(ctx.targs == null) None else Some(ctx.targs.targs.asScala.map(visitTypeRef).toSeq)
     val compApplies = if(ctx.compArgs != null){
       parts = parts :+ visitName(ctx.name())
-      Some(ctx.compArgs.targs.asScala.map(visitTypeRef))
+      Some(ctx.compArgs.targs.asScala.map(visitTypeRef).toSeq)
     } else {
       None
     }
-    (parts, compApplies, applies)
+    (parts.toSeq, compApplies, applies)
   }
 
   override def visitBaseRef(ctx: MandalaParser.BaseRefContext): Type = {

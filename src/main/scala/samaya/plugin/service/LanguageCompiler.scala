@@ -1,11 +1,14 @@
 package samaya.plugin.service
 
 import samaya.build.desc.Dependency
+import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.service.category.LanguageCompilerPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure
 import samaya.structure.{CompiledModule, Component, Interface, Module, ModuleInterface, Transaction}
 import samaya.types.InputSource
+
+import scala.reflect.ClassTag
 
 //a plugin description for a compiler that can compile sources in a language to sanskrit code
 trait LanguageCompiler extends Plugin {
@@ -23,6 +26,7 @@ trait LanguageCompiler extends Plugin {
 object LanguageCompiler extends LanguageCompiler with PluginProxy{
 
   type PluginType = LanguageCompiler
+  override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = LanguageCompilerPluginCategory
 
   override def compileAndBuildFully(source: InputSource, pkg:structure.Package)(builder: Component => (structure.Package, Option[Interface[Component]])):structure.Package = {

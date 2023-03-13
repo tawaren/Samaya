@@ -1,11 +1,10 @@
 package samaya.plugin.impl.compiler.mandala
 
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
-import samaya.plugin.impl.compiler.mandala.MandalaParser.{InstanceContext, InstanceDefContext, PathContext}
-import samaya.plugin.impl.compiler.mandala.components.instance.Instance
+import samaya.plugin.impl.compiler.mandala.MandalaParser.{InstanceContext, PathContext}
 import samaya.structure.types.{InputSourceId, Location, Region, SourceId}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[Map[Seq[String], Seq[SourceId]]]{
 
@@ -27,7 +26,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
   private var availableBindings = Set.empty[String]
 
   override def visitImport_(ctx: MandalaParser.Import_Context): Map[Seq[String], Seq[SourceId]] = {
-    val elems = ctx.path().part.asScala.map(name => getName(name).getText)
+    val elems = ctx.path().part.asScala.map(name => getName(name).getText).toSeq
     if(ctx.wildcard() != null) {
       Map(elems -> Seq(sourceIdFromContext(ctx)))
     } else {
@@ -119,7 +118,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
     val old = componentGenerics
     componentGenerics = extractGenericArgs(ctx.genericArgs())
     val res = aggregateResult(
-      visitRef(ctx.compRef().path().part.asScala.map(getName(_).getText), sourceIdFromContext(ctx), isComp = true),
+      visitRef(ctx.compRef().path().part.asScala.map(getName(_).getText).toSeq, sourceIdFromContext(ctx), isComp = true),
       //visits the ref again but is no problem as worst case results in a package which then is ignored by builder (if it exists)
       super.visitInstance(ctx)
     )
@@ -289,7 +288,7 @@ class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[
 
 
   override def visitPath(ctx: PathContext): Map[Seq[String], Seq[SourceId]] = {
-    visitRef(ctx.part.asScala.map(getName(_).getText), sourceIdFromContext(ctx), isComp = false)
+    visitRef(ctx.part.asScala.map(getName(_).getText).toSeq, sourceIdFromContext(ctx), isComp = false)
   }
 
   def getName(ctx: MandalaParser.NameContext): Token = {

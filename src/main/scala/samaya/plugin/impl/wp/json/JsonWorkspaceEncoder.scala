@@ -29,6 +29,8 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
     val name: String = parsed.name
     val workspaceLocation: Directory = file.location
 
+
+
     def toContent[T <: ContentAddressable](paths:Option[Seq[String]], loader:AddressResolver.Loader[T], extensionFilter:Option[Set[String]]): Option[Set[T]] = {
       paths.map(p => p
         .toSet[String]
@@ -66,14 +68,6 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
       s => s.toSet.flatMap(AddressResolver.parsePath)
     )
 
-    val sourceIdent = AddressResolver.parsePath(parsed.locations.source)match {
-      case Some(id) => id
-      case None =>
-        ErrorManager.feedback(PlainMessage("Could not parse source path", ErrorManager.Error, Builder()))
-        return None
-
-    }
-
     val codeIdent = AddressResolver.parsePath(parsed.locations.code)match {
       case Some(id) => id
       case None =>
@@ -88,11 +82,23 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
         return None
     }
 
-    val sourceLocation: Directory = AddressResolver.resolveDirectory(workspaceLocation,sourceIdent) match {
-      case Some(loc) => loc
-      case None =>
-        ErrorManager.feedback(PlainMessage("Could not load source location", ErrorManager.Error, Builder()))
-        return None
+    val sourceLocation: Directory = parsed.locations.source match {
+        case None => workspaceLocation:Directory
+        case Some(path) =>
+          val sourceIdent = AddressResolver.parsePath(path) match {
+            case Some(id) => id
+            case None =>
+              ErrorManager.feedback(PlainMessage("Could not parse source path", ErrorManager.Error, Builder()))
+              return None
+
+          }
+
+          AddressResolver.resolveDirectory(workspaceLocation,sourceIdent) match {
+            case Some(loc) => loc
+            case None =>
+              ErrorManager.feedback(PlainMessage("Could not load source location", ErrorManager.Error, Builder()))
+              return None
+          }
     }
 
     val codeLocation: Directory = AddressResolver.resolveDirectory(workspaceLocation,codeIdent, create = true)  match {

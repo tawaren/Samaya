@@ -8,7 +8,7 @@ import samaya.structure.types._
 import samaya.structure._
 import samaya.toolbox.process.TypeInference
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait SigCompiler extends CompilerToolbox {
   self: CapabilityCompiler with PermissionCompiler with ComponentBuilder with ComponentResolver with ExpressionBuilder =>
@@ -47,7 +47,7 @@ trait SigCompiler extends CompilerToolbox {
         val res = withFreshIndex{
           ctx.rets().r.asScala.map(visitRet)
         }
-        val defaultIds = res.map(b => Id(b.name, b.src))
+        val defaultIds = res.map(b => Id(b.name, b.src)).toSeq
         val code = withDefaultReturns(defaultIds){
           processBody(ctx.funBody, bodyBindings)
         }
@@ -100,7 +100,7 @@ trait SigCompiler extends CompilerToolbox {
         override val accessibility: Map[Permission,Accessibility] = access
         override val generics: Seq[Generic] = localGenerics
         override val params: Seq[Param] = funParams
-        override val results: Seq[Result] = resResults
+        override val results: Seq[Result] = resResults.toSeq
       })
     }
   }

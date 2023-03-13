@@ -11,7 +11,7 @@ import samaya.toolbox.process.TypeInference
 import samaya.toolbox.process.TypeInference.TypeVar
 
 import scala.:+
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.immutable.ListMap
 
 //todo: add code id everywhere
@@ -365,7 +365,7 @@ trait ExpressionBuilder extends CompilerToolbox{
   override def visitRollback(ctx: MandalaParser.RollbackContext):  (Seq[Ref], Seq[OpCode])  = {
     val sourceId = sourceIdFromContext(ctx)
     val retTypes = if(ctx.typeRefArgs() != null) {
-      ctx.typeRefArgs().targs.asScala.map(visitTypeRef)
+      ctx.typeRefArgs().targs.asScala.map(visitTypeRef).toSeq
     } else {
       returnIds match {
         case Some(retIds) => Seq.fill(retIds.size)(TypeVar(sourceId))
@@ -479,7 +479,7 @@ trait ExpressionBuilder extends CompilerToolbox{
   }
 
   override def visitBranches(ctx: MandalaParser.BranchesContext): ListMap[Id,(Seq[AttrId],Seq[Ref],Seq[OpCode])] = {
-    val branches = ListMap(ctx.b.asScala.map(visitBranch): _*)
+    val branches = ListMap.from(ctx.b.asScala.map(visitBranch).toSeq)
     if(branches.size != ctx.branch().size()) {
       feedback(LocatedMessage(s"Merge branches must have different names", sourceIdFromContext(ctx), Error, Compiler()))
     }

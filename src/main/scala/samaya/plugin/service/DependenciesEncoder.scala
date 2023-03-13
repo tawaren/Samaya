@@ -1,9 +1,12 @@
 package samaya.plugin.service
 
+import samaya.plugin.service.LanguageCompiler.PluginType
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.plugin.service.category.DependenciesEncodingPluginCategory
 import samaya.structure.LinkablePackage
 import samaya.types.InputSource
+
+import scala.reflect.ClassTag
 
 
 //a plugin description for managing (parsing and validating) interface descriptions
@@ -29,6 +32,7 @@ object DependenciesEncoder extends DependenciesEncoder with PluginProxy{
   }
 
   type PluginType = DependenciesEncoder
+  override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = DependenciesEncodingPluginCategory
 
   def deserializeDependenciesSources(source:InputSource):Option[Seq[LinkablePackage]] = {

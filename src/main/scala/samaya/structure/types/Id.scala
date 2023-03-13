@@ -32,7 +32,7 @@ object Id {
   def apply(id:Id):Id = new Id(s"${id.name}#${nextNo()}")(id.src)
 
   //in case the source language allows $ it needs to call this before apply
-  def escapeName(name:String) = name.replaceAllLiterally("$","_$")
+  def escapeName(name:String) = name.replace("$","_$")
 
 }
 

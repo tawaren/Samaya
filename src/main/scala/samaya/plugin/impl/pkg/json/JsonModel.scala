@@ -18,7 +18,7 @@ object JsonModel {
   case class Component(source:Option[Source], name:String, hash:Hashes, info:Info) extends StrongLink
   case class Locations(interface:String, code:String, source:String)
   case class Package(name:String, hash: String, components: Seq[Component], path:Option[String], locations:Locations, dependencies:Seq[String])
-  implicit val codec: JsonValueCodec[Package] = JsonCodecMaker.make[Package](CodecMakerConfig())
+  implicit val codec: JsonValueCodec[Package] = JsonCodecMaker.make[Package](CodecMakerConfig)
 }
 
 /*

@@ -3,11 +3,14 @@ package samaya.plugin
 import samaya.compilation.ErrorManager._
 import samaya.plugin.service.PluginCategory
 
+import scala.reflect.ClassTag
+
 //A interfaces for plugins that can check if a certain task can be handled by a specific plugin
 trait PluginProxy {
   this: Plugin =>
   type PluginType <: Plugin
   def category:PluginCategory[PluginType]
+  implicit def classTag: ClassTag[PluginType]
 
   protected def select(sel:PluginType#Selector):Option[PluginType] =  {
     val res = PluginManager.getPlugin(category, sel)

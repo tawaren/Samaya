@@ -1,8 +1,11 @@
 package samaya.plugin.service
 
+import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.service.category.WorkspaceEncodingPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.types.{InputSource, Workspace}
+
+import scala.reflect.ClassTag
 
 
 //a plugin description for managing (parsing and validating) interface descriptions
@@ -31,6 +34,7 @@ object WorkspaceEncoder extends WorkspaceEncoder with PluginProxy{
   }
 
   type PluginType = WorkspaceEncoder
+  override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = WorkspaceEncodingPluginCategory
 
   override def deserializeWorkspace( source: InputSource): Option[Workspace] = {

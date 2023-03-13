@@ -150,7 +150,7 @@ object CopyDiscardInjector extends EntryTransformer {
 
     //Some Helpers that give reasonable names top operations
     // Mark a Val as used, only the last will survive as we overwrite previous ones
-    def recordUsage(v:Val, u:Usage){
+    def recordUsage(v:Val, u:Usage): Unit = {
       stack.head.current.recordPotentialConsume(v,u)
     }
     def recordUsage(v:Val, c:SourceId): Unit = {

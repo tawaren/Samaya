@@ -6,7 +6,7 @@ import samaya.structure.types.Accessibility.{Global, Guarded, Local}
 import samaya.structure.types.Permission.{Call, Consume, Create, Define, Inspect}
 import samaya.structure.types.{Accessibility, Permission}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait PermissionCompiler extends CompilerToolbox {
   private var defaultAccess:Accessibility = Local

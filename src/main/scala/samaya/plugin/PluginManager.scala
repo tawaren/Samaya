@@ -2,11 +2,11 @@ package samaya.plugin
 
 import java.io.{File, IOException}
 import java.net.URLClassLoader
-
 import samaya.plugin.service.PluginCategory
 
 import scala.collection.mutable
 import scala.io.Source
+import scala.reflect.ClassTag
 
 object PluginManager {
 
@@ -47,7 +47,7 @@ object PluginManager {
     }
   }
 
-  def getPlugins[T <: Plugin](category: PluginCategory[T]):Seq[T] = {
+  def getPlugins[T <: Plugin : ClassTag](category: PluginCategory[T]):Seq[T] = {
     pluginCache.getOrElseUpdate(category, {
       val directory = new File(".") //todo: config /per category??
       extractPlugins(getClass.getClassLoader, category) ++
@@ -57,7 +57,7 @@ object PluginManager {
     }).asInstanceOf[Seq[T]]
   }
 
-  def getPlugins[T <: Plugin](category: PluginCategory[T], selector:T#Selector):Seq[T] = {
+  def getPlugins[T <: Plugin : ClassTag](category: PluginCategory[T], selector:T#Selector):Seq[T] = {
     getPlugins(category)
       .filter(p =>
         p.matches(
@@ -66,7 +66,7 @@ object PluginManager {
       )
   }
 
-  def getPlugin[T <: Plugin](category: PluginCategory[T], selector:T#Selector):Option[T] = {
+  def getPlugin[T <: Plugin : ClassTag](category: PluginCategory[T], selector:T#Selector):Option[T] = {
     getPlugins(category)
       .find(p =>
         p.matches(

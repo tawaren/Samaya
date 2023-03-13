@@ -9,13 +9,13 @@ import samaya.plugin.impl.compiler.mandala.entry.{LocalInstanceEntry, SigImpleme
 import samaya.structure.{Attribute, Binding, Component, Generic, ImplementDef, Interface, Module, Param, Result}
 import samaya.structure.types.{Accessibility, AttrId, CompLink, Func, Id, ImplFunc, OpCode, Permission, SigType, SourceId, StdFunc, Type}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait InstanceBuilder extends CompilerToolbox{
   self: ComponentResolver with ComponentBuilder with CapabilityCompiler with PermissionCompiler with SigCompiler =>
 
   private def resolveLinks(ctx:InstanceContext):Option[(Map[String,Int], CompLink, CompLink)] = {
-    val parts = ctx.compRef().path().part.asScala.map(visitName)
+    val parts = ctx.compRef().path().part.asScala.map(visitName).toSeq
     val (path,targets) = resolveImport(parts, None, isEntryPath = false)
     val funLinks = targets.flatMap{
       case cls:FunClass =>
@@ -70,7 +70,7 @@ trait InstanceBuilder extends CompilerToolbox{
         }
         withComponentGenerics(localGenerics){
           val implementInfos = withArgCount(argCount) {
-            ctx.instanceEntry().asScala.flatMap(visitInstanceEntry)
+            ctx.instanceEntry().asScala.flatMap(visitInstanceEntry).toSeq
           }
           if (implementInfos.map(_._1).distinct.size != implementInfos.size) {
             feedback(LocatedMessage("Alias defined multiple times", sourceId, Error, Compiler()))
@@ -137,7 +137,7 @@ trait InstanceBuilder extends CompilerToolbox{
             case (name,gen,fun,src) => implMapping.get(name).map{ index =>
               SigImplement(name,gen,fun, ImplFunc.Local(index, gen.map(_.asType(src)))(src), src)
             }
-          }
+          }.toSeq
           registerInstanceEntry(LocalInstanceEntry(instName,localGenerics, clazzLink, implements, classApplies, sourceId))
         }
       case None =>

@@ -23,7 +23,7 @@ trait TypeChecker extends TypeTracker{
       case 1 => "first"
       case 2 => "second"
       case 3 => "third"
-      case _ => num+"th"
+      case _ => num.toString+"th"
     }
   }
 

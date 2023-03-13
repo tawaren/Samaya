@@ -28,7 +28,7 @@ class RelativeAddressParser extends AddressResolver{
           Identifier.General(nameExt(0))
         }
       }
-    })
+    }).toSeq
     Some(Address.Relative(pathIds))
   }
 

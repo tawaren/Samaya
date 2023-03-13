@@ -15,9 +15,9 @@ object JsonModel {
   case class InterfaceFunClass(name:String, hadError:Boolean,  language:String, version:String, classifier:Set[String], generics:Seq[Generic], functions: Seq[FunctionSignature])
   case class InterfaceMandalaModule(name:String, link: Option[String], mode:structure.Module.Mode, hadError:Boolean, language:String, version:String, classifier:Set[String], functions: Seq[FunctionSignature], implements: Seq[FunctionSignature], datatypes: Seq[DataSignature], instances:Seq[InstanceEntry], typeAlias:Seq[TypeAlias])
 
-  implicit val modCodec: JsonValueCodec[InterfaceMandalaModule] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))
-  implicit val instanceCodec: JsonValueCodec[InterfaceInstance] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))
-  implicit val funClassCodec: JsonValueCodec[InterfaceFunClass] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))
-  implicit val sigClassCodec: JsonValueCodec[InterfaceSigClass] = JsonCodecMaker.make(CodecMakerConfig(allowRecursiveTypes = true))
+  implicit val modCodec: JsonValueCodec[InterfaceMandalaModule] = JsonCodecMaker.make(CodecMakerConfig.withAllowRecursiveTypes(true))
+  implicit val instanceCodec: JsonValueCodec[InterfaceInstance] = JsonCodecMaker.make(CodecMakerConfig.withAllowRecursiveTypes(true))
+  implicit val funClassCodec: JsonValueCodec[InterfaceFunClass] = JsonCodecMaker.make(CodecMakerConfig.withAllowRecursiveTypes(true))
+  implicit val sigClassCodec: JsonValueCodec[InterfaceSigClass] = JsonCodecMaker.make(CodecMakerConfig.withAllowRecursiveTypes(true))
 
 }

@@ -7,7 +7,7 @@ import samaya.structure.{Attribute, DataDef, FunctionDef, Generic, Module, Modul
 import samaya.structure.types.Accessibility.Global
 import samaya.structure.types.{Accessibility, Capability, CompLink, OpCode, Permission, SourceId}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait ClassBuilder  extends CompilerToolbox{
   self: ComponentResolver with ComponentBuilder with CapabilityCompiler with PermissionCompiler with SigCompiler =>

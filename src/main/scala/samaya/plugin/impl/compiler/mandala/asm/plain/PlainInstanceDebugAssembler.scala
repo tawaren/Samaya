@@ -93,7 +93,7 @@ class PlainInstanceDebugAssembler extends DebugAssembler {
       }
     }
 
-    def indented(body: => Unit){
+    def indented(body: => Unit): Unit = {
       indent +=1
       body
       indent -=1

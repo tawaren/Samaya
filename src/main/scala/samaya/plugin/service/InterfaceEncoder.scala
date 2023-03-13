@@ -1,12 +1,15 @@
 package samaya.plugin.service
 
-import java.io.OutputStream
+import samaya.plugin.service.AddressResolver.PluginType
 
+import java.io.OutputStream
 import samaya.plugin.service.category.InterfaceEncodingPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure.types.Hash
-import samaya.structure.{Component, Meta, Interface, ModuleInterface, TransactionInterface, Module, Transaction}
+import samaya.structure.{Component, Interface, Meta, Module, ModuleInterface, Transaction, TransactionInterface}
 import samaya.types.InputSource
+
+import scala.reflect.ClassTag
 
 //a plugin description for managing (parsing and validating) interface descriptions
 trait InterfaceEncoder extends Plugin{
@@ -31,6 +34,7 @@ trait InterfaceEncoder extends Plugin{
 object InterfaceEncoder extends InterfaceEncoder with PluginProxy{
 
   type PluginType = InterfaceEncoder
+  override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = InterfaceEncodingPluginCategory
 
   override def deserializeInterface(language:String, version:String, classifier:Set[String], source: InputSource, meta:Meta): Option[Interface[Component]] = {

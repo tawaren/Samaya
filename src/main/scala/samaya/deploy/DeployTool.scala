@@ -2,9 +2,9 @@ package samaya.deploy
 
 import samaya.build.BuildTool
 import samaya.compilation.ErrorManager
-import samaya.compilation.ErrorManager._
+import samaya.compilation.ErrorManager.{Always, Info, PlainMessage, feedback, unexpected}
 import samaya.structure.types.Hash
-import samaya.structure.{Component, LinkablePackage, Interface, ModuleInterface, TransactionInterface, Transaction}
+import samaya.structure.{Component, Interface, LinkablePackage}
 
 import scala.collection.mutable
 

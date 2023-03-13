@@ -1,8 +1,11 @@
 package samaya.plugin.service
 
+import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.{Plugin, PluginProxy}
-import samaya.plugin.service.category.{ComponentValidatorPluginCategory}
+import samaya.plugin.service.category.ComponentValidatorPluginCategory
 import samaya.structure.{Component, Package}
+
+import scala.reflect.ClassTag
 
 trait ComponentValidator extends Plugin{
 
@@ -14,6 +17,7 @@ trait ComponentValidator extends Plugin{
 object ComponentValidator extends ComponentValidator with PluginProxy{
 
   type PluginType = ComponentValidator
+  override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = ComponentValidatorPluginCategory
 
   def validateComponent(cmp:Component, pkg:Package): Unit = {

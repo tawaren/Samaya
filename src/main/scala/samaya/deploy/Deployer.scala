@@ -6,6 +6,8 @@ import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure.{Component, Interface, Module, Transaction}
 import samaya.structure.types.Hash
 
+import scala.reflect.ClassTag
+
 trait Deployer extends Plugin{
   override type Selector = Selectors.DeployerSelector
 
@@ -24,6 +26,8 @@ trait Deployer extends Plugin{
 object Deployer extends Deployer with PluginProxy{
 
   type PluginType = Deployer
+  override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
+
   override def category: PluginCategory[PluginType] = DeployerPluginCategory
 
   override def deployModule(module:Interface[_] with Module): Option[Hash]  = {

@@ -63,7 +63,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
 
   private def serializeModuleInterface(module: Module, codeHash:Option[Hash], hasError:Boolean, out: OutputStream): Boolean = {
     val repr = Serializer.toInterfaceModuleRepr(module,codeHash, hasError)
-    writeToStream[InterfaceModule](repr, out, WriterConfig(indentionStep = 2))
+    writeToStream[InterfaceModule](repr, out, WriterConfig.withIndentionStep(2))
     true
   }
 
@@ -84,7 +84,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
 
   private def serializeTransactionInterface(transaction: Transaction, codeHash:Option[Hash], hasError:Boolean, out: OutputStream): Boolean = {
     val repr = Serializer.toInterfaceTransactionRepr(transaction,codeHash,hasError)
-    writeToStream[InterfaceTransaction](repr, out, WriterConfig(indentionStep = 2))
+    writeToStream[InterfaceTransaction](repr, out, WriterConfig.withIndentionStep(2))
     true
   }
 }

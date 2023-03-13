@@ -46,7 +46,7 @@ object ModuleSerializer {
       set.add(perm)
     }
 
-    def addType(typ:Type, perm:Option[Permission] = None){
+    def addType(typ:Type, perm:Option[Permission] = None): Unit = {
       if(!types.contains(typ)){
         typ match {
           case Type.GenericType(_,_) =>
@@ -67,7 +67,7 @@ object ModuleSerializer {
       }
     }
 
-    def addFunction(func:Func, perm:Option[Permission] = None){
+    def addFunction(func:Func, perm:Option[Permission] = None): Unit = {
       if(!funs.contains(func)){
         func match {
           case remote: Func.RemoteLookup[_] => addModule(remote.moduleRef)
@@ -98,7 +98,7 @@ object ModuleSerializer {
 
   //#[derive(Debug, Parsable, Serializable)]
   //pub struct Module {
-  def serialize(out:DataOutputStream, module:CompiledModule, meta:Hash, pkg:Package){
+  def serialize(out:DataOutputStream, module:CompiledModule, meta:Hash, pkg:Package): Unit = {
     //#[ByteSize]
     //pub byte_size:Option<usize>,
     val context = Context(module,pkg)

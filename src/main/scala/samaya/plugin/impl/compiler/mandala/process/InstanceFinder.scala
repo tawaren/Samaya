@@ -111,7 +111,7 @@ class InstanceFinder(imported:Map[CompLink,Seq[InstInfo]], localized:Map[CompLin
       val pkgName = ctx.pkg.packageOfLink(clazz).map(_.name+".").getOrElse("")
       val cls = ctx.pkg.componentByLink(clazz) match {
         case Some(cls:Class) => s"$pkgName${cls.name}[${clazzApplies.map(_.prettyString(ctx)).mkString(",")}]"
-        case None => "unknown"
+        case _ => "unknown"
       }
       if(candidates.isEmpty) {
         feedback(LocatedMessage(s"Instance resolution for class $cls failed",src,Error, Compiler()))
