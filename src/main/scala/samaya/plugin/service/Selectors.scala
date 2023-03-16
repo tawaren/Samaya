@@ -20,9 +20,14 @@ object Selectors {
   //A Interface loading Task description intended for selecting the appropriate plugin
   case class WorkspaceDeserializationSelector(source:InputSource) extends WorkspaceSelector
 
-  sealed trait DependenciesSelector
+  sealed trait DependenciesImportSelector
   //A Interface loading Task description intended for selecting the appropriate plugin
-  case class DependenciesDeserializationSelector(source:InputSource) extends DependenciesSelector
+  case class DependenciesDeserializationSelector(source:InputSource) extends DependenciesImportSelector
+
+  sealed trait RepositoriesImportSelector
+  //A Interface loading Task description intended for selecting the appropriate plugin
+  case class RepositoriesDeserializationSelector(source:InputSource) extends RepositoriesImportSelector
+
 
   sealed trait PackageSelector
   //A Package loading Task description intended for selecting the appropriate plugin
@@ -36,7 +41,6 @@ object Selectors {
   case object ModuleDeployerSelector extends DeployerSelector
   case object TransactionDeployerSelector extends DeployerSelector
 
-
   sealed trait AddressSelector
   //A Location resolution Task description intended for selecting the appropriate plugin
   sealed trait LookupMode
@@ -45,6 +49,8 @@ object Selectors {
   case object SinkLookupMode extends LookupMode
 
   case class Lookup(parent:Directory, path:Address, mode:LookupMode) extends AddressSelector
+  //todo: add mode
+  case class Delete(dir:Directory) extends AddressSelector
   case class List(parent:Directory) extends AddressSelector
   case class SerializeAddress(parent:Option[Directory], target: ContentAddressable, mode:SerializerMode) extends AddressSelector
   case class SerializeDirectory(parent:Option[Directory], target: Directory) extends AddressSelector
@@ -52,14 +58,17 @@ object Selectors {
 
   case object Default extends AddressSelector
 
-
   sealed trait ContentSelector
-  //A Content resolution Task description intended for selecting the appropriate plugin
-  case class UpdateContentIndex(context:Option[Directory]) extends ContentSelector
+  case object UpdateContentIndex extends ContentSelector
+  case class StoreContentIndex(directory:Directory) extends ContentSelector
+
+  sealed trait RepositoryLoaderSelector
+  case class LoadRepository(source:InputSource) extends RepositoryLoaderSelector
 
   trait CompilerSelector
   case class CompilerSelectorByMeta(language:String, version:String, classifier:Set[String]) extends CompilerSelector
   case class CompilerSelectorBySource(source: InputSource)  extends CompilerSelector
+  case class CompilerSelectorByIdentifier(source: Identifier)  extends CompilerSelector
 
   case class ValidatorSelector(target:Component)
 

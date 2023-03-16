@@ -10,14 +10,14 @@ import scala.reflect.ClassTag
 
 
 //a plugin description for managing (parsing and validating) interface descriptions
-trait DependenciesEncoder extends Plugin {
+trait DependenciesImportSourceEncoder extends Plugin {
 
-  override type Selector = Selectors.DependenciesSelector
+  override type Selector = Selectors.DependenciesImportSelector
 
   def deserializeDependenciesSources(file:InputSource):Option[Seq[LinkablePackage]]
 }
 
-object DependenciesEncoder extends DependenciesEncoder with PluginProxy{
+object DependenciesImportSourceEncoder extends DependenciesImportSourceEncoder with PluginProxy{
 
   val dependenciesExtensionPrefix = "deps"
 
@@ -31,7 +31,7 @@ object DependenciesEncoder extends DependenciesEncoder with PluginProxy{
     def unapply(source: InputSource): Option[String] = source.identifier.extension.flatMap(unapply)
   }
 
-  type PluginType = DependenciesEncoder
+  type PluginType = DependenciesImportSourceEncoder
   override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = DependenciesEncodingPluginCategory
 

@@ -6,7 +6,7 @@ import samaya.compilation.ErrorManager.{newPlainErrorScope, producesErrorValue}
 import samaya.plugin.impl.compiler.common.BasicErrorListener
 import samaya.plugin.impl.compiler.mandala.compiler.MandalaBaseCompiler
 import samaya.plugin.impl.compiler.mandala.process.{ImplicitInjector, InstanceFinder, TypeAndClassInference}
-import samaya.plugin.service.Selectors.{CompilerSelectorByMeta, CompilerSelectorBySource}
+import samaya.plugin.service.Selectors.{CompilerSelectorByIdentifier, CompilerSelectorByMeta, CompilerSelectorBySource}
 import samaya.plugin.service.{LanguageCompiler, Selectors}
 import samaya.structure.{Component, Interface, Package}
 import samaya.toolbox.process.{CaseSorter, CopyDiscardInjector, RollbackFiller}
@@ -35,7 +35,8 @@ object MandalaCompiler {
 class MandalaCompiler extends LanguageCompiler{
   override def matches(s: Selectors.CompilerSelector): Boolean = s match {
     case CompilerSelectorByMeta(MandalaCompiler.Language, MandalaCompiler.Version, classifier) => MandalaCompiler.BaseClassifiers.subsetOf(classifier)
-    case CompilerSelectorBySource(source)  => source.identifier.extension.contains(MandalaCompiler.Language)
+    case CompilerSelectorBySource(source) => source.identifier.extension.contains(MandalaCompiler.Language)
+    case CompilerSelectorByIdentifier(identifier) => identifier.extension.contains(MandalaCompiler.Language)
     case _ => false
   }
 

@@ -8,7 +8,7 @@ import samaya.structure.types.Accessibility.Local
 import samaya.structure.types.{Func, ImplFunc, StdFunc, Type}
 import samaya.structure.Module
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 trait ModuleBuilder extends CompilerToolbox{
   self: ComponentBuilder with InstanceBuilder with PermissionCompiler =>

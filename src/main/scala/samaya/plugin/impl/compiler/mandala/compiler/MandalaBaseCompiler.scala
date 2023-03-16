@@ -2,7 +2,7 @@ package samaya.plugin.impl.compiler.mandala.compiler
 
 import samaya.plugin.impl.compiler.mandala.{Environment, MandalaParser}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 //todo: add code id everywhere
 //todo: enforce single return for single return opcodes in syntax

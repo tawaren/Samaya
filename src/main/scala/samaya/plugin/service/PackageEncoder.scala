@@ -27,6 +27,7 @@ object PackageEncoder extends PackageEncoder with PluginProxy{
 
   object Loader extends AddressResolver.Loader[LinkablePackage] {
     override def load(src: InputSource): Option[LinkablePackage] = deserializePackage(src)
+    override def tag: ClassTag[LinkablePackage] = implicitly[ClassTag[LinkablePackage]]
   }
 
   val packageExtensionPrefix = "pkg"

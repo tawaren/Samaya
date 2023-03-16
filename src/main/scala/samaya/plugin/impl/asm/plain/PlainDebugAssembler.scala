@@ -436,7 +436,7 @@ class PlainDebugAssembler extends DebugAssembler {
       assocs = Map(fId -> "param")
     }
 
-    def indented(body: => Unit){
+    def indented(body: => Unit): Unit = {
       indent +=1
       body
       indent -=1

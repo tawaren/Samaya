@@ -2,11 +2,12 @@ package samaya.plugin.service
 
 import samaya.build.desc.Dependency
 import samaya.plugin.service.AddressResolver.PluginType
+import samaya.plugin.service.Selectors.CompilerSelectorByIdentifier
 import samaya.plugin.service.category.LanguageCompilerPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure
 import samaya.structure.{CompiledModule, Component, Interface, Module, ModuleInterface, Transaction}
-import samaya.types.InputSource
+import samaya.types.{Identifier, InputSource}
 
 import scala.reflect.ClassTag
 
@@ -28,6 +29,10 @@ object LanguageCompiler extends LanguageCompiler with PluginProxy{
   type PluginType = LanguageCompiler
   override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = LanguageCompilerPluginCategory
+
+  def canCompile(identifier:Identifier):Boolean = {
+    select(CompilerSelectorByIdentifier(identifier), silent = true).isDefined
+  }
 
   override def compileAndBuildFully(source: InputSource, pkg:structure.Package)(builder: Component => (structure.Package, Option[Interface[Component]])):structure.Package = {
     selectAll(Selectors.CompilerSelectorBySource(source)).foldLeft(pkg) {

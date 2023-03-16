@@ -2,16 +2,16 @@ package samaya.plugin.impl.deps.json
 
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import samaya.plugin.impl.deps.json.JsonModel._
-import samaya.plugin.service.DependenciesEncoder.DependenciesExtension
-import samaya.plugin.service.{AddressResolver, DependenciesEncoder, PackageEncoder, Selectors}
+import samaya.plugin.service.DependenciesImportSourceEncoder.DependenciesExtension
+import samaya.plugin.service.{AddressResolver, DependenciesImportSourceEncoder, PackageEncoder, Selectors}
 import samaya.structure.LinkablePackage
 import samaya.types.{InputSource, Directory}
 
 //A Dependency Manager for a json description of a dependency list
-class JsonDependenciesEncoder extends DependenciesEncoder {
+class JsonDependenciesImportSourceEncoder extends DependenciesImportSourceEncoder {
 
   val Json = "json"
-  override def matches(s: Selectors.DependenciesSelector): Boolean = {
+  override def matches(s: Selectors.DependenciesImportSelector): Boolean = {
     s match {
       case Selectors.DependenciesDeserializationSelector(DependenciesExtension(Json)) => true
       case _ => false

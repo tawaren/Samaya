@@ -12,9 +12,9 @@ trait PluginProxy {
   def category:PluginCategory[PluginType]
   implicit def classTag: ClassTag[PluginType]
 
-  protected def select(sel:PluginType#Selector):Option[PluginType] =  {
+  protected def select(sel:PluginType#Selector, silent: Boolean = false):Option[PluginType] =  {
     val res = PluginManager.getPlugin(category, sel)
-    if(res.isEmpty) {
+    if(res.isEmpty && !silent) {
       feedback(PlainMessage(s"No Plugin found satisfying selector: $sel", Warning, Always))
     }
     res

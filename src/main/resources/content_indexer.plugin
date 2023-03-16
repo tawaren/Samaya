@@ -1,1 +1,2 @@
-samaya.plugin.impl.indexer.NoContentIndexer
+samaya.plugin.impl.index.DefaultLocalIndexer
+samaya.plugin.impl.indexer.SimpleFileIndexer

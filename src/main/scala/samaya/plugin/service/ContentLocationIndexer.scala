@@ -12,7 +12,8 @@ import scala.reflect.ClassTag
 //A plugin interface to resolve Contents
 trait ContentLocationIndexer extends Plugin{
   override type Selector = Selectors.ContentSelector
-  def indexContent(context:Option[Directory], content:ContentAddressable):Boolean
+  def indexContent(content:ContentAddressable):Boolean
+  def storeIndex(rootDirectory:Directory):Boolean
 }
 
 
@@ -22,8 +23,12 @@ object ContentLocationIndexer extends ContentLocationIndexer with PluginProxy{
   override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = ContentLocationIndexerPluginCategory
 
-  def indexContent(context:Option[Directory], content:ContentAddressable):Boolean = {
-    select(Selectors.UpdateContentIndex(context)).exists(r => r.indexContent(context, content))
+  def indexContent(content:ContentAddressable):Boolean = {
+    select(Selectors.UpdateContentIndex).exists(r => r.indexContent(content))
+  }
+
+  def storeIndex(rootDirectory: Directory): Boolean  = {
+    select(Selectors.StoreContentIndex(rootDirectory)).exists(r => r.storeIndex(rootDirectory))
   }
 }
 

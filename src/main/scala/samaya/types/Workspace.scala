@@ -1,5 +1,6 @@
 package samaya.types
 
+import samaya.plugin.shared.repositories.Repositories.Repository
 import samaya.structure.LinkablePackage
 
 //todo: have a way to create the whole thing from just a directory by using conventions
@@ -11,6 +12,8 @@ trait Workspace {
   //dependencies
   //local dependency that are recompiled
   def includes:Option[Set[Workspace]]
+  //repositories to use for dependency lookups in this & subprojects
+  def repositories:Option[Set[Repository]]
   //external dependency that is just linked
   def dependencies:Option[Set[LinkablePackage]]
   //name of the resulting package

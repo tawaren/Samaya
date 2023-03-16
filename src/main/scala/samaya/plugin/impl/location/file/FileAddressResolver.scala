@@ -22,6 +22,7 @@ class FileAddressResolver extends AddressResolver{
       parent != null
       && parent.isInstanceOf[FileDirectory]
       && elems.init.forall(e => e.isInstanceOf[Identifier.General]))
+    case Selectors.Delete(target) => target.isInstanceOf[FileDirectory]
     case Selectors.Parse(AddressResolver.protocol(FileAddressResolver.Protocoll, _)) => true
     case Selectors.SerializeAddress(_, target, AddressResolver.Location) => target != null && target.location.isInstanceOf[FileDirectory]
     case Selectors.SerializeDirectory(_, target) => target != null && target.isInstanceOf[FileDirectory]
@@ -121,6 +122,23 @@ class FileAddressResolver extends AddressResolver{
             loader.load(new FileSource(directParent,ident,file))
         }
       case None => None
+    }
+  }
+
+  private def deleteDirectoryRecursive(directoryToBeDeleted: File): Boolean = {
+    val allContents = directoryToBeDeleted.listFiles
+    if (allContents != null) {
+      for (file <- allContents) {
+        deleteDirectoryRecursive(file)
+      }
+    }
+    directoryToBeDeleted.delete
+  }
+
+  override def deleteDirectory(dir: Directory): Unit = {
+    dir match {
+      case directory: FileDirectory => deleteDirectoryRecursive(directory.file)
+      case _ =>
     }
   }
 

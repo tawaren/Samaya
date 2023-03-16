@@ -11,17 +11,20 @@ import samaya.types.{Address, Directory, Identifier, InputSource, OutputTarget}
 import scala.reflect.ClassTag
 import scala.util.matching.Regex
 
-//A plugin interface to resolve Locations
+//A plugin interface to resolve Content & Location Addresses
 trait AddressResolver extends Plugin{
 
   override type Selector = Selectors.AddressSelector
 
   //generates a new location from a parent location and the sub location name
   def resolveDirectory(parent:Directory, path:Address, create:Boolean = false):Option[Directory]
+  //dletes a existing location from a parent location and the sub location name
+  def deleteDirectory(dir:Directory):Unit
   //finds a source
   def resolve[T <: ContentAddressable](parent:Directory, path:Address, loader:AddressResolver.Loader[T], extensionFilter:Option[Set[String]] = None):Option[T]
   //finds a sink
   def resolveSink(parent:Directory, ident:Identifier.Specific):Option[OutputTarget]
+  //Todo: a DeleteSink
   //list sources
   def listSources(parent:Directory):Set[Identifier]
   //list sub locations
@@ -45,10 +48,12 @@ object AddressResolver extends AddressResolver with PluginProxy{
   trait Loader[T <: ContentAddressable] {
     def load(src:InputSource):Option[T]
     def hash(trg:T):Hash = trg.hash
+    def tag:ClassTag[T];
   }
 
   object InputLoader extends Loader[InputSource] {
     override def load(src: InputSource): Option[InputSource] = Some(src)
+    override def tag: ClassTag[InputSource] = implicitly[ClassTag[InputSource]]
   }
 
   val protocol:Regex = """^(.*)://(.*)$""".r
@@ -66,6 +71,10 @@ object AddressResolver extends AddressResolver with PluginProxy{
 
   def resolveDirectory(parent:Directory, path:Address, create:Boolean = false):Option[Directory] = {
     select(Selectors.Lookup(parent, path, Selectors.LocationLookupMode) ).flatMap(r => r.resolveDirectory(parent, path, create))
+  }
+
+  def deleteDirectory(dir:Directory):Unit = {
+    select(Selectors.Delete(dir)).foreach(p => p.deleteDirectory(dir))
   }
 
   def resolve[T <: ContentAddressable](parent:Directory, path:Address, loader:Loader[T], extensionFilter:Option[Set[String]] = None):Option[T] = {

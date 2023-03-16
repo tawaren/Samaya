@@ -1,13 +1,14 @@
 package samaya.plugin.impl.location.hybrid
 
 import samaya.plugin.service.Selectors.SourceLookupMode
-import samaya.plugin.service.{AddressResolver, Selectors}
+import samaya.plugin.service.{AddressResolver, ContentAddressResolver, Selectors}
 import samaya.structure.ContentAddressable
 import samaya.types.Address.{ContentBased, HybridAddress, LocationBased}
 import samaya.types.{Address, Directory, Identifier, OutputTarget}
+
 import scala.util.matching.Regex
 
-class HybridAddressResolver extends AddressResolver{
+class HybridAddressResolver extends ContentAddressResolver{
 
   val Protocol:Regex = """^(.*)@(.*)$""".r
 
@@ -46,13 +47,6 @@ class HybridAddressResolver extends AddressResolver{
       loc <- AddressResolver.serializeAddress(parent, target, AddressResolver.Location)
     ) yield cont + "@" + loc
   }
-
-  override def resolveDirectory(parent: Directory, path: Address, create: Boolean): Option[Directory] = None
-  override def resolveSink(parent: Directory, ident: Identifier.Specific): Option[OutputTarget] = None
-  override def listSources(parent: Directory): Set[Identifier] = Set.empty
-  override def listDirectories(parent: Directory): Set[Identifier] = Set.empty
-  override def serializeDirectory(parent: Option[Directory], target: Directory): Option[String] = None
-  override def provideDefault(): Option[Directory] = None
 }
 
 

@@ -32,10 +32,9 @@ class RelativeAddressParser extends AddressResolver{
     Some(Address.Relative(pathIds))
   }
 
-
-
   //Not supported by this plugin on purpose
   override def resolveDirectory(parent: Directory, path: Address, create:Boolean): Option[Directory] = None
+  override def deleteDirectory(dir: Directory): Unit = { }
   override def resolve[T <: ContentAddressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T], extensionFilter:Option[Set[String]] = None): Option[T] = None
   override def resolveSink(parent: Directory, ident: Identifier.Specific): Option[OutputTarget] = None
   override def listSources(parent: Directory): Set[Identifier] = Set.empty
