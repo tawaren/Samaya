@@ -3,7 +3,7 @@ package samaya.plugin.service
 import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.service.category.WorkspaceEncodingPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
-import samaya.types.{InputSource, Workspace}
+import samaya.types.{Directory, GeneralSource, InputSource, Workspace}
 
 import scala.reflect.ClassTag
 
@@ -16,28 +16,18 @@ trait WorkspaceEncoder extends Plugin {
   //parses file and validate it and then returns the corresponding module
   // beside returning it it is registered in the Module Registry if it is valid
   // as it is just the interface the code of the function body as well as private functions are not present
-  def deserializeWorkspace(file:InputSource):Option[Workspace]
+  def decodeWorkspace(source: GeneralSource):Option[Workspace]
 }
 
 object WorkspaceEncoder extends WorkspaceEncoder with PluginProxy{
 
   val workspaceExtensionPrefix = "wsp"
 
-  object WorkSpaceExtension {
-    def apply(format: String): String = workspaceExtensionPrefix + "." + format
-    def unapply(ext: String): Option[String] = if(!ext.startsWith(workspaceExtensionPrefix)) {
-      None
-    } else {
-      Some(ext.drop(workspaceExtensionPrefix.length + 1))
-    }
-    def unapply(source: InputSource): Option[String] = source.identifier.extension.flatMap(unapply)
-  }
-
   type PluginType = WorkspaceEncoder
   override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = WorkspaceEncodingPluginCategory
 
-  override def deserializeWorkspace( source: InputSource): Option[Workspace] = {
-    select(Selectors.WorkspaceDeserializationSelector(source)).flatMap(r => r.deserializeWorkspace(source))
+  override def decodeWorkspace(source: GeneralSource): Option[Workspace] = {
+    select(Selectors.WorkspaceDecoderSelector(source)).flatMap(r => r.decodeWorkspace(source))
   }
 }

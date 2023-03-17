@@ -33,7 +33,7 @@ sourceSets {
 
 dependencies {
     implementation 'org.scala-lang:scala-library:2.13.10'
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13.2'
     implementation 'com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_2.13:2.21.3'
     compileOnly 'com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-macros_2.13:2.21.3'
 

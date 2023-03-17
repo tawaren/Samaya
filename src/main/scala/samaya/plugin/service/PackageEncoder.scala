@@ -1,11 +1,9 @@
 package samaya.plugin.service
 
-import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.service.category.PackageEncodingPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure.LinkablePackage
-import samaya.structure.types.Hash
-import samaya.types.{InputSource, Workspace}
+import samaya.types.{GeneralSource, InputSource, Workspace}
 
 import scala.reflect.ClassTag
 
@@ -25,8 +23,12 @@ trait PackageEncoder extends Plugin{
 
 object PackageEncoder extends PackageEncoder with PluginProxy{
 
-  object Loader extends AddressResolver.Loader[LinkablePackage] {
-    override def load(src: InputSource): Option[LinkablePackage] = deserializePackage(src)
+  object Loader extends AddressResolver.ContentLoader[LinkablePackage] {
+    override def load(src: GeneralSource): Option[LinkablePackage] = src match {
+      //Todo: Implement for directory
+      case source: InputSource =>  deserializePackage(source)
+      case _ => None
+    }
     override def tag: ClassTag[LinkablePackage] = implicitly[ClassTag[LinkablePackage]]
   }
 

@@ -1,9 +1,9 @@
 package samaya.plugin.service
 
 import samaya.plugin.service.AddressResolver.SerializerMode
-import samaya.structure.{Component, ContentAddressable}
+import samaya.structure.Component
 import samaya.structure.types.Hash
-import samaya.types.{Address, Directory, Identifier, InputSource}
+import samaya.types.{Address, ContentAddressable, Directory, GeneralSource, Identifier, InputSource}
 
 //todo: Shall we make seperate objects and subfolders
 //   Shall we merge certain selectors that hav same layout??
@@ -18,15 +18,15 @@ object Selectors {
 
   sealed trait WorkspaceSelector
   //A Interface loading Task description intended for selecting the appropriate plugin
-  case class WorkspaceDeserializationSelector(source:InputSource) extends WorkspaceSelector
+  case class WorkspaceDecoderSelector(source:GeneralSource) extends WorkspaceSelector
 
   sealed trait DependenciesImportSelector
   //A Interface loading Task description intended for selecting the appropriate plugin
-  case class DependenciesDeserializationSelector(source:InputSource) extends DependenciesImportSelector
+  case class DependenciesDecoderSelector(source : GeneralSource) extends DependenciesImportSelector
 
   sealed trait RepositoriesImportSelector
   //A Interface loading Task description intended for selecting the appropriate plugin
-  case class RepositoriesDeserializationSelector(source:InputSource) extends RepositoriesImportSelector
+  case class RepositoriesDecoderSelector(source: GeneralSource) extends RepositoriesImportSelector
 
 
   sealed trait PackageSelector
@@ -63,7 +63,7 @@ object Selectors {
   case class StoreContentIndex(directory:Directory) extends ContentSelector
 
   sealed trait RepositoryLoaderSelector
-  case class LoadRepository(source:InputSource) extends RepositoryLoaderSelector
+  case class LoadRepository(source:GeneralSource) extends RepositoryLoaderSelector
 
   trait CompilerSelector
   case class CompilerSelectorByMeta(language:String, version:String, classifier:Set[String]) extends CompilerSelector

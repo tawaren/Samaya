@@ -2,18 +2,17 @@ package samaya.plugin.impl.location.hybrid
 
 import samaya.plugin.service.Selectors.SourceLookupMode
 import samaya.plugin.service.{AddressResolver, ContentAddressResolver, Selectors}
-import samaya.structure.ContentAddressable
 import samaya.types.Address.{ContentBased, HybridAddress, LocationBased}
-import samaya.types.{Address, Directory, Identifier, OutputTarget}
+import samaya.types.{Address, Addressable, ContentAddressable, Directory, Identifier, OutputTarget}
 
 import scala.util.matching.Regex
 
-class HybridAddressResolver extends ContentAddressResolver{
+class HybridAddressResolver extends ContentAddressResolver {
 
-  val Protocol:Regex = """^(.*)@(.*)$""".r
+  val Protocol: Regex = """^(.*)@(.*)$""".r
 
   override def matches(s: Selectors.AddressSelector): Boolean = s match {
-    case Selectors.Lookup(directory, HybridAddress(target, loc), SourceLookupMode) =>
+    case Selectors.Lookup(directory, HybridAddress(_, loc), SourceLookupMode) =>
       AddressResolver.matches(Selectors.Lookup(directory, loc, SourceLookupMode))
     case Selectors.Parse(Protocol(hash, loc)) =>
       AddressResolver.matches(Selectors.Parse(hash)) &&
@@ -24,14 +23,19 @@ class HybridAddressResolver extends ContentAddressResolver{
     case _ => false
   }
 
-  override def resolve[T <: ContentAddressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T], extensionFilter: Option[Set[String]]): Option[T] = path match {
-    case HybridAddress(content, loc) => for(
-      res <- AddressResolver.resolve(parent,loc, loader, extensionFilter)
-      if res.hash == content.target
-    ) yield res
-    case _ => None
-  }
+  override def resolve[T <: Addressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T]): Option[T] = {
+    loader.asContentLoader match {
+      case Some(contentLoader) => path match {
+        case HybridAddress(content, loc) => for (
+          res <- AddressResolver.resolve(parent, loc, contentLoader)
+          if res.hash == content.target
+        ) yield res
+        case _ => None
+      }
+      case None => None
+    }
 
+  }
   override def parsePath(ident: String): Option[Address] = ident match {
     case Protocol(content, location) => for(
       target <- AddressResolver.parsePath(content);

@@ -88,7 +88,7 @@ class JsonPackageEncoder extends PackageEncoder {
       }
 
       //resolve and register the dependency (returns the Package object)
-      AddressResolver.resolve(pkgFolder,depIdent, PackageEncoder.Loader, Some(Set(PackageEncoder.packageExtensionPrefix))) match {
+      AddressResolver.resolve(pkgFolder, depIdent, PackageEncoder.Loader) match {
         case Some(r) => r
         case None => return None
       }
@@ -131,7 +131,7 @@ class JsonPackageEncoder extends PackageEncoder {
 
   private def buildMeta(link:StrongLink, codeLoc:Directory, sourceLoc:Directory, interfaceLoc:Directory):Meta = {
     //get the byte code File
-    val codeSource = AddressResolver.resolve(codeLoc, Address(NameGenerator.generateCodeName(link.name,  link.info.classifier)), AddressResolver.InputLoader, Some(Set(ModuleSerializer.codeExtension)))
+    val codeSource = AddressResolver.resolve(codeLoc, Address(NameGenerator.generateCodeName(link.name,  link.info.classifier)), AddressResolver.InputLoader)
     //get the source File
     val sourceId = link.source match {
       case Some(Source(name, Some(extension))) => Identifier(name, extension)
@@ -140,12 +140,7 @@ class JsonPackageEncoder extends PackageEncoder {
     }
     val sourceCodeSource = AddressResolver.resolve(sourceLoc, Address(sourceId), AddressResolver.InputLoader)
     //get the interface File
-    val interfaceSource = AddressResolver.resolve(
-      interfaceLoc,
-      Address(NameGenerator.generateInterfaceName(link.name,  link.info.classifier)),
-      AddressResolver.InputLoader,
-      Some(Set(InterfaceEncoder.interfaceExtensionPrefix))
-    )
+    val interfaceSource = AddressResolver.resolve(interfaceLoc, Address(NameGenerator.generateInterfaceName(link.name,  link.info.classifier)), AddressResolver.InputLoader)
 
     interfaceSource match {
       case Some(interfaceSource) => Meta(
@@ -162,7 +157,7 @@ class JsonPackageEncoder extends PackageEncoder {
   }
 
   override def serializePackage(pkg: structure.LinkablePackage, workspace: Workspace): Option[InputSource] = {
-    val out = AddressResolver.resolveSink(workspace.workspaceLocation, Identifier(pkg.name, PackageExtension(Json))).getOrElse(throw new Exception("NEED CUSTOM"))
+    val out = AddressResolver.resolveSink(workspace.location, Identifier(pkg.name, PackageExtension(Json))).getOrElse(throw new Exception("NEED CUSTOM"))
     val repr = Serializer.toPackageRepr(pkg, workspace)
     out.write(writeToStream[Package](repr,_))
     Some(out.toInputSource)

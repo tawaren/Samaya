@@ -1,5 +1,6 @@
 package samaya.types
 
-trait Directory {
+trait Directory extends GeneralSource {
   def name:String
+  def isRoot:Boolean
 }

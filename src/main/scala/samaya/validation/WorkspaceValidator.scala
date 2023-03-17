@@ -7,7 +7,7 @@ object WorkspaceValidator {
   //validate the package integrety
   def validateWorkspace(wsp:Workspace): Unit = {
     if(wsp.name.isEmpty || wsp.name.charAt(0).isUpper) {
-      feedback(PlainMessage(s"Workspace ${wsp.workspaceLocation} names must start with a lowercase Character", Error, Checking()))
+      feedback(PlainMessage(s"Workspace ${wsp.location} names must start with a lowercase Character", Error, Checking()))
     }
 
     wsp.includes match {

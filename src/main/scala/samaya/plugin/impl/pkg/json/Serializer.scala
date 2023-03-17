@@ -25,7 +25,7 @@ object Serializer {
     JsonModel.Component(
       source = cmp.meta.sourceCode.map(_.identifier).map{
         case Identifier.General(name) => Source(name)
-        case Identifier.Specific(name, extension) => Source(name, Some(extension))
+        case Identifier.Specific(name, extension) => Source(name, extension)
       },
       name = cmp.name,
       hash = toHashesRepr(cmp),
@@ -50,9 +50,9 @@ object Serializer {
   }
 
   def toLocationsRepl(workspace: Workspace): JsonModel.Locations = {
-    val interface = AddressResolver.serializeDirectory(Some(workspace.workspaceLocation), workspace.interfaceLocation)
-    val code = AddressResolver.serializeDirectory(Some(workspace.workspaceLocation), workspace.codeLocation)
-    val source = AddressResolver.serializeDirectory(Some(workspace.workspaceLocation), workspace.sourceLocation)
+    val interface = AddressResolver.serializeDirectory(Some(workspace.location), workspace.interfaceLocation)
+    val code = AddressResolver.serializeDirectory(Some(workspace.location), workspace.codeLocation)
+    val source = AddressResolver.serializeDirectory(Some(workspace.location), workspace.sourceLocation)
     JsonModel.Locations(
       interface = interface.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),
       code = code.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),

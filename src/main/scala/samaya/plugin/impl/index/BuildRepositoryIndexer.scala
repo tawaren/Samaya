@@ -1,18 +1,17 @@
 package samaya.plugin.impl.index
 
+import samaya.build.BuildRepository
 import samaya.plugin.service.{ContentLocationIndexer, Selectors}
-import samaya.plugin.shared.index.CachedRepository
-import samaya.structure.ContentAddressable
-import samaya.types.Directory
+import samaya.types.{ContentAddressable, Directory}
 
-class DefaultLocalIndexer extends ContentLocationIndexer{
+class BuildRepositoryIndexer extends ContentLocationIndexer{
   override def matches(s: Selectors.ContentSelector): Boolean = s match {
     case Selectors.UpdateContentIndex => true
     case _ => false
   }
 
   override def indexContent(content: ContentAddressable): Boolean = {
-    CachedRepository.repo.put(content.hash, content)
+    BuildRepository.addEntry(content)
     true
   }
 

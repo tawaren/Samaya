@@ -17,7 +17,7 @@ object ValidateTool {
       case None => throw new Exception("Illegal arg");//todo: error
     }
 
-    AddressResolver.resolve(parent,ident, PackageEncoder.Loader, Some(Set(PackageEncoder.packageExtensionPrefix))) match {
+    AddressResolver.resolve(parent, ident, PackageEncoder.Loader) match {
       case None => throw new Exception("Package not found: "+parent+"/"+ident)
       case Some(pkg) =>
         validatePackageAndDependencies(pkg)

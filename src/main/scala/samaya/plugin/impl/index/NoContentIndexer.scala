@@ -1,8 +1,7 @@
 package samaya.plugin.impl.index
 
 import samaya.plugin.service.{ContentLocationIndexer, Selectors}
-import samaya.structure.ContentAddressable
-import samaya.types.Directory
+import samaya.types.{ContentAddressable, Directory}
 
 class NoContentIndexer extends ContentLocationIndexer{
   override def matches(s: Selectors.ContentSelector): Boolean = true

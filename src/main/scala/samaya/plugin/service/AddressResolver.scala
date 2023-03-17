@@ -4,9 +4,8 @@ package samaya.plugin.service
 import samaya.plugin.service.AddressResolver.SerializerMode
 import samaya.plugin.service.category.AddressResolverPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
-import samaya.structure.ContentAddressable
 import samaya.structure.types.Hash
-import samaya.types.{Address, Directory, Identifier, InputSource, OutputTarget}
+import samaya.types.{Address, Addressable, ContentAddressable, Directory, GeneralSource, Identifier, InputSource, OutputTarget}
 
 import scala.reflect.ClassTag
 import scala.util.matching.Regex
@@ -21,7 +20,7 @@ trait AddressResolver extends Plugin{
   //dletes a existing location from a parent location and the sub location name
   def deleteDirectory(dir:Directory):Unit
   //finds a source
-  def resolve[T <: ContentAddressable](parent:Directory, path:Address, loader:AddressResolver.Loader[T], extensionFilter:Option[Set[String]] = None):Option[T]
+  def resolve[T <: Addressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T]):Option[T]
   //finds a sink
   def resolveSink(parent:Directory, ident:Identifier.Specific):Option[OutputTarget]
   //Todo: a DeleteSink
@@ -45,15 +44,31 @@ object AddressResolver extends AddressResolver with PluginProxy{
   case object Location extends SerializerMode
   case object Hybrid extends SerializerMode
 
-  trait Loader[T <: ContentAddressable] {
-    def load(src:InputSource):Option[T]
-    def hash(trg:T):Hash = trg.hash
-    def tag:ClassTag[T];
+  trait Loader[T <: Addressable] {
+    def asContentLoader : Option[ContentLoader[T with ContentAddressable]] = None
+    def load(src:GeneralSource):Option[T]
+    def tag:ClassTag[T]
   }
 
-  object InputLoader extends Loader[InputSource] {
-    override def load(src: InputSource): Option[InputSource] = Some(src)
+  trait ContentLoader[T <: ContentAddressable] extends Loader[T]{
+    override def asContentLoader : Option[ContentLoader[T with ContentAddressable]] = Some(this.asInstanceOf[ContentLoader[T with ContentAddressable]])
+    def hash(trg:T):Hash = trg.hash
+  }
+
+  object InputLoader extends ContentLoader[InputSource] {
+    override def load(src: GeneralSource): Option[InputSource]  = src match {
+      case input: InputSource => Some(input)
+      case _ => None
+    }
     override def tag: ClassTag[InputSource] = implicitly[ClassTag[InputSource]]
+  }
+
+  object DirectoryLoader extends Loader[Directory] {
+    override def load(src: GeneralSource): Option[Directory] = src match {
+      case directory: Directory => Some(directory)
+      case _ => None
+    }
+    override def tag: ClassTag[Directory] = implicitly[ClassTag[Directory]]
   }
 
   val protocol:Regex = """^(.*)://(.*)$""".r
@@ -77,8 +92,8 @@ object AddressResolver extends AddressResolver with PluginProxy{
     select(Selectors.Delete(dir)).foreach(p => p.deleteDirectory(dir))
   }
 
-  def resolve[T <: ContentAddressable](parent:Directory, path:Address, loader:Loader[T], extensionFilter:Option[Set[String]] = None):Option[T] = {
-    select(Selectors.Lookup(parent, path, Selectors.SourceLookupMode) ).flatMap(r => r.resolve(parent, path, loader, extensionFilter))
+  def resolve[T <: Addressable](parent: Directory, path: Address, loader: Loader[T]):Option[T] = {
+    select(Selectors.Lookup(parent, path, Selectors.SourceLookupMode) ).flatMap(r => r.resolve(parent, path, loader))
   }
 
   def resolveSink(parent:Directory, ident:Identifier.Specific):Option[OutputTarget] = {

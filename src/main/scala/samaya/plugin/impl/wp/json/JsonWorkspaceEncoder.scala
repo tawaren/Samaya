@@ -2,60 +2,61 @@ package samaya.plugin.impl.wp.json
 
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import JsonModel._
-import samaya.build.HelperTool
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager._
-import samaya.plugin.service.WorkspaceEncoder.WorkSpaceExtension
-import samaya.plugin.service.{AddressResolver, ContentRepositoryLoader, PackageEncoder, Selectors, WorkspaceEncoder}
-import samaya.structure.{ContentAddressable, LinkablePackage, Package}
+import samaya.plugin.service.ContentRepositoryLoader.loadRepository
+import samaya.plugin.service.{AddressResolver, PackageEncoder, Selectors, WorkspaceEncoder}
+import samaya.structure.LinkablePackage
 import samaya.types
-import samaya.types.{Address, Directory, Identifier, InputSource}
+import samaya.types.{Address, Addressable, ContentAddressable, Directory, GeneralSource, InputSource, Repository}
 
 //A Workspace Manager for a json description of a package
 class JsonWorkspaceEncoder extends WorkspaceEncoder {
 
-  val Json = "json"
+  val Ext = WorkspaceEncoder.workspaceExtensionPrefix+".json"
   override def matches(s: Selectors.WorkspaceSelector): Boolean = {
     s match {
-      case Selectors.WorkspaceDeserializationSelector(WorkSpaceExtension(Json)) => true
+      case Selectors.WorkspaceDecoderSelector(input : InputSource) => input.identifier.extension.contains(Ext)
       case _ => false
     }
   }
 
   var cycleBreaker:Set[(Directory,String)] = Set.empty
 
-  def deserializeWorkspace(file: InputSource): Option[types.Workspace] = {
+
+  override def decodeWorkspace(source: GeneralSource): Option[types.Workspace] = {
+    val file = source match {
+      case source: InputSource => source
+      case _ => return None
+    }
     //parse the package with Package as description
     val parsed = readFromStream[Workspace](file.content)
     val name: String = parsed.name
     val workspaceLocation: Directory = file.location
 
-    def toContent[T <: ContentAddressable](paths:Option[Seq[String]], loader:AddressResolver.Loader[T], extensionFilter:Option[Set[String]]): Option[Set[T]] = {
+    def loadFromPaths[T <: Addressable](paths:Option[Seq[String]], loader:AddressResolver.Loader[T]): Option[Set[T]] = {
       paths.map(p => p
         .toSet[String]
         .flatMap(AddressResolver.parsePath)
-        .flatMap(AddressResolver.resolve(workspaceLocation,_, loader,extensionFilter))
+        .flatMap((path: Address) => AddressResolver.resolve(workspaceLocation, path, loader))
       )
     }
 
     //Todo: Error when fails
     //Todo: Is None right
-    val repos = toContent(parsed.repositories, ContentRepositoryLoader.Loader, None)
+    val repos = loadFromPaths(parsed.repositories, Repository.Loader).asInstanceOf[Option[Set[Repository]]]
 
-    HelperTool.withRepos(repos.getOrElse(Set.empty)){
+    Repository.withRepos(repos.getOrElse(Set.empty)){
         val oldBreaker = cycleBreaker
         val (includes, dependencies) = if(!oldBreaker.contains((workspaceLocation, name))) {
           cycleBreaker = oldBreaker + ((workspaceLocation, name))
-          val includes: Option[Set[types.Workspace]] = toContent(parsed.includes, AddressResolver.InputLoader, Some(Set(WorkspaceEncoder.workspaceExtensionPrefix))).map(
-            inputs => inputs.flatMap(
-              input => WorkspaceEncoder.deserializeWorkspace(input)
-            )
-          )
+          val includes: Option[Set[types.Workspace]] = loadFromPaths(parsed.includes, types.Workspace.Loader)
+
           if(includes.getOrElse(Set.empty).size != parsed.includes.getOrElse(Set.empty).size) {
             feedback(PlainMessage(s"Could not deserialize all includes", Warning, Builder()))
           }
 
-          val dependencies: Option[Set[LinkablePackage]] = toContent(parsed.dependencies, PackageEncoder.Loader, Some(Set(PackageEncoder.packageExtensionPrefix)))
+          val dependencies: Option[Set[LinkablePackage]] = loadFromPaths(parsed.dependencies, PackageEncoder.Loader)
           if(dependencies.getOrElse(Set.empty).size != parsed.dependencies.getOrElse(Set.empty).size) {
             feedback(PlainMessage(s"Could not deserialize all dependencies", Warning, Builder()))
           }

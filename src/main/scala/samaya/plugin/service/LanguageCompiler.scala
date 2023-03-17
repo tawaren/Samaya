@@ -1,6 +1,6 @@
 package samaya.plugin.service
 
-import samaya.build.desc.Dependency
+import samaya.build.compilation.Dependency
 import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.service.Selectors.CompilerSelectorByIdentifier
 import samaya.plugin.service.category.LanguageCompilerPluginCategory

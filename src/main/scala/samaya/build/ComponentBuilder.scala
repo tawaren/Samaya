@@ -13,8 +13,8 @@ import samaya.types.{Identifier, InputSource, Directory}
 object ComponentBuilder {
 
 
-  def build(source:InputSource, codeLoc:Directory, interfaceLoc:Directory, pkg:PartialPackage): PartialPackage = {
-    var partialPkg:PartialPackage = pkg
+  def build[P <: PartialPackage[P]](source:InputSource, codeLoc:Directory, interfaceLoc:Directory, pkg:P): P = {
+    var partialPkg:P = pkg
     //todo: Error Scope
     //todo: Error if not found
     val finalPkg = LanguageCompiler.compileAndBuildFully(source, partialPkg) { cmp =>
@@ -53,7 +53,7 @@ object ComponentBuilder {
     partialPkg
   }
 
-  private def produceAsm(code:Directory, cmp:Component, pkg:PartialPackage): Unit = {
+  private def produceAsm[P <: PartialPackage[P]](code:Directory, cmp:Component, pkg:P): Unit = {
     //Todo: can we support different debug formats over plugins and set default simular to interface???
     val out = AddressResolver.resolveSink(code, Identifier(NameGenerator.generateCodeName(cmp.name,cmp.classifier),"asm")) match {
       case Some(value) => value
@@ -71,7 +71,7 @@ object ComponentBuilder {
   }
 
   //Todo: detect if uncompilable and skip
-  private def produce(code:Directory, cmp:Component, sourceHash:Hash, pkg:PartialPackage): Option[InputSource] = {
+  private def produce[P <: PartialPackage[P]](code:Directory, cmp:Component, sourceHash:Hash, pkg:P): Option[InputSource] = {
     if(cmp.isVirtual) return None
     val out = AddressResolver.resolveSink(code, Identifier(NameGenerator.generateCodeName(cmp.name,cmp.classifier),ModuleSerializer.codeExtension)) match {
       case Some(value) => value

@@ -5,7 +5,7 @@ import java.io.{File, FileOutputStream, OutputStream}
 import samaya.types.{Identifier, InputSource, OutputTarget}
 
 
-class FileTarget(location:FileDirectory, identifier:Identifier, file:File) extends OutputTarget{
+class FileTarget(override val location:FileDirectory, override val identifier:Identifier, file:File) extends OutputTarget{
   override def toInputSource: InputSource = new FileSource(location, identifier, file)
 
   override def write[T](writer: OutputStream => T): T = {

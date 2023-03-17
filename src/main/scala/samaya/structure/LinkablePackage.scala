@@ -2,7 +2,7 @@ package samaya.structure
 
 import samaya.plugin.service.PackageEncoder
 import samaya.structure.types.Hash
-import samaya.types.{Identifier, Directory}
+import samaya.types.{ContentAddressable, Directory, Identifier}
 
 class LinkablePackage(
                        val interfacesOnly:Boolean,

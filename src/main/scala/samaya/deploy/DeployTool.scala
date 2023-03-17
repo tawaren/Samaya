@@ -1,18 +1,22 @@
 package samaya.deploy
 
-import samaya.build.BuildTool
+import samaya.build.{BuildRepository, BuildTool}
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.{Always, Info, PlainMessage, feedback, unexpected}
 import samaya.structure.types.Hash
 import samaya.structure.{Component, Interface, LinkablePackage}
+import samaya.types.Repository
 
 import scala.collection.mutable
 
 object DeployTool {
+  //Todo: Make a deploy version that does not build but deploys an existing package
   def main(args: Array[String]): Unit = deploy(args(0))
   def deploy(target:String):Unit = {
     ErrorManager.producesErrorValue(BuildTool.build(target)) match {
-      case Some(Some(lp)) => deployPackage(lp, mutable.HashSet())
+      case Some(Some(lp)) => Repository.withRepos(Set(BuildRepository)) {
+        deployPackage(lp, mutable.HashSet())
+      }
       case _ => feedback(PlainMessage("Skipped Deployment due to compilation error", Info, Always))
     }
   }

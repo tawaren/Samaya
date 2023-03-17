@@ -1,10 +1,9 @@
 package samaya.plugin.impl.location.relative
 
-import samaya.plugin.service.{AddressResolver, Selectors}
-import samaya.structure.ContentAddressable
-import samaya.types.{Address, Identifier, InputSource, Directory, OutputTarget}
+import samaya.plugin.service.{AddressResolver, ReadOnlyAddressResolver, Selectors}
+import samaya.types.{Address, Addressable, ContentAddressable, Directory, Identifier}
 
-class RelativeAddressParser extends AddressResolver{
+class RelativeAddressParser extends ReadOnlyAddressResolver{
 
   override def matches(s: Selectors.AddressSelector): Boolean = s match {
     //we can not parse absolutes for a specific protocoll
@@ -17,26 +16,21 @@ class RelativeAddressParser extends AddressResolver{
 
   override def parsePath(path: String): Option[Address] =  {
     val parts = AddressResolver.pathSeparator.split(path)
-    val pathIds = parts.map(elem => {
-      if(elem == "..") {
-        Identifier.General("..")
-      } else {
-        val nameExt = elem.split('.')
-        if (nameExt.length > 1) {
-          Identifier.Specific(nameExt(0), parts.last.drop(nameExt(0).length + 1))
-        } else {
-          Identifier.General(nameExt(0))
-        }
-      }
-    }).toSeq
-    Some(Address.Relative(pathIds))
+    val pathIds = parts.init.map(elem => Identifier.Specific(elem))
+    val nameExt = parts.last.split('.')
+    val lastId = if(nameExt.length > 1) {
+      Identifier.Specific(parts.last)
+    } else if(AddressResolver.pathSeparator.matches(""+path.last)){
+      Identifier.Specific(nameExt(0), None)
+    } else {
+      Identifier.General(nameExt(0))
+    }
+    Some(Address.Relative(pathIds :+ lastId))
   }
 
   //Not supported by this plugin on purpose
   override def resolveDirectory(parent: Directory, path: Address, create:Boolean): Option[Directory] = None
-  override def deleteDirectory(dir: Directory): Unit = { }
-  override def resolve[T <: ContentAddressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T], extensionFilter:Option[Set[String]] = None): Option[T] = None
-  override def resolveSink(parent: Directory, ident: Identifier.Specific): Option[OutputTarget] = None
+  override def resolve[T <: Addressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T]): Option[T] = None
   override def listSources(parent: Directory): Set[Identifier] = Set.empty
   override def listDirectories(parent: Directory): Set[Identifier] = Set.empty
   override def provideDefault(): Option[Directory] = None

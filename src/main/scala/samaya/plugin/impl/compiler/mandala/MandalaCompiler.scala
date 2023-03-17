@@ -1,7 +1,7 @@
 package samaya.plugin.impl.compiler.mandala
 
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
-import samaya.build.desc.Dependency
+import samaya.build.compilation.Dependency
 import samaya.compilation.ErrorManager.{newPlainErrorScope, producesErrorValue}
 import samaya.plugin.impl.compiler.common.BasicErrorListener
 import samaya.plugin.impl.compiler.mandala.compiler.MandalaBaseCompiler

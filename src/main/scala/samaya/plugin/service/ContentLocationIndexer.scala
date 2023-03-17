@@ -3,7 +3,7 @@ package samaya.plugin.service
 import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.service.category.ContentLocationIndexerPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
-import samaya.structure.{ContentAddressable, LinkablePackage}
+import samaya.structure.LinkablePackage
 import samaya.structure.types.Hash
 import samaya.types._
 

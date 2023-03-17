@@ -1,2 +1,2 @@
-samaya.plugin.impl.index.DefaultLocalIndexer
+samaya.plugin.impl.index.BuildRepositoryIndexer
 samaya.plugin.impl.indexer.SimpleFileIndexer

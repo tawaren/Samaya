@@ -66,13 +66,21 @@ object PackageValidator {
       out.close()
     }
 
+    private val _location: Directory  = new Directory {
+      override def name: String = "memory"
+      override def isRoot: Boolean = false
+      override def location: Directory = this
+      override def identifier: Identifier = Identifier.Specific("memory")
+    }
+
+    override def location: Directory = _location
+    override def identifier: Identifier = Identifier.Specific("memory")
+
     override def toInputSource: InputSource = new InputSource {
       private val data = out.toByteArray
-      override val identifier:Identifier = Identifier(System.identityHashCode(data).toString)
       override def content: InputStream = new ByteArrayInputStream(data)
-      override def location: Directory = new Directory {
-        override def name: String = "memory"
-      }
+      override def identifier:Identifier  = Identifier.Specific(System.identityHashCode(data).toString)
+      override def location: Directory = _location
     }
   }
 

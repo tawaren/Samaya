@@ -1,19 +1,18 @@
 package samaya.plugin.impl.indexer
 
+import samaya.build.BuildRepository
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.{CodeGen, PlainMessage, Warning, feedback}
 import samaya.plugin.service.AddressResolver.Hybrid
 import samaya.plugin.service.{AddressResolver, ContentLocationIndexer, Selectors}
-import samaya.plugin.shared.index.CachedRepository
-import samaya.structure.ContentAddressable
-import samaya.types.{Directory, Identifier}
+import samaya.types.{ContentAddressable, Directory, Identifier}
 
 import java.io.PrintWriter
 
 
 
 class SimpleFileIndexer extends ContentLocationIndexer{
-  private val sink = Identifier.Specific("index","repo")
+  private val sink = Identifier("index","repo")
 
   override def matches(s: Selectors.ContentSelector): Boolean = s match {
     case Selectors.UpdateContentIndex => false
@@ -26,7 +25,7 @@ class SimpleFileIndexer extends ContentLocationIndexer{
     AddressResolver.resolveSink(directory, sink) match {
       case Some(index) => index.write( out => {
         val writer = new PrintWriter(out)
-        CachedRepository.repo.values.foreach { content =>
+        BuildRepository.repo.values.foreach { content =>
             AddressResolver.serializeAddress(Some(directory), content, Hybrid) match {
               case Some(address) => writer.println(address)
               case None => feedback(PlainMessage("", Warning, CodeGen()))

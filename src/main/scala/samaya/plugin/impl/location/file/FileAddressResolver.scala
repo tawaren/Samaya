@@ -1,13 +1,12 @@
 package samaya.plugin.impl.location.file
 
-import java.io.{File, FileOutputStream, OutputStream}
+import java.io.File
 import java.util.regex.Pattern
-import samaya.plugin.service.{AddressResolver, PackageEncoder, Selectors}
+import samaya.plugin.service.{AddressResolver, Selectors}
 import samaya.types.Address.{Absolute, Relative}
-import samaya.types.{Address, Identifier, InputSource, Directory, OutputTarget}
-import samaya.compilation.ErrorManager._
-import samaya.structure.ContentAddressable
-import samaya.types.Identifier.Specific;
+import samaya.types.{Address, Addressable, ContentAddressable, Directory, Identifier, InputSource, OutputTarget}
+
+import scala.reflect.ClassTag
 
 object FileAddressResolver {
   val Protocoll:String = "file"
@@ -21,7 +20,7 @@ class FileAddressResolver extends AddressResolver{
     case Selectors.Lookup(parent, Relative(elems), _) =>(
       parent != null
       && parent.isInstanceOf[FileDirectory]
-      && elems.init.forall(e => e.isInstanceOf[Identifier.General]))
+      && elems.init.forall(e => e.isInstanceOf[Identifier.Specific]))
     case Selectors.Delete(target) => target.isInstanceOf[FileDirectory]
     case Selectors.Parse(AddressResolver.protocol(FileAddressResolver.Protocoll, _)) => true
     case Selectors.SerializeAddress(_, target, AddressResolver.Location) => target != null && target.location.isInstanceOf[FileDirectory]
@@ -32,7 +31,7 @@ class FileAddressResolver extends AddressResolver{
   }
 
   override def resolveDirectory(parent:Directory, path: Address, create:Boolean): Option[FileDirectory] = {
-    val elements = path match {
+     val elements = path match {
       case loc: Address.LocationBased => loc.elements
       case _ => return None
     }
@@ -44,22 +43,13 @@ class FileAddressResolver extends AddressResolver{
       }
     }
 
-    if(elements.exists{
-      case Identifier.Specific(_,_) => true
-      case Identifier.General(_) => false
-    }) return None
-
     val fullPath = (parent, path) match {
       case (parent:FileDirectory, Address.Relative(relPath)) => parent.path ++ relPath
       case (_, Address.Absolute(FileAddressResolver.Protocoll, absolutePath))  => absolutePath
       case _ => return None
     }
 
-    val pathString = fullPath.map{
-      case Identifier.General(name) => name
-        //Please Compiler
-      case Identifier.Specific(_, _) => unexpected("should not happen", Always)
-    }.reduce((left, right) => left+File.separator+right)
+    val pathString = fullPath.map(_.fullName).reduce((left, right) => left+File.separator+right)
 
     val file = new File(pathString)
     if(create && !file.exists()) file.mkdirs()
@@ -70,7 +60,15 @@ class FileAddressResolver extends AddressResolver{
     }
   }
 
-  override def resolve[T <: ContentAddressable](parent:Directory, path: Address, loader:AddressResolver.Loader[T], extensionFilter:Option[Set[String]] = None): Option[T] = {
+  private def load[T <: Addressable](parent:FileDirectory, ident:Identifier, file:File,loader:AddressResolver.Loader[T]):Option[T] = {
+    if(file.isFile){
+      loader.load(new FileSource(parent,ident,file))
+    } else {
+      loader.load(new FileDirectory(parent.path :+ ident,file))
+    }
+  }
+
+  override def resolve[T <: Addressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T]): Option[T] = {
     val elements = path match {
       case loc: Address.LocationBased => loc.elements
       case _ => return None
@@ -88,40 +86,34 @@ class FileAddressResolver extends AddressResolver{
         val directFolder = directParent.file
 
         if(!directFolder.exists()) return None
-        if(!directFolder.isDirectory)  return None
+        if(!directFolder.isDirectory) return None
 
         elements.last match {
           case Identifier.General(name) =>
-            val allFiles = directFolder.listFiles().filter(f => {
-              if(f.isFile) {
-                val p = f.getName
-                val parts = p.split('.')
-                if(parts.length < 2) {
-                  false
-                } else {
-                  if(parts(0) != name) {
-                    false
-                  } else if(extensionFilter.nonEmpty){
-                    parts.length >= 2 && extensionFilter.get.contains(parts(1))
-                  } else {
-                    true
-                  }
-                }
-              } else {
-                false
-              }
+            //Prefer exact match if available
+            val allFiles = directFolder.list((_: File, fileName: String) => {
+              fileName.split('.')(0) == name
             })
-            if(allFiles.length != 1) return None
-            val newIdent =  Identifier.Specific(name, allFiles(0).getName.drop(name.length+1))
-            loader.load(new FileSource(directParent,newIdent,allFiles(0)))
-          case ident@Identifier.Specific(name, extension) =>
-            val target = directFolder.getAbsolutePath + File.separator + name + "." + extension
+
+            implicit val classTag:ClassTag[T] = loader.tag
+            val res = allFiles.flatMap(fileName => {
+              val file = new File(directFolder, fileName)
+              val newIdent =  Identifier(name, fileName.drop(name.length+1))
+              load(directParent,newIdent,file, loader)
+            })
+
+            if(res.length != 1) {
+              None
+            } else {
+              res.headOption
+            }
+          case ident : Identifier.Specific =>
+            val target = directFolder.getAbsolutePath + File.separator + ident.fullName
             val file =  new File(target)
             if(!file.exists()) return None
-            if(!file.isFile) return None
-            loader.load(new FileSource(directParent,ident,file))
+            load(directParent,ident,file, loader)
         }
-      case None => None
+      case None =>  None
     }
   }
 
@@ -149,7 +141,7 @@ class FileAddressResolver extends AddressResolver{
     } else {
       file.listFiles().filter(f => f.isFile && f.getName.exists(c => c == '.')).map{f =>
         val parts = f.getName.split('.')
-        Identifier.Specific(parts(0), f.getName.drop(parts(0).length+1))
+        Identifier(parts(0), f.getName.drop(parts(0).length+1))
       }.toSet
     }
   }
@@ -160,7 +152,7 @@ class FileAddressResolver extends AddressResolver{
       Set.empty
     } else {
       file.listFiles().filter(f => f.isDirectory && !f.getName.exists(c => c == '.')).map{f =>
-        Identifier.General(f.getName)
+        Identifier.Specific(f.getName)
       }.toSet
     }
   }
@@ -211,19 +203,22 @@ class FileAddressResolver extends AddressResolver{
     val file = new File(userDir)
     if(!file.exists()) return None
     if(!file.isDirectory) return None
-    val path = file.getCanonicalPath.split(Pattern.quote(File.separator)).map(Identifier.General).toSeq
+    val path = file.getCanonicalPath.split(Pattern.quote(File.separator)).map(Identifier.Specific.apply).toSeq
     Some(new FileDirectory(path, file))
   }
+
 
   override def parsePath(ident: String): Option[Address] = {
     ident match {
       case AddressResolver.protocol(FileAddressResolver.Protocoll, path) =>
         val parts = AddressResolver.pathSeparator.split(path)
         if(parts.init.exists(elem => elem != ".." && elem.contains('.'))) return None
-        val pathIds = parts.init.map(elem => Identifier.General(elem))
+        val pathIds = parts.init.map(Identifier.Specific.apply)
         val nameExt = parts.last.split('.')
         val lastId = if(nameExt.length > 1) {
-          Identifier.Specific(nameExt(0),parts.last.drop(nameExt(0).length+1))
+          Identifier.Specific(parts.last)
+        } else if(AddressResolver.pathSeparator.matches(""+ident.last)){
+          Identifier.Specific(nameExt(0), None)
         } else {
           Identifier.General(nameExt(0))
         }
