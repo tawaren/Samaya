@@ -1,0 +1,68 @@
+{
+    "address_resolver" : {
+        "#samaya.plugin.impl.location.file.FileAddressResolver" : {},
+        "samaya.plugin.impl.location.vfs.VFSAddressResolver" : {},
+        "samaya.plugin.impl.location.relative.RelativeAddressParser" : {},
+        "samaya.plugin.impl.location.content.ContentAddressEncoder": {},
+        "samaya.plugin.impl.location.hybrid.HybridAddressResolver" : {}
+    },
+
+    "component_validator" : {
+        "samaya.plugin.impl.validator.BasicComponentValidator" : {},
+        "samaya.plugin.impl.compiler.mandala.validate.MandalaValidator" : {}
+    },
+
+    "debug_assembler" : {
+        "samaya.plugin.impl.asm.plain.PlainDebugAssembler" : {},
+        "samaya.plugin.impl.compiler.mandala.asm.plain.PlainInstanceDebugAssembler" : {}
+    },
+
+    "deployer" : {
+        "#samaya.plugin.impl.deployer.simulation.SimulationServerDeployer": {
+            "host": "localhost",
+            "port": 6000
+        },
+        "samaya.plugin.impl.deployer.logonly.LogOnlyDeployer": {}
+    },
+
+    "interface_resolver" : {
+        "samaya.plugin.impl.inter.json.JsonInterfaceEncoder" : {},
+        "samaya.plugin.impl.compiler.mandala.inter.json.JsonInterfaceEncoder" : {}
+    },
+
+    "job_executor" : {
+        "samaya.plugin.impl.executor.virtual.VirtualThreadJobExecutor" : {},
+        "#samaya.plugin.impl.executor.sequential.SequentialJobExecutor" : {}
+    },
+
+    "language_compiler" : {
+        "samaya.plugin.impl.compiler.mandala.MandalaCompiler" : {}
+    },
+
+    "package_resolver" : {
+        "samaya.plugin.impl.pkg.json.JsonPackageEncoder" : {}
+    },
+
+    "reference_resolver" : {
+        "samaya.plugin.impl.refs.deps.PlainPackageReferenceResolver" : {},
+        "samaya.plugin.impl.refs.reps.PlainRepositoryReferenceResolver" : {}
+    },
+
+    "repository_loader" : {
+        "samaya.plugin.impl.repository.DefaultFileRepositoryEncoder" : {}
+    },
+
+    "task_executor" : {
+        "samaya.build.BuildTask" : {},
+        "samaya.pakage.PackageTask" : {},
+        "samaya.build.CleanTask" : {},
+        "samaya.validation.ValidateTask" : {},
+        "samaya.deploy.DeployTask" : {}
+    },
+
+    "workspace_resolver" : {
+        "samaya.plugin.impl.wp.json.JsonWorkspaceEncoder" : {},
+        "samaya.plugin.impl.wp.dir.ImplicitWorkSpaceEncoder" : {}
+    }
+}
+

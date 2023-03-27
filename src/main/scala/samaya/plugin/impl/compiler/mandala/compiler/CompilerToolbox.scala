@@ -23,9 +23,9 @@ trait CompilerToolbox extends MandalaBaseVisitor[Any] {
   }
 
   private def locationFromToken(t:Token, isEnd:Boolean):Location = if(isEnd) {
-    Location.Combined(env.file, t.getLine, t.getCharPositionInLine + t.getText.length + 1, t.getStopIndex)
+    Location.Combined(env.source, t.getLine, t.getCharPositionInLine + t.getText.length + 1, t.getStopIndex)
   } else {
-    Location.Combined(env.file, t.getLine, t.getCharPositionInLine +1, t.getStartIndex)
+    Location.Combined(env.source, t.getLine, t.getCharPositionInLine +1, t.getStartIndex)
   }
 
   private def regionFromContext(p:ParserRuleContext):Region = Region(

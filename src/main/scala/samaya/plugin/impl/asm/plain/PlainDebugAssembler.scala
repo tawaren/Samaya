@@ -1,20 +1,26 @@
 package samaya.plugin.impl.asm.plain
 
+import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.plugin.impl.asm.plain.PlainDebugAssembler.{Asm, format}
+
 import java.io.PrintStream
 import java.io.OutputStream
-
-import samaya.plugin.impl.inter.json.TransactionInterfaceImpl
 import samaya.plugin.service.{DebugAssembler, Selectors}
 import samaya.structure.CompiledTransaction.TransactionFunctionDef
-import samaya.structure.{CompiledModule, CompiledTransaction, Component, FunctionDef, FunctionSig, ImplementDef, Interface, Module, ModuleInterface, Package, Transaction, TransactionInterface, TypeParameterized}
-import samaya.structure.types.{AdtType, DefinedFunc, Func, Id, ImplFunc, LitType, OpCode, Ref, SigType, SourceId, StdFunc, Type, Val}
+import samaya.structure.{CompiledTransaction, Component, FunctionDef, FunctionSig, ImplementDef, Module, Package, Transaction, TypeParameterized}
+import samaya.structure.types.{Func, Id, OpCode, Ref, SourceId, Type, Val}
 import samaya.types.Context
+
+object PlainDebugAssembler extends ConfigPluginCompanion {
+  val Asm:String = "asm"
+  val format: ConfigValue[String] = arg("assembler.encoder.format|encoder.format|format").default(Asm)
+}
 
 class PlainDebugAssembler extends DebugAssembler {
 
   override def matches(s: Selectors.DebugAssemblerSelector ): Boolean =  s match {
-    case Selectors.DebugAssemblerSelector(_:Module) => true
-    case Selectors.DebugAssemblerSelector(_:Transaction) => true
+    case Selectors.DebugAssemblerSelector(_:Module) if format.value == Asm => true
+    case Selectors.DebugAssemblerSelector(_:Transaction) if format.value == Asm => true
     case _ => false
 
   }
@@ -254,7 +260,7 @@ class PlainDebugAssembler extends DebugAssembler {
         }
       }
     }
-    printer.close()
+    printer.flush()
 
   }
 

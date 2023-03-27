@@ -11,7 +11,8 @@ class LinkablePackage(
                        override val name: String,
                        override val components: Seq[Interface[Component]],
                        override val dependencies: Seq[LinkablePackage],
-) extends Package with ContentAddressable{
-  override def identifier: Identifier = Identifier(name, PackageEncoder.packageExtensionPrefix)
+                       val includes:Option[Set[String]],
+                     ) extends Package with ContentAddressable{
+  override def identifier: Identifier = Identifier(name, PackageEncoder.packageExtensionPrefix+Identifier.wildcard)
 }
 

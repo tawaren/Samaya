@@ -34,6 +34,7 @@ trait ClassBuilder  extends CompilerToolbox{
         case Some(funClsInter) =>
           val SigComponents = withComponentBuilder(name) {
             if(funClsInter.link.isInstanceOf[CompLink.ByCode]){
+              //Todo: Why is this this way ca we remove
               println(funClsInter.getClass)
               println("Ups")
             }

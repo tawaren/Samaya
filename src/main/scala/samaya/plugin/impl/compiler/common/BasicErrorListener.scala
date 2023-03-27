@@ -2,9 +2,10 @@ package samaya.plugin.impl.compiler.common
 
 import org.antlr.v4.runtime.{BaseErrorListener, RecognitionException, Recognizer}
 import samaya.compilation.ErrorManager.{Error, PlainMessage, SourceParsing, feedback}
+import samaya.types.ContentAddressable
 
-class BasicErrorListener(file:String) extends BaseErrorListener{
+class BasicErrorListener(context:ContentAddressable) extends BaseErrorListener{
   override def syntaxError(recognizer: Recognizer[_, _], offendingSymbol: Any, line: Int, charPositionInLine: Int, msg: String, e: RecognitionException): Unit = {
-    feedback(PlainMessage(s"file $file line $line:$charPositionInLine $msg", Error, SourceParsing()))
+    feedback(PlainMessage(s"${context.identifier.fullName}@$line:$charPositionInLine $msg \n in ${context.location}", Error, SourceParsing()))
   }
 }

@@ -1,8 +1,8 @@
 package samaya.plugin.service
 
-import samaya.build.compilation.Dependency
+import samaya.build.jobs.Dependency
 import samaya.plugin.service.AddressResolver.PluginType
-import samaya.plugin.service.Selectors.CompilerSelectorByIdentifier
+import samaya.plugin.service.Selectors.{CompilerSelectorByIdentifier, CompilerSelectorBySource}
 import samaya.plugin.service.category.LanguageCompilerPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure
@@ -31,9 +31,14 @@ object LanguageCompiler extends LanguageCompiler with PluginProxy{
   override def category: PluginCategory[PluginType] = LanguageCompilerPluginCategory
 
   def canCompile(identifier:Identifier):Boolean = {
-    select(CompilerSelectorByIdentifier(identifier), silent = true).isDefined
+    matches(CompilerSelectorByIdentifier(identifier))
   }
 
+  def canCompile(source: InputSource) :Boolean  = {
+    matches(CompilerSelectorBySource(source))
+  }
+
+  //Todo: Update to general source??
   override def compileAndBuildFully(source: InputSource, pkg:structure.Package)(builder: Component => (structure.Package, Option[Interface[Component]])):structure.Package = {
     selectAll(Selectors.CompilerSelectorBySource(source)).foldLeft(pkg) {
       case (pkg, comp) => comp.compileAndBuildFully(source, pkg)(builder)
@@ -47,4 +52,6 @@ object LanguageCompiler extends LanguageCompiler with PluginProxy{
   override def extractComponentNames(source: InputSource): Set[String] = {
     selectAll(Selectors.CompilerSelectorBySource(source)).flatMap(r => r.extractComponentNames(source)).toSet
   }
+
+
 }

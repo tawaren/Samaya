@@ -1,6 +1,6 @@
 package samaya.plugin.service
 
-import samaya.types.{Address, Directory, Identifier, OutputTarget}
+import samaya.types.{Directory, Identifier, OutputTarget}
 
 //A plugin interface to resolve Content Based Addresses
 // It just ignores the ones that are not applicable in content addressing mode

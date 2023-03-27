@@ -60,17 +60,23 @@ trait SigCompiler extends CompilerToolbox {
         (res,code)
       } else {
         val code = processBody(ctx.funBody, bodyBindings)
-        val last = code.get.filter(!_.isVirtual).last.rets
-        val res = withFreshIndex{
-          last.map(aid => new Result {
-            override val name: String = aid.id.name
-            override val index: Int = nextIndex()
-            override val typ: Type = TypeInference.TypeVar(sourceId)
-            override val attributes: Seq[Attribute] = Seq.empty
-            override val src: SourceId = sourceId
-          })
+        val nonVirtuals = code.get.filter(!_.isVirtual)
+        if(nonVirtuals.isEmpty){
+          feedback(LocatedMessage("Module Functions must have a body", sourceIdFromContext(ctx.funBody), Error, Compiler()))
+          (Seq.empty,code)
+        } else {
+          val last = nonVirtuals.last.rets
+          val res = withFreshIndex{
+            last.map(aid => new Result {
+              override val name: String = aid.id.name
+              override val index: Int = nextIndex()
+              override val typ: Type = TypeInference.TypeVar(sourceId)
+              override val attributes: Seq[Attribute] = Seq.empty
+              override val src: SourceId = sourceId
+            })
+          }
+          (res,code)
         }
-        (res,code)
       }
 
       if(body.isEmpty && processors.nonEmpty) {

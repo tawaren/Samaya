@@ -1,17 +1,25 @@
 package samaya.plugin.impl.validator
 
 import samaya.compilation.ErrorManager._
+import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.plugin.impl.validator.BasicComponentValidator.validation
 import samaya.plugin.service.{ComponentValidator, Selectors}
 import samaya.structure.{CompiledModule, CompiledTransaction, Component, Module, Package, Transaction}
 import samaya.types.Context
 import samaya.validation.{CodeValidator, ModuleValidator}
+
+object BasicComponentValidator extends ConfigPluginCompanion {
+  val validation : ConfigValue[Boolean] = opt("component.validation|validation").default(true)
+    .warnIfFalse("Validation of components is disabled",Compiler())
+}
 
 class BasicComponentValidator extends ComponentValidator {
 
   override def matches(s: Selectors.ValidatorSelector): Boolean = true
 
   def validateComponent(cmp: Component, pkg: Package): Unit = {
-    if(cmp.name.length == 0 || cmp.name.charAt(0).isLower) {
+    if(!validation.value) return
+    if(cmp.name.isEmpty || cmp.name.charAt(0).isLower) {
       feedback(LocatedMessage(s"Component name ${pkg.name}.${cmp.name} must start with an uppercase Character", cmp.src, Error, Checking()))
     }
     cmp match {

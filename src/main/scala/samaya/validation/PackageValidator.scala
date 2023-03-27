@@ -7,10 +7,12 @@ import samaya.compilation.ErrorManager
 import samaya.structure.{Component, Interface, LinkablePackage, Meta}
 import samaya.structure.types.Hash
 import samaya.compilation.ErrorManager._
-import samaya.plugin.service.{ComponentValidator, InterfaceEncoder, LanguageCompiler}
-import samaya.types.{Directory, Identifier, InputSource, OutputTarget}
+import samaya.plugin.service.{AddressResolver, ComponentValidator, InterfaceEncoder, LanguageCompiler}
+import samaya.types.Address.ContentBased
+import samaya.types.{Address, Directory, Identifier, InputSource, OutputTarget}
 
 import scala.collection.mutable
+import scala.util.Using
 
 
 object PackageValidator {
@@ -18,11 +20,13 @@ object PackageValidator {
   case class CacheKey(name:String, language:String, version:String, classifier:Set[String])
 
   //validate the package integrety
-  def validatePackage(pkg: LinkablePackage): Unit = {
+  def validatePackage(pkg: LinkablePackage, recursive:Boolean =false): Unit = {
     if(pkg.name.isEmpty || pkg.name.charAt(0).isUpper) {
       feedback(PlainMessage("Package names must start with a lowercase Character", Error, Checking()))
     }
-    //check that the hash was corectly computed
+    //Todo: Parallelize - maybe validateCompilation sequential at first?
+    //       or make the caches concurrent
+    //check that the hash was correctly computed
     validatePackageHash(pkg)
     //have a cache for recompiles
     val recompileCache:mutable.Map[CacheKey, (Boolean,Interface[Component])] = mutable.Map.empty
@@ -37,50 +41,23 @@ object PackageValidator {
       validateCompilation(comp, pkg, compiled, recompileCache)
     }
 
-  }
-
-  /*
-  class MemoryOutPutDebug extends OutputTarget{
-    private val out:OutputStream = new OutputStream {
-      var count = 0
-      override def write(b: Int): Unit = {
-        if(count == 603) throw new Exception()
-        count += 1
+    if(recursive){
+      for(dep <- pkg.dependencies){
+        validatePackage(dep, true)
       }
     }
-    override def write[T](writer: OutputStream => T): T = try {
-      writer(out)
-    } finally {
-      out.close()
-    }
 
-    override def toInputSource: InputSource = null
   }
- */
-  //Helpers to have in memory Input/Output
-  class MemoryOutPut extends OutputTarget{
-    private val out = new ByteArrayOutputStream();
-    override def write[T](writer: OutputStream => T): T = try {
-      writer(out)
-    } finally {
-      out.close()
-    }
 
-    private val _location: Directory  = new Directory {
-      override def name: String = "memory"
-      override def isRoot: Boolean = false
-      override def location: Directory = this
-      override def identifier: Identifier = Identifier.Specific("memory")
-    }
-
-    override def location: Directory = _location
-    override def identifier: Identifier = Identifier.Specific("memory")
-
-    override def toInputSource: InputSource = new InputSource {
+  def inputFromStream(f: OutputStream => Unit): InputSource = {
+    val out = new ByteArrayOutputStream()
+    f(out)
+    out.close()
+    new InputSource {
       private val data = out.toByteArray
-      override def content: InputStream = new ByteArrayInputStream(data)
+      override def read[T](reader: InputStream => T): T = Using(new ByteArrayInputStream(data))(reader).get
       override def identifier:Identifier  = Identifier.Specific(System.identityHashCode(data).toString)
-      override def location: Directory = _location
+      override def location: Directory = unexpected("In memory sources do not have a location", Always)
     }
   }
 
@@ -90,9 +67,12 @@ object PackageValidator {
     //get the code
     val sourceCode = comp.meta.sourceCode match {
       case Some(sc) => sc
-      case None =>
-        feedback(PlainMessage(s"Can not recompile component ${pkg.location}/${comp.name} because source code is missing", Warning, Checking()))
-        return
+      case None => AddressResolver.resolve(ContentBased(comp.meta.sourceHash), AddressResolver.InputLoader) match {
+        case Some(sc) => sc
+        case None =>
+          feedback(PlainMessage(s"Can not recompile component ${pkg.location}/${comp.name} because source code is missing", Warning, Checking()))
+          return
+      }
     }
 
     if(!compiled.contains(sourceCode)) {
@@ -108,34 +88,30 @@ object PackageValidator {
             val codeSource = if(ccomp.isVirtual || hasError) {
               None
             } else {
-              val out = new MemoryOutPut()
-              out.write(wOut => {
+              Some(inputFromStream(wOut => {
                 val dOut = new DataOutputStream(wOut)
                 try {
                   ComponentSerializer.serialize(dOut, ccomp, sourceCode.hash, pkg)
                 } finally {
-                  dOut.close()
+                  dOut.flush()
                 }
-              })
-              Some(out.toInputSource)
+              }))
             }
 
-            val out = new MemoryOutPut()
-            out.write(wOut => {
+            val interfaceSource = inputFromStream(wOut => {
               val dOut = new DataOutputStream(wOut)
               try {
                 InterfaceEncoder.serializeInterface(ccomp,  codeSource.map(_.hash), hasError, dOut)
               } finally {
-                dOut.close()
+                dOut.flush()
               }
             })
-            val interfaceSource = out.toInputSource
 
             val meta = Meta(
               codeSource.map(_.hash),
               interfaceSource.hash,
               sourceCode.hash,
-              interfaceSource,
+              Some(interfaceSource),
               codeSource,
               Some(sourceCode)
             )
@@ -163,18 +139,6 @@ object PackageValidator {
         //check that the result of the compiler match the values from the entry
         if(!comp.isVirtual) {
           if(comp.meta.codeHash != ccomp.meta.codeHash){
-            val cbytes = comp.meta.code.get.content.readAllBytes()
-            val ccbytes = ccomp.meta.code.get.content.readAllBytes()
-            println(comp.name)
-            println(cbytes.length)
-            println(ccbytes.length)
-
-            for(((a,b),i) <- cbytes.zip(ccbytes).zipWithIndex){
-              if(a != b) {
-                println(i.toString+": "+a+" <-> "+b)
-              }
-            }
-
             feedback(PlainMessage(s"Recompilation for component ${pkg.location}/${comp.name} produced wrong code hash", Error, Checking()))
           }
         }
@@ -217,7 +181,11 @@ object PackageValidator {
         if(!meta.codeHash.contains(code.hash)) {
           feedback(PlainMessage(s"Code source for $kind ${pkg.location}/$name produced wrong code hash", Error, Checking()))
         }
-      case None => feedback(PlainMessage(s"Can not check code integrity of entry ${pkg.location}/$name as code source is missing", Warning, Checking()))
+      //Note: This is enough as content addressing guarantees the hash is right
+      case None => meta.codeHash match {
+        case Some(hash) if AddressResolver.resolve(ContentBased(hash), AddressResolver.InputLoader).isDefined =>
+        case _ => feedback(PlainMessage(s"Can not check code integrity of entry ${pkg.location}/$name as code source is missing", Warning, Checking()))
+      }
     }
   }
 
@@ -228,14 +196,24 @@ object PackageValidator {
         if(meta.sourceHash != Hash.fromInputSource(sourceCode)) {
           feedback(PlainMessage(s"Source code source for $kind ${pkg.location}/$name produced wrong source code hash", Error, Checking()))
         }
-      case None => feedback(PlainMessage(s"Can not check source code integrity of entry ${pkg.location}/${name} as source code source is missing", Warning, Checking()))
+      //Note: This is enough as content addressing guarantees the hash is right
+      case None => if(AddressResolver.resolve(ContentBased(meta.sourceHash), AddressResolver.InputLoader).isEmpty) {
+        feedback(PlainMessage(s"Can not check source code integrity of entry ${pkg.location}/${name} as source code source is missing", Warning, Checking()))
+      }
     }
   }
 
   //Hash the interface file and compare it ti the recorded hash in the entry
   private def validateEntryInterface(meta: Meta, name:String, kind:String, pkg: LinkablePackage): Unit = {
-    if(meta.interfaceHash != meta.interface.hash){
-      feedback(PlainMessage(s"Interface source for $kind ${pkg.location}/$name produced wrong interface hash", Error, Checking()))
+    meta.interface match {
+      case Some(interfaceCode) =>
+        if(meta.interfaceHash != Hash.fromInputSource(interfaceCode)) {
+          feedback(PlainMessage(s"Interface source for $kind ${pkg.location}/$name produced wrong interface hash", Error, Checking()))
+        }
+      //Note: This is enough as content addressing guarantees the hash is right
+      case None => if(AddressResolver.resolve(ContentBased(meta.interfaceHash), AddressResolver.InputLoader).isEmpty) {
+        feedback(PlainMessage(s"Can not check interface integrity of entry ${pkg.location}/${name} as interface source is missing", Warning, Checking()))
+      }
     }
   }
 

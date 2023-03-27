@@ -1,6 +1,5 @@
 package samaya.plugin.service
 
-import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.plugin.service.category.ComponentValidatorPluginCategory
 import samaya.structure.{Component, Package}

@@ -1,14 +1,16 @@
 package samaya.plugin.impl.compiler.mandala
 
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
-import samaya.build.compilation.Dependency
+import samaya.build.jobs.Dependency
 import samaya.compilation.ErrorManager.{newPlainErrorScope, producesErrorValue}
 import samaya.plugin.impl.compiler.common.BasicErrorListener
+import samaya.plugin.impl.compiler.mandala.MandalaCompiler.parsingCache
 import samaya.plugin.impl.compiler.mandala.compiler.MandalaBaseCompiler
 import samaya.plugin.impl.compiler.mandala.process.{ImplicitInjector, InstanceFinder, TypeAndClassInference}
 import samaya.plugin.service.Selectors.{CompilerSelectorByIdentifier, CompilerSelectorByMeta, CompilerSelectorBySource}
 import samaya.plugin.service.{LanguageCompiler, Selectors}
 import samaya.structure.{Component, Interface, Package}
+import samaya.toolbox.helpers.{ConcurrentComputationCache, ConcurrentSoftComputationCache}
 import samaya.toolbox.process.{CaseSorter, CopyDiscardInjector, RollbackFiller}
 import samaya.toolbox.transform.EntryTransformer
 import samaya.types.InputSource
@@ -30,6 +32,9 @@ object MandalaCompiler {
   val Implicit_Attribute_Name = "implicit"
   val Context_Attribute_Name = "context"
   val Aliasing_Module_Attribute_Name = "aliased_in"
+
+  //Todo: Move into class and make configurable
+  val parsingCache = new ConcurrentSoftComputationCache[InputSource,Option[MandalaParser.FileContext]]()
 }
 
 class MandalaCompiler extends LanguageCompiler{
@@ -40,22 +45,24 @@ class MandalaCompiler extends LanguageCompiler{
     case _ => false
   }
 
-  //todo: can we provide a caching functionality to prevent repetive parsing???
-
-  private def parseFile(source: InputSource):Option[MandalaParser.FileContext] = producesErrorValue {
-    val lexer = new MandalaLexer(CharStreams.fromStream(source.content))
-    val errorHandler = new BasicErrorListener(source.identifier.fullName)
-    lexer.removeErrorListeners()
-    lexer.addErrorListener(errorHandler)
-    val tokens = new CommonTokenStream(lexer)
-    val parser = new MandalaParser(tokens)
-    parser.removeErrorListeners()
-    parser.addErrorListener(errorHandler)
-    parser.file()
+  private def parseFile(source: InputSource):Option[MandalaParser.FileContext] = parsingCache.getOrElseUpdate(source) {
+    producesErrorValue {
+      source.read{ input =>
+        val lexer =  new MandalaLexer(CharStreams.fromStream(input))
+        val errorHandler = new BasicErrorListener(source)
+        lexer.removeErrorListeners()
+        lexer.addErrorListener(errorHandler)
+        val tokens = new CommonTokenStream(lexer)
+        val parser = new MandalaParser(tokens)
+        parser.removeErrorListeners()
+        parser.addErrorListener(errorHandler)
+        parser.file()
+      }
+    }
   }
 
   override def compileAndBuildFully(source: InputSource, pkg: Package)(buildFunction: Component => (Package, Option[Interface[Component]])): Package  = {
-    val env = new Environment(source.identifier.fullName, pkg) {
+    val env = new Environment(source, pkg) {
       override def createPipeline(): EntryTransformer = {
         val instanceFinder = new InstanceFinder(globalInstances, localInstances)
         CaseSorter.andThen(
@@ -86,7 +93,7 @@ class MandalaCompiler extends LanguageCompiler{
 
   override def extractDependencies(source: InputSource): Set[Dependency] = newPlainErrorScope {
     parseFile(source).toSet.flatMap((tree: MandalaParser.FileContext) => {
-      val vis = new MandalaDependencyExtractorVisitor(source.identifier.fullName)
+      val vis = new MandalaDependencyExtractorVisitor(source)
       vis.visitFile(tree).map{
         case (k,v) => Dependency(k,v)
       }

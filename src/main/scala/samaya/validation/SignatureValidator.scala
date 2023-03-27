@@ -100,7 +100,8 @@ object SignatureValidator {
         validateType(proj.src, proj.inner, container, context)
       case adt:AdtType => adt.getEntry(context) match {
         case Some(dt) => checkInternal(dt.generics, t.applies)
-        case None => feedback(LocatedMessage("Requested type is not defined", adt.src, Error, Checking()))
+        case None =>
+          feedback(LocatedMessage("Requested type is not defined"+src.origin, adt.src, Error, Checking()))
       }
 
       case lit:LitType => lit.getEntry(context) match {

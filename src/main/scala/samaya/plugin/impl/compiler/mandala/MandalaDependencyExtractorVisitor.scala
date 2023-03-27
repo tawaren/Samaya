@@ -3,15 +3,16 @@ package samaya.plugin.impl.compiler.mandala
 import org.antlr.v4.runtime.{ParserRuleContext, Token}
 import samaya.plugin.impl.compiler.mandala.MandalaParser.{InstanceContext, PathContext}
 import samaya.structure.types.{InputSourceId, Location, Region, SourceId}
+import samaya.types.ContentAddressable
 
 import scala.jdk.CollectionConverters._
 
-class MandalaDependencyExtractorVisitor(file:String) extends MandalaBaseVisitor[Map[Seq[String], Seq[SourceId]]]{
+class MandalaDependencyExtractorVisitor(source:ContentAddressable) extends MandalaBaseVisitor[Map[Seq[String], Seq[SourceId]]]{
 
   private def locationFromToken(t:Token, isEnd:Boolean):Location = if(isEnd) {
-    Location.Combined(file, t.getLine, t.getCharPositionInLine + t.getText.length + 1, t.getStopIndex)
+    Location.Combined(source, t.getLine, t.getCharPositionInLine + t.getText.length + 1, t.getStopIndex)
   } else {
-    Location.Combined(file, t.getLine, t.getCharPositionInLine +1, t.getStartIndex)
+    Location.Combined(source, t.getLine, t.getCharPositionInLine +1, t.getStartIndex)
   }
 
   private def regionFromContext(p:ParserRuleContext):Region = Region(

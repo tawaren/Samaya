@@ -1,11 +1,13 @@
 package samaya.plugin.service
 
-import samaya.plugin.service.AddressResolver.PluginType
 import samaya.plugin.service.category.WorkspaceEncodingPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
-import samaya.types.{Directory, GeneralSource, InputSource, Workspace}
+import samaya.structure.LinkablePackage
+import samaya.toolbox.helpers.ConcurrentStrongComputationCache
+import samaya.types.{Address, GeneralSource, Identifier, Workspace}
 
 import scala.reflect.ClassTag
+import scala.util.DynamicVariable
 
 
 //a plugin description for managing (parsing and validating) interface descriptions
@@ -23,11 +25,30 @@ object WorkspaceEncoder extends WorkspaceEncoder with PluginProxy{
 
   val workspaceExtensionPrefix = "wsp"
 
+  val computationCache = new ConcurrentStrongComputationCache[GeneralSource,Option[Workspace]]()
+
+  //Todo: Shall we make more global and also extend on packages??
+  private val _contextPath = new DynamicVariable[Seq[Identifier]](Seq.empty)
+  def contextPath():Address = Address.Relative(_contextPath.value)
+
   type PluginType = WorkspaceEncoder
   override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = WorkspaceEncodingPluginCategory
 
   override def decodeWorkspace(source: GeneralSource): Option[Workspace] = {
-    select(Selectors.WorkspaceDecoderSelector(source)).flatMap(r => r.decodeWorkspace(source))
+    computationCache.getOrElseUpdate(source){
+      val name = if(source.identifier.name.isEmpty){
+        source.identifier.fullName
+      } else {
+        source.identifier.name
+      }
+      _contextPath.withValue(_contextPath.value :+ Identifier(name)){
+        select(Selectors.WorkspaceDecoderSelector(source)).flatMap(r => r.decodeWorkspace(source))
+      }
+    }
+  }
+
+  def isWorkspace(source:GeneralSource): Boolean = {
+    matches(Selectors.WorkspaceDecoderSelector(source))
   }
 }

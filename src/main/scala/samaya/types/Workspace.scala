@@ -2,7 +2,6 @@ package samaya.types
 
 import samaya.plugin.service.{AddressResolver, WorkspaceEncoder}
 import samaya.structure.LinkablePackage
-import samaya.validation.WorkspaceValidator
 
 import scala.reflect.ClassTag
 
@@ -12,19 +11,21 @@ import scala.reflect.ClassTag
 trait Workspace extends Addressable {
   //the folder in which we operate
   def location:Directory
+  //where to generate package & index files
+  def packageTarget:Directory
   //dependencies
   //local dependency that are recompiled
-  def includes:Option[Set[Workspace]]
+  def includes:Set[Workspace]
   //repositories to use for dependency lookups in this & subprojects
-  def repositories:Option[Set[Repository]]
+  def repositories:Set[Repository]
   //external dependency that is just linked
-  def dependencies:Option[Set[LinkablePackage]]
+  def dependencies:Set[LinkablePackage]
   //name of the resulting package
   //defaults to workspace name if not explicitly provided
   def name:String
   override def identifier: Identifier = Identifier(name)
   //sources contained in the package
-  def sources: Option[Set[Address]]
+  def sources: Set[Address]
   // the place to look for sources
   def sourceLocation:Directory
   //targets

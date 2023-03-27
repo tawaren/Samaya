@@ -59,6 +59,7 @@ object Package {
   //todo: add version stuff
 
   trait ComponentFilter{def checkMatch(m:Interface[Component]):Boolean }
+
   case class BasicComponentFilter(name:Option[String] = None, language:Option[String] = None, classifier:Set[String] = Set.empty) extends ComponentFilter {
     def checkMatch(m:Interface[Component]):Boolean = {
       (name.isEmpty || m.name == name.get) &&

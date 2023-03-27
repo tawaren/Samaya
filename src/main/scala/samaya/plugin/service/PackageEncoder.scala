@@ -3,6 +3,7 @@ package samaya.plugin.service
 import samaya.plugin.service.category.PackageEncodingPluginCategory
 import samaya.plugin.{Plugin, PluginProxy}
 import samaya.structure.LinkablePackage
+import samaya.toolbox.helpers.{ConcurrentComputationCache, ConcurrentStrongComputationCache}
 import samaya.types.{GeneralSource, InputSource, Workspace}
 
 import scala.reflect.ClassTag
@@ -15,50 +16,39 @@ trait PackageEncoder extends Plugin{
   // parent is the package path
   // location & name defines where to look for it
   // for top level packages empty list can be used as parent
-  //todo: make a simple deserialize and do the rest in a common part
-  def deserializePackage(input:InputSource): Option[LinkablePackage]
+  def deserializePackage(source:GeneralSource): Option[LinkablePackage]
   //writes output
-  def serializePackage(pkg: LinkablePackage, workspace: Workspace): Option[InputSource]
+  def serializePackage(pkg: LinkablePackage, workspace: Option[Workspace] = None): Option[InputSource]
 }
 
 object PackageEncoder extends PackageEncoder with PluginProxy{
 
-  object Loader extends AddressResolver.ContentLoader[LinkablePackage] {
-    override def load(src: GeneralSource): Option[LinkablePackage] = src match {
-      //Todo: Implement for directory
-      case source: InputSource =>  deserializePackage(source)
-      case _ => None
-    }
-    override def tag: ClassTag[LinkablePackage] = implicitly[ClassTag[LinkablePackage]]
-  }
-
   val packageExtensionPrefix = "pkg"
 
-  object PackageExtension {
-    def apply(format: String): String = packageExtensionPrefix + "." + format
-    def unapply(ext: String): Option[String] = if(!ext.startsWith(packageExtensionPrefix)) {
-      None
-    } else {
-      Some(ext.drop(packageExtensionPrefix.length + 1))
-    }
-    def unapply(source: InputSource): Option[String] = source.identifier.extension.flatMap(unapply)
+  val computationCache = new ConcurrentStrongComputationCache[GeneralSource,Option[LinkablePackage]]()
+
+  //Todo: Move to Package or move the others to encoders
+  object Loader extends AddressResolver.ContentLoader[LinkablePackage] {
+    override def load(src: GeneralSource): Option[LinkablePackage] = deserializePackage(src)
+    override def tag: ClassTag[LinkablePackage] = implicitly[ClassTag[LinkablePackage]]
   }
 
   type PluginType = PackageEncoder
   override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = PackageEncodingPluginCategory
 
-  override def deserializePackage(input:InputSource): Option[LinkablePackage] = {
-    select(Selectors.PackageDeserializationSelector(input)).flatMap(r => r.deserializePackage(input))
+  override def deserializePackage(source:GeneralSource): Option[LinkablePackage] = {
+    computationCache.getOrElseUpdate(source){
+      select(Selectors.PackageDecoderSelector(source)).flatMap(r => r.deserializePackage(source))
+    }
   }
 
-  override def serializePackage(pkg: LinkablePackage, workspace:Workspace): Option[InputSource]  = {
-    //todo: get default from config
-    serializePackage(pkg, workspace,PackageExtension("json"))
+  override def serializePackage(pkg: LinkablePackage, workspace: Option[Workspace] = None): Option[InputSource]  = {
+    select(Selectors.PackageEncoderSelector).flatMap(r => r.serializePackage(pkg, workspace))
   }
 
-  def serializePackage(pkg: LinkablePackage, workspace: Workspace, format:String): Option[InputSource]  = {
-    select(Selectors.PackageSerializationSelector(format)).flatMap(r => r.serializePackage(pkg, workspace))
+  def isPackage(source:GeneralSource): Boolean = {
+    matches(Selectors.PackageDecoderSelector(source))
   }
 
 }

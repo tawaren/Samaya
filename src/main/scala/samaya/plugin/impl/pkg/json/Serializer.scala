@@ -1,32 +1,30 @@
 package samaya.plugin.impl.pkg.json
 
-import samaya.plugin.impl.pkg.json.JsonModel.Source
 import samaya.plugin.service.AddressResolver
+import samaya.plugin.service.AddressResolver.{DynamicLocation, Hybrid, RelativeLocation}
 import samaya.structure.{Component, Interface}
 import samaya.structure
-import samaya.types.{Address, Identifier, Workspace}
+import samaya.types.{Address, Directory, Identifier, Workspace}
 
 object Serializer {
 
-  def toPackageRepr(pkg: structure.LinkablePackage, workspace: Workspace): JsonModel.Package = {
-    val basePath = AddressResolver.serializeDirectory(None, pkg.location)
-    val dependencies = pkg.dependencies.flatMap(d => AddressResolver.serializeAddress(Some(pkg.location),d))
+  def toPackageRepr(pkg: structure.LinkablePackage, workspace: Option[Workspace]): JsonModel.Package = {
+    val basePath = AddressResolver.serializeDirectoryAddress(pkg.location)
+    val dependencies = pkg.dependencies.flatMap(d => AddressResolver.serializeContentAddress(d,Hybrid(RelativeLocation(pkg.location))))
     JsonModel.Package(
       name = pkg.name,
       hash = pkg.hash.toString,
       components = pkg.components.map(toCompRepr),
       path = basePath,
-      locations = toLocationsRepl(workspace),
-      dependencies = dependencies
+      locations = workspace.map(toLocationsRepl(pkg.location, _)),
+      dependencies = dependencies,
+      includes = pkg.includes
     )
   }
 
   def toCompRepr(cmp: Interface[Component]): JsonModel.Component = {
     JsonModel.Component(
-      source = cmp.meta.sourceCode.map(_.identifier).map{
-        case Identifier.General(name) => Source(name)
-        case Identifier.Specific(name, extension) => Source(name, extension)
-      },
+      source = cmp.meta.sourceCode.map(_.identifier.fullName),
       name = cmp.name,
       hash = toHashesRepr(cmp),
       info = toInfoRepr(cmp)
@@ -49,10 +47,10 @@ object Serializer {
     )
   }
 
-  def toLocationsRepl(workspace: Workspace): JsonModel.Locations = {
-    val interface = AddressResolver.serializeDirectory(Some(workspace.location), workspace.interfaceLocation)
-    val code = AddressResolver.serializeDirectory(Some(workspace.location), workspace.codeLocation)
-    val source = AddressResolver.serializeDirectory(Some(workspace.location), workspace.sourceLocation)
+  def toLocationsRepl(pkgLocation:Directory, workspace: Workspace): JsonModel.Locations = {
+    val interface = AddressResolver.serializeDirectoryAddress(workspace.interfaceLocation, DynamicLocation(pkgLocation))
+    val code = AddressResolver.serializeDirectoryAddress(workspace.codeLocation, DynamicLocation(pkgLocation))
+    val source = AddressResolver.serializeDirectoryAddress(workspace.sourceLocation, DynamicLocation(pkgLocation))
     JsonModel.Locations(
       interface = interface.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),
       code = code.getOrElse(throw new Exception("MAKE CUSTOM ONE OR BETTER SER MODEL")),

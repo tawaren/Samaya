@@ -1,10 +1,14 @@
 package samaya.plugin.impl.location.file
 
+import samaya.plugin.impl.location.file.FileAddressResolver.Protocoll
+import samaya.plugin.impl.location.vfs.VFSDirectory
+import samaya.plugin.service.AddressResolver.{AbsoluteLocation, DirectoryMode, DynamicLocation, Exists, ReCreate, RelativeLocation}
+
 import java.io.File
 import java.util.regex.Pattern
 import samaya.plugin.service.{AddressResolver, Selectors}
 import samaya.types.Address.{Absolute, Relative}
-import samaya.types.{Address, Addressable, ContentAddressable, Directory, Identifier, InputSource, OutputTarget}
+import samaya.types.{Address, Addressable, ContentAddressable, Directory, GeneralSource, Identifier, InputSource, OutputTarget}
 
 import scala.reflect.ClassTag
 
@@ -16,43 +20,36 @@ object FileAddressResolver {
 class FileAddressResolver extends AddressResolver{
 
   override def matches(s: Selectors.AddressSelector): Boolean = s match {
-    case Selectors.Lookup(_, Absolute(FileAddressResolver.Protocoll, _), _) => true
-    case Selectors.Lookup(parent, Relative(elems), _) =>(
-      parent != null
-      && parent.isInstanceOf[FileDirectory]
-      && elems.init.forall(e => e.isInstanceOf[Identifier.Specific]))
+    case Selectors.Lookup(Absolute(Protocoll, _), _) => true
     case Selectors.Delete(target) => target.isInstanceOf[FileDirectory]
     case Selectors.Parse(AddressResolver.protocol(FileAddressResolver.Protocoll, _)) => true
-    case Selectors.SerializeAddress(_, target, AddressResolver.Location) => target != null && target.location.isInstanceOf[FileDirectory]
-    case Selectors.SerializeDirectory(_, target) => target != null && target.isInstanceOf[FileDirectory]
-    case Selectors.List(parent) => parent != null && parent.isInstanceOf[FileDirectory]
+    case Selectors.SerializeAddress(target, AddressResolver.AbsoluteLocation) => target.location.isInstanceOf[FileDirectory]
+    case Selectors.SerializeAddress(target, AddressResolver.DynamicLocation(_ : FileDirectory)) => target.location.isInstanceOf[FileDirectory]
+    case Selectors.SerializeAddress(target, AddressResolver.RelativeLocation(p : FileDirectory)) => target.location match {
+      case t: FileDirectory => t.path.startsWith(p.path)
+      case _ => false
+    }
+    case Selectors.SerializeDirectory(_ : FileDirectory, AddressResolver.AbsoluteLocation) => true
+    case Selectors.SerializeDirectory(_ : FileDirectory, AddressResolver.DynamicLocation(_ : FileDirectory)) => true
+    case Selectors.SerializeAddress(target : FileDirectory, AddressResolver.RelativeLocation(p : FileDirectory)) => target.path.startsWith(p.path)
+    case Selectors.List(_ : FileDirectory) => true
     case Selectors.Default => true
     case _ => false
   }
 
-  override def resolveDirectory(parent:Directory, path: Address, create:Boolean): Option[FileDirectory] = {
-     val elements = path match {
-      case loc: Address.LocationBased => loc.elements
-      case _ => return None
-    }
 
-    if(elements.isEmpty) {
-      return parent match {
-        case location: FileDirectory => Some(location)
-        case _ => None
-      }
-    }
 
-    val fullPath = (parent, path) match {
-      case (parent:FileDirectory, Address.Relative(relPath)) => parent.path ++ relPath
-      case (_, Address.Absolute(FileAddressResolver.Protocoll, absolutePath))  => absolutePath
+  override def resolveDirectory(path: Address, mode:DirectoryMode = Exists): Option[FileDirectory] = {
+    val fullPath = path match {
+      case Address.Absolute(FileAddressResolver.Protocoll, absolutePath)  => absolutePath
       case _ => return None
     }
 
     val pathString = fullPath.map(_.fullName).reduce((left, right) => left+File.separator+right)
 
     val file = new File(pathString)
-    if(create && !file.exists()) file.mkdirs()
+    if(mode == ReCreate && file.exists()) deleteDirectoryRecursive(file)
+    if(mode != Exists && !file.exists()) file.mkdirs()
     if(!file.exists() || !file.isDirectory) {
       None
     } else {
@@ -68,20 +65,18 @@ class FileAddressResolver extends AddressResolver{
     }
   }
 
-  override def resolve[T <: Addressable](parent: Directory, path: Address, loader: AddressResolver.Loader[T]): Option[T] = {
+
+
+  override def resolve[T <: Addressable](path: Address, loader: AddressResolver.Loader[T]): Option[T] = {
     val elements = path match {
-      case loc: Address.LocationBased => loc.elements
+      case Address.Absolute(Protocoll, elements)  => elements
       case _ => return None
     }
 
     if(elements.isEmpty) return None
-    val folder = path match {
-      case Address.Relative(elements) => Address.Relative(elements.init)
-      case Address.Absolute(protocol, elements) => Address.Absolute(protocol, elements.init)
-      case _ => return None
-    }
+    val folder = Address.Absolute(Protocoll, elements.init)
 
-    resolveDirectory(parent, folder) match {
+    resolveDirectory(folder) match {
       case Some(directParent) =>
         val directFolder = directParent.file
 
@@ -89,10 +84,11 @@ class FileAddressResolver extends AddressResolver{
         if(!directFolder.isDirectory) return None
 
         elements.last match {
-          case Identifier.General(name) =>
+          case g@Identifier.General(name, _) =>
+            val namePrefix = g.partialName
             //Prefer exact match if available
             val allFiles = directFolder.list((_: File, fileName: String) => {
-              fileName.split('.')(0) == name
+              fileName.startsWith(namePrefix) && fileName.split('.')(0) == name
             })
 
             implicit val classTag:ClassTag[T] = loader.tag
@@ -134,27 +130,18 @@ class FileAddressResolver extends AddressResolver{
     }
   }
 
-  override def listSources(parent: Directory): Set[Identifier] = {
+  override def list(parent: Directory, filter:Option[AddressResolver.AddressKind]): Set[Identifier] = {
+    def matchesFilter(file: File):Boolean = filter match {
+      case Some(AddressResolver.Directory) => file.isDirectory
+      case Some(AddressResolver.Element) => file.isFile
+      case None => true
+    }
     val file = parent.asInstanceOf[FileDirectory].file
-    if(!file.exists() || !file.isDirectory) {
+    if(!file.exists()) {
       Set.empty
     } else {
-      file.listFiles().filter(f => f.isFile && f.getName.exists(c => c == '.')).map{f =>
-        val parts = f.getName.split('.')
-        Identifier(parts(0), f.getName.drop(parts(0).length+1))
-      }.toSet
-    }
-  }
-
-  override def listDirectories(parent: Directory): Set[Identifier] = {
-    val file = parent.asInstanceOf[FileDirectory].file
-    if(!file.exists() || !file.isDirectory) {
-      Set.empty
-    } else {
-      file.listFiles().filter(f => f.isDirectory && !f.getName.exists(c => c == '.')).map{f =>
-        Identifier.Specific(f.getName)
-      }.toSet
-    }
+      file.listFiles().filter(matchesFilter).map(f => Identifier.Specific(f.getName))
+    }.toSet
   }
 
   override def resolveSink(parent: Directory, ident: Identifier.Specific): Option[OutputTarget] = {
@@ -179,21 +166,19 @@ class FileAddressResolver extends AddressResolver{
 
   private def absolutePath(target: FileDirectory): String =  FileAddressResolver.prefix + target.file.getCanonicalPath
 
-  override def serializeAddress(parent:Option[Directory], target:ContentAddressable): Option[String] = {
-    serializeDirectory(parent, target.location).map(dir => dir +"/"+target.identifier.name)
+  override def serializeContentAddress(target: ContentAddressable, mode: AddressResolver.SerializerMode): Option[String] = {
+    serializeDirectoryAddress(target.location,mode).map(dir => dir +"/"+target.identifier.fullName)
   }
 
-  override def serializeDirectory(parent:Option[Directory], target:Directory): Option[String] = {
-    val t = target.asInstanceOf[FileDirectory]
-    Some(parent match {
-      case Some(p: FileDirectory) =>
-        if (t.path.startsWith(p.path)) {
-          relativePath(p,t)
-        } else {
-          absolutePath(t)
-        }
-      case _ => absolutePath(t)
-    })
+  override def serializeDirectoryAddress(target: Directory, mode: AddressResolver.SerializerMode): Option[String] = {
+    val t : FileDirectory = target.asInstanceOf[FileDirectory]
+    mode match {
+      case RelativeLocation(parent:FileDirectory) if t.path.startsWith(parent.path) => Some(relativePath(parent,t))
+      case DynamicLocation(parent:FileDirectory) if t.path.startsWith(parent.path) => Some(relativePath(parent,t))
+      case DynamicLocation(_) => Some(absolutePath(t))
+      case AbsoluteLocation => Some(absolutePath(t))
+      case _ => None
+    }
   }
 
   override def provideDefault(): Option[Directory] = {
@@ -214,14 +199,7 @@ class FileAddressResolver extends AddressResolver{
         val parts = AddressResolver.pathSeparator.split(path)
         if(parts.init.exists(elem => elem != ".." && elem.contains('.'))) return None
         val pathIds = parts.init.map(Identifier.Specific.apply)
-        val nameExt = parts.last.split('.')
-        val lastId = if(nameExt.length > 1) {
-          Identifier.Specific(parts.last)
-        } else if(AddressResolver.pathSeparator.matches(""+ident.last)){
-          Identifier.Specific(nameExt(0), None)
-        } else {
-          Identifier.General(nameExt(0))
-        }
+        val lastId = Identifier(parts.last)
         Some(Address.Absolute(FileAddressResolver.Protocoll,(pathIds :+ lastId).toSeq))
       case _ => None
     }

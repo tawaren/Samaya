@@ -14,7 +14,7 @@ import samaya.types.Context
 trait ComponentBuilder extends CompilerToolbox{
   self: ComponentResolver =>
 
-  private val loc = Location.FromFileStart(env.file,0)
+  private val loc = Location.FromFileStart(env.source,0)
   private val fileSource = new InputSourceId(Region(loc,loc))
 
   class ComponentBuilder(override val name:String, override val mode: Module.Mode) extends MandalaModule {

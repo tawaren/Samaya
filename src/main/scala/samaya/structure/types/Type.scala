@@ -1,8 +1,5 @@
 package samaya.structure.types
 
-import samaya.compilation.ErrorManager._
-import samaya.structure.types.LitType.Projected
-import samaya.structure.types.Type.DefaultProjected
 import samaya.structure.{Attribute, Component, DataDef, FunctionSig, Generic, Module, ModuleEntry, Package}
 import samaya.types.Context
 

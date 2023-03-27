@@ -1,5 +1,7 @@
 package samaya.plugin
 
+import scala.util.DynamicVariable
+
 
 //A interfaces for plugins that can check if a certain task can be handled by a specific plugin
 trait Plugin {

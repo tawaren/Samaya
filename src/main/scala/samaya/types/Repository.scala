@@ -1,6 +1,7 @@
 package samaya.types
 
-import samaya.plugin.service.{AddressResolver, ContentRepositoryLoader, WorkspaceEncoder}
+import samaya.plugin.PluginProxy
+import samaya.plugin.service.{AddressResolver, ContentRepositoryEncoder}
 
 import scala.reflect.ClassTag
 
@@ -12,9 +13,15 @@ object Repository {
   trait AddressableRepository extends Repository with Addressable
 
   object Loader extends AddressResolver.Loader[AddressableRepository]{
-    override def load(src: GeneralSource): Option[AddressableRepository] = ContentRepositoryLoader.loadRepository(src)
+    override def load(src: GeneralSource): Option[AddressableRepository] = ContentRepositoryEncoder.loadRepository(src)
     override def tag: ClassTag[AddressableRepository] = implicitly[ClassTag[AddressableRepository]]
   }
+
+  object SilentLoader extends AddressResolver.Loader[AddressableRepository]{
+    override def load(src: GeneralSource): Option[AddressableRepository] = PluginProxy.resolveSilent(ContentRepositoryEncoder.loadRepository(src))
+    override def tag: ClassTag[AddressableRepository] = implicitly[ClassTag[AddressableRepository]]
+  }
+
 
   //Thread Safe in Preparation
   private val activeFrame = new InheritableThreadLocal[Set[Repository]]{

@@ -1,9 +1,12 @@
 package samaya.plugin.service
 
 import samaya.plugin.service.AddressResolver.SerializerMode
+import samaya.plugin.service.ReferenceResolver.ReferenceType
 import samaya.structure.Component
 import samaya.structure.types.Hash
-import samaya.types.{Address, ContentAddressable, Directory, GeneralSource, Identifier, InputSource}
+import samaya.types.{Address, ContentAddressable, Directory, GeneralSink, GeneralSource, Identifier, InputSource}
+
+import scala.reflect.ClassTag
 
 //todo: Shall we make seperate objects and subfolders
 //   Shall we merge certain selectors that hav same layout??
@@ -12,28 +15,26 @@ import samaya.types.{Address, ContentAddressable, Directory, GeneralSource, Iden
 object Selectors {
   sealed trait InterfaceSelector
   //A Interface loading Task description intended for selecting the appropriate plugin
-  case class InterfaceDeserializationSelector(language:String, version:String, classifier:Set[String], source:InputSource) extends InterfaceSelector
+  case class InterfaceDecoderSelector(language:String, version:String, classifier:Set[String], source:InputSource) extends InterfaceSelector
   //A Interface serialization Task description intended for selecting the appropriate plugin
-  case class InterfaceSerializationSelector(language:String, version:String, classifier:Set[String], format:String) extends InterfaceSelector
+  case class InterfaceEncoderSelector(language:String, version:String, classifier:Set[String], format:String) extends InterfaceSelector
+  //Selects the default format
+  case object InterfaceFormatSelector extends InterfaceSelector
+
 
   sealed trait WorkspaceSelector
   //A Interface loading Task description intended for selecting the appropriate plugin
   case class WorkspaceDecoderSelector(source:GeneralSource) extends WorkspaceSelector
 
-  sealed trait DependenciesImportSelector
-  //A Interface loading Task description intended for selecting the appropriate plugin
-  case class DependenciesDecoderSelector(source : GeneralSource) extends DependenciesImportSelector
-
-  sealed trait RepositoriesImportSelector
-  //A Interface loading Task description intended for selecting the appropriate plugin
-  case class RepositoriesDecoderSelector(source: GeneralSource) extends RepositoriesImportSelector
-
+  sealed trait ReferenceResolverSelector
+  case class ResolveAllReferencesSelector(source:GeneralSource, filter:Option[Set[ReferenceType]]) extends ReferenceResolverSelector
+  case class ResolveSingleReferencesSelector(source:GeneralSource, typ:ReferenceType) extends ReferenceResolverSelector
 
   sealed trait PackageSelector
   //A Package loading Task description intended for selecting the appropriate plugin
-  case class PackageDeserializationSelector(source:InputSource) extends PackageSelector
+  case class PackageDecoderSelector(source:GeneralSource) extends PackageSelector
   //A Package serializer Task description intended for selecting the appropriate plugin
-  case class PackageSerializationSelector(format:String) extends PackageSelector
+  case object PackageEncoderSelector extends PackageSelector
 
   case class DebugAssemblerSelector(target:Component)
 
@@ -48,22 +49,24 @@ object Selectors {
   case object SourceLookupMode extends LookupMode
   case object SinkLookupMode extends LookupMode
 
-  case class Lookup(parent:Directory, path:Address, mode:LookupMode) extends AddressSelector
+  case class Lookup(path:Address, mode:LookupMode) extends AddressSelector
   //todo: add mode
   case class Delete(dir:Directory) extends AddressSelector
   case class List(parent:Directory) extends AddressSelector
-  case class SerializeAddress(parent:Option[Directory], target: ContentAddressable, mode:SerializerMode) extends AddressSelector
-  case class SerializeDirectory(parent:Option[Directory], target: Directory) extends AddressSelector
+  case class SerializeAddress(target: ContentAddressable, mode:SerializerMode) extends AddressSelector
+  case class SerializeDirectory(target: Directory, mode:SerializerMode) extends AddressSelector
   case class Parse(name:String) extends AddressSelector
 
   case object Default extends AddressSelector
 
-  sealed trait ContentSelector
-  case object UpdateContentIndex extends ContentSelector
-  case class StoreContentIndex(directory:Directory) extends ContentSelector
+  sealed trait ContentIndexSelector
+  case object UpdateContentIndex extends ContentIndexSelector
+  case class StoreContentIndex(directory:Directory) extends ContentIndexSelector
 
-  sealed trait RepositoryLoaderSelector
-  case class LoadRepository(source:GeneralSource) extends RepositoryLoaderSelector
+  sealed trait RepositoryEncoderSelector
+  case class LoadRepository(source:GeneralSource) extends RepositoryEncoderSelector
+  case class CreateRepository(sink:GeneralSink) extends RepositoryEncoderSelector
+
 
   trait CompilerSelector
   case class CompilerSelectorByMeta(language:String, version:String, classifier:Set[String]) extends CompilerSelector
@@ -71,5 +74,13 @@ object Selectors {
   case class CompilerSelectorByIdentifier(source: Identifier)  extends CompilerSelector
 
   case class ValidatorSelector(target:Component)
+
+  sealed trait JobExecutorSelector
+  case object IndependentJobSelector extends JobExecutorSelector
+  case object DependantJobSelector extends JobExecutorSelector
+
+  sealed trait TaskExecutorSelector
+  case class SelectByName(name:String) extends TaskExecutorSelector
+  case class SelectApplyTask[S,T](name:String, src:ClassTag[S], res:ClassTag[T]) extends TaskExecutorSelector
 
 }

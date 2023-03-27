@@ -5,7 +5,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodec
 
 object JsonModel {
   case class Locations(interface:String, code:String, source:Option[String], dependency:Option[String])
-  case class Workspace(name:String, locations:Locations, includes:Option[Seq[String]], repositories:Option[Seq[String]] , dependencies:Option[Seq[String]], sources:Option[Seq[String]])
+  case class Workspace(name:String, target:String, locations:Locations, includes:Option[Seq[String]], repositories:Option[Seq[String]], dependencies:Option[Seq[String]], sources:Option[Seq[String]])
   implicit val codec: JsonValueCodec[Workspace] = JsonCodecMaker.make[Workspace](CodecMakerConfig)
 
 }

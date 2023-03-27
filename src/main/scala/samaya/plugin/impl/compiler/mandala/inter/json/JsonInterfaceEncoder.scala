@@ -32,8 +32,9 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     }
 
     s match {
-      case Selectors.InterfaceDeserializationSelector(MandalaCompiler.Language,_,classifier,InterfaceExtension(Json)) => check(classifier)
-      case Selectors.InterfaceSerializationSelector(MandalaCompiler.Language,_,classifier,InterfaceExtension(Json)) => check(classifier)
+      case Selectors.InterfaceDecoderSelector(MandalaCompiler.Language,_,classifier,InterfaceExtension(Json)) => check(classifier)
+      case Selectors.InterfaceEncoderSelector(MandalaCompiler.Language,_,classifier,InterfaceExtension(Json)) => check(classifier)
+      case Selectors.InterfaceFormatSelector => true
       case _ => false
     }
   }
@@ -151,7 +152,6 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       //Todo: Why does this trigger -- do we deserialize wrongly somwhere??
       classTarget = cls.clazzLink match {
         case CompLink.ByCode(_) =>
-          println(cls.clazzLink)
           unexpected("class targets should refer to classes", InterfaceGen());
         case CompLink.ByInterface(hash) => hash.toString
       },
@@ -178,10 +178,10 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
   private def deserializeInstance(file:InputSource, meta:Meta):Option[Interface[DefInstance]] = {
     try {
       //Parse the input to an AST using Interface as parsing description
-      val interfaceAst = readFromStream[InterfaceInstance](file.content)
+      val interfaceAst = file.read(readFromStream[InterfaceInstance](_))
       if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning, InterfaceParsing()))
       //convert the AST to the the internal shared representation of Modules
-      val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
+      val baseLoc = JsonLocation(file, interfaceAst.name)
       val impl = new DefInstanceInterfaceImpl(baseLoc, interfaceAst)
       //return the module on success
       Some(new DefInstanceInterface(meta,impl))
@@ -196,10 +196,10 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
   private def deserializeFunClass(file:InputSource, meta:Meta):Option[Interface[FunClass]] = {
     try {
       //Parse the input to an AST using Interface as parsing description
-      val interfaceAst = readFromStream[InterfaceFunClass](file.content)
+      val interfaceAst = file.read(readFromStream[InterfaceFunClass](_))
       if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning, InterfaceParsing()))
       //convert the AST to the the internal shared representation of Modules
-      val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
+      val baseLoc = JsonLocation(file, interfaceAst.name)
       val impl = new FunClassInterfaceImpl(baseLoc, interfaceAst)
       //return the module on success
       Some(new FunClassInterface(meta,impl))
@@ -213,10 +213,10 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
   private def deserializeSigClass(file:InputSource, meta:Meta):Option[Interface[SigClass]] = {
     try {
       //Parse the input to an AST using Interface as parsing description
-      val interfaceAst = readFromStream[InterfaceSigClass](file.content)
+      val interfaceAst = file.read(readFromStream[InterfaceSigClass](_))
       if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning, InterfaceParsing()))
       //convert the AST to the the internal shared representation of Modules
-      val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
+      val baseLoc = JsonLocation(file, interfaceAst.name)
       val impl = new SigClassInterfaceImpl(baseLoc, interfaceAst)
       //return the module on success
       Some(new SigClassInterface(meta,impl))
@@ -230,10 +230,10 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
   private def deserializeMandalaModule(file:InputSource, meta:Meta):Option[Interface[MandalaModule]] = {
     try {
       //Parse the input to an AST using Interface as parsing description
-      val interfaceAst = readFromStream[InterfaceMandalaModule](file.content)
+      val interfaceAst = file.read(readFromStream[InterfaceMandalaModule](_))
       if(interfaceAst.hadError) feedback(PlainMessage(s"The interface ${file.identifier.fullName} was produced by a compilation run with errors", Warning, InterfaceParsing()))
       //convert the AST to the the internal shared representation of Modules
-      val baseLoc = JsonLocation(file.identifier.fullName, interfaceAst.name)
+      val baseLoc = JsonLocation(file, interfaceAst.name)
       val impl = new MandalaModuleInterfaceImpl(baseLoc, interfaceAst)
       //return the module on success
       Some(new MandalaModuleInterface(meta,impl))
@@ -244,4 +244,5 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
     }
   }
 
+  override def defaultFormat(): Option[String] = Some(Json)
 }

@@ -33,10 +33,12 @@ object Hash {
   //Helper to directly Hash an InputStream
   def fromInputSource(input: InputSource): Hash = {
     val digest = Blake3.newHasher()
-    val digestStream = new Blake3InputStream(input.content, digest)
-    while (digestStream.read() > -1) {}
-    digestStream.close()
-    fromBytes(digest.done(Hash.byteLen))
+    input.read { in =>
+      val digestStream = new Blake3InputStream(in, digest)
+      while (digestStream.read() > -1) {}
+      digestStream.close()
+      fromBytes(digest.done(Hash.byteLen))
+    }
   }
 
   implicit val byteOrdering:Ordering[Hash] = new Ordering[Hash] {

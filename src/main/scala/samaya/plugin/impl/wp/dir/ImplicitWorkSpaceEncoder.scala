@@ -1,12 +1,15 @@
 package samaya.plugin.impl.wp.dir
 
-import samaya.compilation.ErrorManager
+import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.plugin.impl.wp.dir.ImplicitWorkSpaceEncoder.{defaultBuildDir, outputDirectory}
 import samaya.plugin.impl.wp.json.WorkspaceImpl
-import samaya.plugin.service.{AddressResolver, DependenciesImportSourceEncoder, LanguageCompiler, PackageEncoder, RepositoriesImportSourceEncoder, Selectors, WorkspaceEncoder}
-import samaya.structure.LinkablePackage
+import samaya.plugin.service.AddressResolver.Create
+import samaya.plugin.service.{AddressResolver, ContentRepositoryEncoder, LanguageCompiler, PackageEncoder, ReferenceResolver, Selectors, WorkspaceEncoder}
 import samaya.types
 import samaya.types._
-import samaya.validation.WorkspaceValidator
+
+import java.io.File
+import scala.collection.mutable
 
 //A Workspace Manager for a json description of a package
 class ImplicitWorkSpaceEncoder extends WorkspaceEncoder {
@@ -17,110 +20,121 @@ class ImplicitWorkSpaceEncoder extends WorkspaceEncoder {
     }
   }
 
-
   override def decodeWorkspace(source: GeneralSource): Option[types.Workspace] = {
     source match {
-      case dir: Directory => Some(implicitWorkspace(dir))
-      case _ => None
+      case dir: Directory =>
+        AddressResolver.resolveDirectory(outputDirectory.value.resolveAddress(WorkspaceEncoder.contextPath()), mode = Create) match {
+          case Some(outputFolder) => Some(implicitWorkspace(dir, outputFolder))
+          case None => AddressResolver.resolveDirectory(dir.resolveAddress(Address(defaultBuildDir.value)), mode = Create) match {
+            case Some(defaultDir) => Some(implicitWorkspace(dir, defaultDir))
+            case None =>
+              //Todo: feedback
+              println(1)
+              None
+          }
+        }
     }
   }
 
-  def implicitWorkspace(workFolder:Directory): Workspace = {
-    var includes = Set.empty[Workspace]
-    var wspList = Set(workFolder.name)
-    var reps = Set.empty[Repository]
-    var deps = Set.empty[LinkablePackage]
-    var explicits = Set.empty[Directory]
-    var comps = Set.empty[Address]
-    val sources = AddressResolver.listSources(workFolder)
+  def implicitWorkspace(workFolder:Directory, outPutFolder:Directory): Workspace = {
+    val discoveredSources:mutable.Map[Address,ReferenceResolver.ReferenceType] = mutable.Map.empty
 
-    val (wspSources, remainingSources) = sources.partition{ source => source.extension match {
-      case Some(ext) => ext.startsWith(WorkspaceEncoder.workspaceExtensionPrefix)
-      case None => false
-    }}
+    def priority(typ:ReferenceResolver.ReferenceType):Int = typ match {
+      case ReferenceResolver.Repository => 3
+      case ReferenceResolver.Package => 2
+      case ReferenceResolver.Workspace => 1
+      case ReferenceResolver.Source => 0
+    }
 
-    val (repoSources, otherSources) = remainingSources.partition{ source => source.extension match {
-      case Some(ext) => ext.startsWith(RepositoriesImportSourceEncoder.repositoriesExtensionPrefix)
-      case None => false
-    }}
-
-
-    for(source <- repoSources){
-      val input = AddressResolver.resolve(workFolder, Address(source), AddressResolver.InputLoader) match {
-        case None => throw new Exception("Repositories could not be loaded"); //todo: error (inclusive position)
-        case Some(input) => input
-      }
-
-      RepositoriesImportSourceEncoder.decodeRepositoriesSources(input) match {
-        case Some(repositorySources) => reps = reps ++ repositorySources
-        case None => throw new Exception("Repositories could not be loaded"); //todo: error
+    def addSource(addr:Address, typ:ReferenceResolver.ReferenceType): Unit = {
+      val resolvedAddr = workFolder.resolveAddress(addr)
+      discoveredSources.get(resolvedAddr) match {
+        case Some(oldType) if priority(oldType) >= priority(typ) =>
+        case _ => discoveredSources.put(resolvedAddr,typ)
       }
     }
 
-    Repository.withRepos(reps) {
-      for (source <- wspSources) {
-        AddressResolver.resolve(workFolder, Address(source), Workspace.Loader) match {
-          case Some(value) =>
-            WorkspaceValidator.validateWorkspace(value)
-            explicits = explicits + value.location
-            wspList = wspList + source.name
-            includes = includes + value;
-          case None => throw new Exception("Workspace could not be loaded"); //todo: error
+    def findType(source: GeneralSource):Option[ReferenceResolver.ReferenceType] = {
+      if(ContentRepositoryEncoder.isRepository(source)){
+        Some(ReferenceResolver.Repository)
+      } else if(PackageEncoder.isPackage(source)){
+        Some(ReferenceResolver.Package)
+      } else if(WorkspaceEncoder.isWorkspace(source)){
+        Some(ReferenceResolver.Workspace)
+      } else {
+        source match {
+          case source: InputSource if LanguageCompiler.canCompile(source) =>
+            Some(ReferenceResolver.Source)
+          case _ => None
         }
       }
+    }
 
-      for (source <- otherSources) {
-        source.extension match {
-          case Some(ext) if ext.startsWith(DependenciesImportSourceEncoder.dependenciesExtensionPrefix) =>
-            val input = AddressResolver.resolve(workFolder, Address(source), AddressResolver.InputLoader) match {
-              case None => throw new Exception("Dependencies could not be loaded"); //todo: error (inclusive position)
-              case Some(input) => input
+    //the filter prevents that iterative runs treat the output of the previous run as input
+    val sources = AddressResolver.list(workFolder).filter(_.fullName != defaultBuildDir)
+    sources.foreach{ ident =>
+      val addr = workFolder.resolveAddress(Address(ident))
+      AddressResolver.resolve(addr, AddressResolver.SourceLoader) match {
+        case Some(source) =>
+          val refs = ReferenceResolver.resolveAll(source)
+          if(refs.nonEmpty) {
+            refs.foreach(kv => kv._2.foreach(addSource(_,kv._1)))
+          }else{
+            findType(source) match {
+              case Some(typ) => addSource(addr,typ)
+              case None =>
             }
 
-            DependenciesImportSourceEncoder.decodeDependenciesSources(input) match {
-              case Some(dependencySources) => deps = deps ++ dependencySources
-              case None => throw new Exception("Dependencies could not be loaded"); //todo: error
-            }
-          case Some(ext) if ext.startsWith(PackageEncoder.packageExtensionPrefix) & !wspList.contains(source.name) =>
-            //Todo: Make work then incomment the guard
-            val pkg = AddressResolver.resolve(workFolder, Address(source), PackageEncoder.Loader) match {
-              case None => throw new Exception("Package Dependency could not be loaded"); //todo: error (inclusive position)
-              case Some(input) => input
-            }
-            if (pkg.location != workFolder) {
-              deps = deps + pkg
-            }
-          case Some(_) if LanguageCompiler.canCompile(source) => comps = comps + Address(source)
-          case _ => //Todo: shall we do a waring if it is some but no compiler available (would warn for packages and indexes, ...)
-        }
-      }
-      val folders = AddressResolver.listDirectories(workFolder);
-      for (folder <- folders) {
-        //Todo: We should not hardcode?
-        if (folder.name != "out" && folder.name != "abi") {
-          AddressResolver.resolveDirectory(workFolder, Address(folder)) match {
-            case Some(newWorkFolder) if !explicits.contains(newWorkFolder) =>
-              includes = includes + implicitWorkspace(newWorkFolder)
-            case _ =>
           }
-        }
+        case None => //Todo: Unexpected errer
       }
+    }
 
-      //todo: allow to specify a root dir and build a parallel tree
-      val out = AddressResolver.resolveDirectory(workFolder, Address(Identifier.Specific("out")), create = true)
-      val inter = AddressResolver.resolveDirectory(workFolder, Address(Identifier.Specific("abi")), create = true)
+    val sourceGroups:Map[ReferenceResolver.ReferenceType,Iterable[Address]] = discoveredSources.groupMap(_._2)(_._1)
+
+    val reps = sourceGroups.getOrElse(ReferenceResolver.Repository, Iterable.empty).flatMap{
+      repoSource => AddressResolver.resolve(repoSource,Repository.Loader).asInstanceOf[Option[Repository]]
+    }.toSet
+
+    Repository.withRepos(reps){
+      val deps = sourceGroups.getOrElse(ReferenceResolver.Package, Iterable.empty).flatMap{
+        repoSource => AddressResolver.resolve(repoSource,PackageEncoder.Loader)
+      }.toSet
+
+      val includes = sourceGroups.getOrElse(ReferenceResolver.Workspace, Iterable.empty).flatMap{
+        repoSource => AddressResolver.resolve(repoSource,Workspace.Loader)
+      }.toSet
+
+      val comps = sourceGroups.getOrElse(ReferenceResolver.Source, Set.empty).toSet
+
+      val out = AddressResolver.resolveDirectory(outPutFolder.resolveAddress(Address(Identifier.Specific("out"))), mode = Create)
+      val inter = AddressResolver.resolveDirectory(outPutFolder.resolveAddress(Address(Identifier.Specific("abi"))), mode = Create)
 
       new WorkspaceImpl(
-        workFolder.name,
+        workFolder.identifier.name,
         workFolder,
-        Some(includes),
-        Some(reps),
-        Some(deps),
-        Some(comps),
+        outPutFolder,
+        includes,
+        reps,
+        deps,
+        comps,
         workFolder,
         out.get,
         inter.get
       )
     }
   }
+}
+
+object ImplicitWorkSpaceEncoder extends ConfigPluginCompanion{
+
+  val defaultBuildDir : ConfigValue[String] = arg("fallback_build_dir").default("build")
+  val outputDirectory : ConfigValue[Directory] = arg("output|out|o")
+    .default(defaultBuildDir.value+File.separator+"packages")
+    .flatMap{outputPath =>
+      AddressResolver.provideDefault() match {
+        case Some(base) => AddressResolver.resolveDirectory(base.resolveAddress(AddressResolver.parsePath(outputPath).get), mode = Create)
+        case None =>  AddressResolver.resolveDirectory(AddressResolver.parsePath(outputPath).get, mode = Create)
+      }
+    }
 }

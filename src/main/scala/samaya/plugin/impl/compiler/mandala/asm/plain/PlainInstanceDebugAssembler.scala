@@ -73,7 +73,7 @@ class PlainInstanceDebugAssembler extends DebugAssembler {
         }
       }
     }
-    printer.close()
+    printer.flush()
 
   }
 

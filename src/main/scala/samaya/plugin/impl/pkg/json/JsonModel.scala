@@ -4,20 +4,22 @@ import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 
 object JsonModel {
+  //code is None if it is virtual or compilation failed
   case class Hashes(interface:String, code:Option[String], source:String)
   case class Info(language:String, version:String, classifier:Set[String])
-  case class Source(name:String, extension:Option[String] = None)
 
   sealed trait StrongLink {
-    def source:Option[Source]
+    def source:Option[String]
     def name:String
     def hash:Hashes
     def info:Info
   }
 
-  case class Component(source:Option[Source], name:String, hash:Hashes, info:Info) extends StrongLink
+  case class Component(source:Option[String], name:String, hash:Hashes, info:Info) extends StrongLink
+  //Todo: Make Optional - Load over ContentAddress first (derived from Hashes) & Locations as fallback
+  //      Give Warning
   case class Locations(interface:String, code:String, source:String)
-  case class Package(name:String, hash: String, components: Seq[Component], path:Option[String], locations:Locations, dependencies:Seq[String])
+  case class Package(name:String, hash: String, components: Seq[Component], path:Option[String], locations:Option[Locations], dependencies:Seq[String], includes:Option[Set[String]])
   implicit val codec: JsonValueCodec[Package] = JsonCodecMaker.make[Package](CodecMakerConfig)
 }
 

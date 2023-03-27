@@ -1,9 +1,11 @@
 package samaya.plugin
 
 import samaya.compilation.ErrorManager._
+import samaya.plugin.PluginProxy.{resolveSilent, silent}
 import samaya.plugin.service.PluginCategory
 
 import scala.reflect.ClassTag
+import scala.util.DynamicVariable
 
 //A interfaces for plugins that can check if a certain task can be handled by a specific plugin
 trait PluginProxy {
@@ -12,9 +14,9 @@ trait PluginProxy {
   def category:PluginCategory[PluginType]
   implicit def classTag: ClassTag[PluginType]
 
-  protected def select(sel:PluginType#Selector, silent: Boolean = false):Option[PluginType] =  {
+  protected def select(sel:PluginType#Selector):Option[PluginType] =  {
     val res = PluginManager.getPlugin(category, sel)
-    if(res.isEmpty && !silent) {
+    if(res.isEmpty && !silent.value) {
       feedback(PlainMessage(s"No Plugin found satisfying selector: $sel", Warning, Always))
     }
     res
@@ -22,12 +24,18 @@ trait PluginProxy {
 
   protected def selectAll(sel:PluginType#Selector):Seq[PluginType] = {
     val res = PluginManager.getPlugins(category, sel)
-    if(res.isEmpty) {
+    if(res.isEmpty && !silent.value) {
       feedback(PlainMessage(s"No Plugin found satisfying selector: $sel", Warning, Always))
     }
     res
   }
 
-  def matches(sel: PluginType#Selector): Boolean = select(sel).isDefined
+  def matches(sel: PluginType#Selector): Boolean = resolveSilent(select(sel).isDefined)
 
+}
+
+object PluginProxy {
+  val silent : DynamicVariable[Boolean] = new DynamicVariable(false)
+
+  def resolveSilent[T](f: => T):T = silent.withValue(true)(f)
 }

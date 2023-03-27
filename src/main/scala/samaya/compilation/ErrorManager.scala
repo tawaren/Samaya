@@ -2,6 +2,7 @@ package samaya.compilation
 
 import samaya.structure.types.{Region, SourceId}
 
+import java.util.concurrent.locks.ReentrantLock
 import scala.util.DynamicVariable
 
 object ErrorManager {
@@ -23,14 +24,16 @@ object ErrorManager {
   //Special is excluded
   case object Always extends Priority{override def primary: Int = -1; override def secondary: Int = 0}
 
-  case class Builder(override val secondary: Int = 100) extends Priority{override def primary: Int = 7}
-  case class Deployer(override val secondary: Int = 100) extends Priority{override def primary: Int = 6}
-  case class SourceParsing(override val secondary: Int = 100) extends Priority{override def primary: Int = 5}
-  case class Compiler(override val secondary: Int = 100) extends Priority{override def primary: Int = 4}
-  case class InterfaceParsing(override val secondary: Int = 100) extends Priority{override def primary: Int = 3}
-  case class Checking(override val secondary: Int = 100) extends Priority{override def primary: Int = 2}
-  case class InterfaceGen(override val secondary: Int = 100) extends Priority{override def primary: Int = 1}
-  case class CodeGen(override val secondary: Int = 100) extends Priority{override def primary: Int = 0}
+  case class Decoding(override val secondary: Int = 100) extends Priority{override def primary: Int = 10}
+  case class Builder(override val secondary: Int = 100) extends Priority{override def primary: Int = 9}
+  case class Packaging(override val secondary: Int = 100) extends Priority{override def primary: Int = 8}
+  case class Deployer(override val secondary: Int = 100) extends Priority{override def primary: Int = 7}
+  case class SourceParsing(override val secondary: Int = 100) extends Priority{override def primary: Int = 6}
+  case class Compiler(override val secondary: Int = 100) extends Priority{override def primary: Int = 5}
+  case class InterfaceParsing(override val secondary: Int = 100) extends Priority{override def primary: Int = 4}
+  case class Checking(override val secondary: Int = 100) extends Priority{override def primary: Int = 3}
+  case class InterfaceGen(override val secondary: Int = 100) extends Priority{override def primary: Int = 2}
+  case class CodeGen(override val secondary: Int = 100) extends Priority{override def primary: Int = 1}
 
   case object Unused extends Priority{override def primary: Int = -1; override def secondary: Int = 0}
 
@@ -148,16 +151,22 @@ object ErrorManager {
 
   //default impls
   private object ConsoleLogger extends ErrorHandler {
+    private val lock = new ReentrantLock()
     override def record(err: Message): Unit = {
-      //for a linking formatter
-      /*File f = new File(“./src/test/resource/testfiles/level_01/level_01_01/file_01_01_A.txt”);
-      log.info(f.getAbsolutePath() + “:” + 34);  */
-      import Console.{RED, BOLD, YELLOW, BLUE, RESET}
-      err.level match {
-        case Error => println(s"$RED$err$RESET")
-        case Warning => println(s"$YELLOW$err$RESET")
-        case Fatal => println(s"$RED$BOLD$err$RESET")
-        case Info => println(s"$BLUE$err$RESET")
+      lock.lock()
+      try {
+        //for a linking formatter
+        /*File f = new File(“./src/test/resource/testfiles/level_01/level_01_01/file_01_01_A.txt”);
+        log.info(f.getAbsolutePath() + “:” + 34);  */
+        import Console.{RED, BOLD, YELLOW, BLUE, RESET}
+        err.level match {
+          case Error => println(s"$RED$err$RESET")
+          case Warning => println(s"$YELLOW$err$RESET")
+          case Fatal => println(s"$RED$BOLD$err$RESET")
+          case Info => println(s"$BLUE$err$RESET")
+        }
+      } finally {
+        lock.unlock()
       }
     }
     //Nothing todo
@@ -167,14 +176,22 @@ object ErrorManager {
   private class DelayedPriorityLogger(parent:ErrorHandler) extends ErrorHandler {
     private var highestPrio:Priority = Unused
     private var messages = Seq[Message]()
+    private val lock = new ReentrantLock()
+
     override def record(err: Message): Unit = {
-      if(err.priority == Always) parent.record(err)
-      val res = highestPrio.compareTo(err.priority)
-      if(res == 0) {
-        messages = messages :+ err
-      } else if(res < 0) {
-        highestPrio = err.priority
-        messages = Seq(err)
+      lock.lock()
+
+      try {
+        if(err.priority == Always) parent.record(err)
+        val res = highestPrio.compareTo(err.priority)
+        if(res == 0) {
+          messages = messages :+ err
+        } else if(res < 0) {
+          highestPrio = err.priority
+          messages = Seq(err)
+        }
+      } finally {
+        lock.unlock()
       }
     }
     override def finish(): Unit = {
@@ -186,13 +203,21 @@ object ErrorManager {
 
   private class CheckedHandler(parent:ErrorHandler) extends ErrorHandler {
     var hasError = false
+    private val lock = new ReentrantLock()
+
     override def record(err: Message): Unit = {
-      err.level match {
-        case Error => hasError = true
-        case Fatal => hasError = true
-        case _ =>
+      lock.lock()
+      try {
+        err.level match {
+          case Error => hasError = true
+          case Fatal => hasError = true
+          case _ =>
+        }
+        parent.record(err)
+      } finally {
+        // Release the lock when done with the critical section
+        lock.unlock()
       }
-      parent.record(err)
     }
     override def finish(): Unit = parent.finish()
   }

@@ -1,8 +1,5 @@
 package samaya.toolbox.stack
 
-import scala.language.higherKinds
-
-
 trait Merger[K[_]] {
   def merge[V](k:K[V], vs:Seq[V]):Option[V]
 }

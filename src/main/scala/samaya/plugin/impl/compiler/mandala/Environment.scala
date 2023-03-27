@@ -5,9 +5,9 @@ import samaya.plugin.impl.compiler.mandala.components.instance.Instance
 import samaya.structure.types.CompLink
 import samaya.structure.{CompiledTransaction, Component, DataDef, FunctionDef, ImplementDef, Interface, Module, ModuleEntry, Package, SignatureDef, Transaction}
 import samaya.toolbox.transform.EntryTransformer
-import samaya.types.Context
+import samaya.types.{ContentAddressable, Context}
 
-abstract class Environment(val file:String, private var curPkg: Package) {
+abstract class Environment(val source:ContentAddressable, private var curPkg: Package) {
   def buildComponent(comp:Component):(Package,Option[Interface[Component]])
   def createPipeline():EntryTransformer
 

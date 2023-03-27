@@ -13,7 +13,7 @@ class MapIndexedRepository(
   override def resolve[T <: ContentAddressable](address: Address, loader: AddressResolver.ContentLoader[T], extensionFilter:Option[Set[String]]): Option[T] = {
     address match {
       case Address.ContentBased(hash) => repo.get(hash) match {
-        case Some(addr) => AddressResolver.resolve(location, addr, loader)
+        case Some(addr) => AddressResolver.resolve(location.resolveAddress(addr), loader)
         case None => None
       }
       case _ => None
