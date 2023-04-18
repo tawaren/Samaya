@@ -6,6 +6,8 @@ import samaya.structure.types.Type.Projected
 import samaya.structure.types._
 import samaya.toolbox.track.TypeTracker
 
+import scala.collection.immutable.ListMap
+
 //Note: does not check the following as these need linearity information:
 //  1: That Owned values dropped on return have the drop capability
 //  2: That a Owned value can not be discarded over the discard opcode
@@ -56,6 +58,17 @@ trait CapabilityChecker extends TypeTracker{
     super.unpack(res, src, mode, origin, stack)
   }
 
+  override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    val typ = stack.getType(src)
+    mode match {
+      case FetchMode.Copy => if(!typ.hasCap(context,Capability.Copy)) {
+        feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the switch opcode must have the copy capability", origin, Error, Checking(Priority)))
+      }
+      case _ =>
+    }
+    super.switchBefore(res, src, branches, mode, origin,stack)
+  }
+
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     val fieldId = fieldName.src
     mode match {
@@ -71,9 +84,13 @@ trait CapabilityChecker extends TypeTracker{
       case FetchMode.Move | FetchMode.Infer => stack.getType(src) match {
         case adt:AdtType =>
           val ctrs = adt.ctrs(context)
-          val fields = ctrs.head._2
-          if (!fields.filter(_._1 != fieldName.name).forall(_._2.hasCap(context, Capability.Drop))) {
-            feedback(LocatedMessage("Extracting a field requires that the other fields must be of a type with the drop capability", fieldId, Error, Checking(Priority)))
+          if(ctrs.isEmpty) {
+            feedback(LocatedMessage("Extracting a field requires a type with a constructor", fieldId, Error, Checking(Priority)))
+          } else {
+            val fields = ctrs.head._2
+            if (!fields.filter(_._1 != fieldName.name).forall(_._2.hasCap(context, Capability.Drop))) {
+              feedback(LocatedMessage("Extracting a field requires that the other fields must be of a type with the drop capability", fieldId, Error, Checking(Priority)))
+            }
           }
         case _ =>
       }

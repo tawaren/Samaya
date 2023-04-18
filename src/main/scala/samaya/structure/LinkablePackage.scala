@@ -9,6 +9,8 @@ class LinkablePackage(
                        val location: Directory,
                        val hash:Hash,
                        override val name: String,
+                       //Note: The order must comply with deployment order
+                       //       meaning dependencies must come before use
                        override val components: Seq[Interface[Component]],
                        override val dependencies: Seq[LinkablePackage],
                        val includes:Option[Set[String]],

@@ -8,27 +8,6 @@ import scala.collection.mutable
 //Tool that aggregates command line arguments
 // usable for merging multiple for plugins
 class ParameterAndOptions(val parameters:Seq[String], val options:Map[String, Seq[String]]) {
-  def join(other:ParameterAndOptions)(f: (Option[String], (Seq[String], Seq[String])) => Seq[String]):ParameterAndOptions = {
-    val merged = options.toSeq ++ other.options.toSeq
-    val grouped = merged.groupBy(_._1).view.mapValues(_.map(_._2)).toMap
-    val cleaned = grouped.map(kv => (kv._1, kv._2.reduce((a,b) => f(Some(kv._1),(a,b)))))
-    new ParameterAndOptions(f(None,(parameters,other.parameters)), cleaned)
-  }
-
-  def append(other:ParameterAndOptions):ParameterAndOptions = join(other){ case (_,(a,b)) => a ++ b }
-  def supersede(other:ParameterAndOptions):ParameterAndOptions = join(other) { case (_,(_,b)) => b }
-  def ignore(other:ParameterAndOptions):ParameterAndOptions = other.supersede(this)
-
-  def joinSeparate(other:ParameterAndOptions)(params:(Seq[String], Seq[String]) => Seq[String])(options:(Seq[String], Seq[String]) => Seq[String]):ParameterAndOptions = join(other){
-    case (None,(a,b)) => params(a,b)
-    case (Some(_),(a,b)) => options(a,b)
-  }
-
-  def appendParamSupersedeOption(other:ParameterAndOptions):ParameterAndOptions = joinSeparate(other)(_++_)((_, a) => a)
-  def appendParamIgnoreOption(other:ParameterAndOptions):ParameterAndOptions = joinSeparate(other)(_++_)((a, _) => a)
-  def appendOptionSupersedeParam(other:ParameterAndOptions):ParameterAndOptions = joinSeparate(other)((_, a) => a)(_++_)
-  def appendOptionIgnoreParam(other:ParameterAndOptions):ParameterAndOptions = joinSeparate(other)((a, _) => a)(_++_)
-
   def format(
               valueSep:String ="=",
               sequenceSep:String=";",
@@ -167,8 +146,18 @@ object ParameterAndOptions {
     val options = Map.newBuilder[String, Seq[String]]
     args.foreach{
       case (key :String, value) => value.asArray match {
-        case Some(listValue) => options.addOne((key, listValue.map(_.toString())))
-        case None => options.addOne(key, Seq(value.toString()))
+        case Some(listValue) => options.addOne((key, listValue.map{ jVal =>
+          jVal.asString match {
+            //Note: We need to treat Strings specially, otherwise they get quoted
+            case Some(str) => str
+            case None => jVal.toString()
+          }
+        }))
+        case None => options.addOne((key, value.asString match {
+          //Note: We need to treat Strings specially, otherwise they get quoted
+          case Some(str) => Seq(str)
+          case None => Seq((value.toString()))
+        }))
       }
     }
     new ParameterAndOptions(Seq.empty, options.result())

@@ -342,7 +342,7 @@ class PlainDebugAssembler extends DebugAssembler {
       case OpCode.Discard(trg, _) => printLine(s"discard ${ref(trg)}")
       case OpCode.DiscardMany(trg, _) => printLine(s"discard ${trg.map(ref).reduce(_+", "+_)}")
       case OpCode.Unpack(res, src, mode, _) => printLine(assoc"[${op.id}] ${res.map(_.name).reduceLeftOption(_+", "+_).getOrElse("")} = unpack($mode) ${ref(src)}")
-      case OpCode.InspectUnpack(res, src, _) => printLine(assoc"[${op.id}] ${res.map(_.name).reduceLeftOption(_+", "+_).getOrElse("")} = inpect ${ref(src)}")
+      case OpCode.InspectUnpack(res, src, _) => printLine(assoc"[${op.id}] ${res.map(_.name).reduceLeftOption(_+", "+_).getOrElse("")} = inspect ${ref(src)}")
       case OpCode.Field(res, src, pos, mode, _) => printLine(assoc"[${op.id}] ${res.name} = field#${pos.name}($mode) ${ref(src)}")
       case OpCode.Switch(res, src, branches, mode, _) =>
         printLine(assoc"[${op.id}] ${res.map(_.name).reduceLeftOption(_+", "+_).getOrElse("")} = switch($mode) ${ref(src)}:")

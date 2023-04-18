@@ -5,10 +5,13 @@ import core.Compare._
 import core.Equal._
 import core.Equal
 
+//This fails due to Can not parse unknown enum variant
+//  Either we generate wrongly or miss something on Mandala side
 module Token {
    global(inspect) local(create, consume) linear data Token[phantom T](amount:U128)
 
    guarded[T] function mint[T](amount:U128):(res:Token[T]) = Token#(amount)
+   global function zero[T]():(res:Token[T]) = Token#(0)
    guarded[T] function burn[T](consume tok1:Token[T]) = let Token(amount) = tok1 in ()
 
    global transactional function split[T](consume tok:Token[T], split:U128):(reminder:Token[T], extracted:Token[T]){

@@ -40,7 +40,8 @@ class ImplicitWorkSpaceEncoder extends WorkspaceEncoder {
     val discoveredSources:mutable.Map[Address,ReferenceResolver.ReferenceType] = mutable.Map.empty
 
     def priority(typ:ReferenceResolver.ReferenceType):Int = typ match {
-      case ReferenceResolver.Repository => 3
+      //Repository & Package are not mutually exclusive
+      case ReferenceResolver.Repository => 2
       case ReferenceResolver.Package => 2
       case ReferenceResolver.Workspace => 1
       case ReferenceResolver.Source => 0
@@ -49,29 +50,34 @@ class ImplicitWorkSpaceEncoder extends WorkspaceEncoder {
     def addSource(addr:Address, typ:ReferenceResolver.ReferenceType): Unit = {
       val resolvedAddr = workFolder.resolveAddress(addr)
       discoveredSources.get(resolvedAddr) match {
-        case Some(oldType) if priority(oldType) >= priority(typ) =>
+        case Some(oldType) if priority(oldType) > priority(typ) =>
         case _ => discoveredSources.put(resolvedAddr,typ)
       }
     }
 
-    def findType(source: GeneralSource):Option[ReferenceResolver.ReferenceType] = {
+    def findTypes(source: GeneralSource):Set[ReferenceResolver.ReferenceType] = {
       if(ContentRepositoryEncoder.isRepository(source)){
-        Some(ReferenceResolver.Repository)
+        //Packages and Repositories are not mutually exclusive
+        if(PackageEncoder.isPackage(source)) {
+          Set(ReferenceResolver.Repository, ReferenceResolver.Package)
+        } else {
+          Set(ReferenceResolver.Repository)
+        }
       } else if(PackageEncoder.isPackage(source)){
-        Some(ReferenceResolver.Package)
+        Set(ReferenceResolver.Package)
       } else if(WorkspaceEncoder.isWorkspace(source)){
-        Some(ReferenceResolver.Workspace)
+        Set(ReferenceResolver.Workspace)
       } else {
         source match {
           case source: InputSource if LanguageCompiler.canCompile(source) =>
-            Some(ReferenceResolver.Source)
-          case _ => None
+            Set(ReferenceResolver.Source)
+          case _ => Set.empty
         }
       }
     }
 
     //the filter prevents that iterative runs treat the output of the previous run as input
-    val sources = AddressResolver.list(workFolder).filter(_.fullName != defaultBuildDir)
+    val sources = AddressResolver.list(workFolder).filter(_.fullName != defaultBuildDir.value)
     sources.foreach{ ident =>
       val addr = workFolder.resolveAddress(Address(ident))
       AddressResolver.resolve(addr, AddressResolver.SourceLoader) match {
@@ -80,11 +86,7 @@ class ImplicitWorkSpaceEncoder extends WorkspaceEncoder {
           if(refs.nonEmpty) {
             refs.foreach(kv => kv._2.foreach(addSource(_,kv._1)))
           }else{
-            findType(source) match {
-              case Some(typ) => addSource(addr,typ)
-              case None =>
-            }
-
+            findTypes(source).foreach(addSource(addr,_))
           }
         case None => //Todo: Unexpected errer
       }

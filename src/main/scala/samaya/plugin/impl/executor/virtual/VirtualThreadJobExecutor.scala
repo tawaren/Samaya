@@ -16,9 +16,9 @@ class VirtualThreadJobExecutor extends JobExecutor {
 
   override def matches(s: Selectors.JobExecutorSelector): Boolean = true
 
-  class ParallelJobRunner[P](jobs:Map[String, DependantJob[P]]) {
-    val tasks :CompletableFuture[Map[String, Future[Option[P]]]] = new CompletableFuture()
-    case class JobTask(key:String, job:DependantJob[P]) extends Callable[Option[P]] {
+  class ParallelJobRunner[K,P](jobs:Map[K, DependantJob[K,P]]) {
+    val tasks :CompletableFuture[Map[K, Future[Option[P]]]] = new CompletableFuture()
+    case class JobTask(key:K, job:DependantJob[K,P]) extends Callable[Option[P]] {
       override def call(): Option[P] = {
         val depsBuilder = Seq.newBuilder[P]
         for (targ <- job.dependencies()) {
@@ -37,7 +37,7 @@ class VirtualThreadJobExecutor extends JobExecutor {
       }
     }
 
-    def executeAllJobs(root:Set[String]): Option[Seq[P]] = {
+    def executeAllJobs(root:Seq[K]): Option[Seq[P]] = {
       Using(new StructuredTaskScope.ShutdownOnFailure) { scope =>
         val jobTasks = jobs.map(kv => (kv._1, JobTask(kv._1,kv._2)))
         tasks.complete(jobTasks.map{
@@ -63,7 +63,7 @@ class VirtualThreadJobExecutor extends JobExecutor {
     }
   }
 
-  override def executeStatefulDependantJobs[P](jobs: Map[String, DependantJob[P]], root: Set[String]): Option[Seq[P]] = new ParallelJobRunner[P](jobs).executeAllJobs(root)
+  override def executeStatefulDependantJobs[K,P](jobs: Map[K, DependantJob[K,P]], root: Seq[K]): Option[Seq[P]] = new ParallelJobRunner[K,P](jobs).executeAllJobs(root)
 
   override def executeIndependentJobs[O, P <: JobResultBuilder[O, P]](builder: P, jobs: Iterable[IndependentJob[O]]): Unit = {
     //Make configurable

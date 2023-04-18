@@ -11,7 +11,8 @@ class ConcurrentSoftComputationCache[K,V] extends ConcurrentComputationCache[K,V
   private val map:mutable.Map[K,SoftCell[V]] = TrieMap.empty[K,SoftCell[V]]
   //Todo: Add a Strong LRI (Least resently incerted) cache
   private def update(k:K,v:V):V = v
-  def getOrElseUpdate(k:K)(f : => V):V = map.getOrElseUpdate(k, new SoftCell()).getOrElseUpdate(update(k,f))
+  override def getOrElseUpdate(k:K)(f : => V):V = map.getOrElseUpdate(k, new SoftCell()).getOrElseUpdate(update(k,f))
+  override def forcedUpdate(k: K, v: V): Unit = map.put(k, new SoftCell[V](new SoftReference(v)))
 }
 
 object ConcurrentSoftComputationCache {

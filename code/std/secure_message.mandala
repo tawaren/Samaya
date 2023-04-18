@@ -4,6 +4,8 @@ import core.sys.Sys._
 import core.Equal._
 import core.Equal
 
+//This fails due to Copy switch requires copy capability for input
+//  Either we generate wrongly or miss something on Mandala side
 module SecureMessage {
 
     global local(create) data Signed[T](source:Id, msg:T)
@@ -16,15 +18,14 @@ module SecureMessage {
     //  use: sign(src, deliverOnce(nonLinearMessage))
     global linear data Once[T](msg:T)
 
+
     global function sign[T](source:PrivateId, consume msg:T):Signed[T] = Signed#(idFromPrivate(source), msg)
 
     global function signer[T](msg:Signed[T]):Id {
         inspect msg with Signed(src, _) => src
     }
 
-    global function signedMessage[T](msg:Signed[T]):T {
-        match msg with Signed(_, msg) => msg
-    }
+    global function signedMessage[T](consume Signed[T](_, msg)):T = msg
 
     global function seal[T](target:Id, consume msg:T):Sealed[T] = Sealed#(target, msg)
 
@@ -45,6 +46,4 @@ module SecureMessage {
     global transactional function unsealEntry[persisted T](receiver:PrivateId, consume entry:Entry[Sealed[T]]):(PrivateId, T) {
         match entry with Entry(entryId, sealed) => (entryId, unseal(receiver, sealed))
     }
-
-
 }

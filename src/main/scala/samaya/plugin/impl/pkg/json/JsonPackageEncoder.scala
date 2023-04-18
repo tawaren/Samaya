@@ -4,8 +4,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core._
 import JsonModel._
 import samaya.ProjectUtils.processWitContextRepo
 import samaya.codegen.{ModuleSerializer, NameGenerator}
-import samaya.compilation.ErrorManager
-import samaya.compilation.ErrorManager.{Compiler, Decoding, Error, PlainMessage, Warning, feedback}
+import samaya.compilation.ErrorManager.{Decoding, Error, PlainMessage, Warning, canProduceErrors, feedback}
 import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
 import samaya.plugin.impl.inter.json.JsonInterfaceEncoder.format
 import samaya.plugin.service.AddressResolver.ContentExtensionLoader
@@ -15,14 +14,10 @@ import samaya.structure.types.Hash
 import samaya.structure
 import samaya.types.Address.ContentBased
 import samaya.types.{Address, Directory, GeneralSource, Identifier, InputSource, Workspace}
-import samaya.validation.PackageValidator
 
 object JsonPackageEncoder extends ConfigPluginCompanion {
   val Json:String = "json"
   val format: ConfigValue[String] = arg("package.encoder.format|encoder.format|format").default(Json)
-  val validation : ConfigValue[Boolean] = opt("package.encoder.validation|encoder.validation|validation").default(true)
-    .warnIfFalse("Validation of packages is disabled",Decoding())
-
 }
 
 import samaya.plugin.impl.pkg.json.JsonPackageEncoder._
@@ -80,7 +75,8 @@ class JsonPackageEncoder extends PackageEncoder {
         .flatMap(ident => AddressResolver.resolveDirectory(pkgFolder.resolveAddress(ident)))
 
       //process all the dependencies recursively
-      val packages = pkg.dependencies.flatMap(dep => {
+
+      val packages = pkg.dependencies.map(dep => {
 
         //parse the paths
         val depIdent = AddressResolver.parsePath(dep) match {
@@ -92,10 +88,9 @@ class JsonPackageEncoder extends PackageEncoder {
 
         //resolve and register the dependency (returns the Package object)
         AddressResolver.resolve(pkgFolder.resolveAddress(depIdent), PackageEncoder.Loader) match {
-          case Some(r) => Some(r)
-          case None =>
-            feedback(PlainMessage(s"Could not load package dependency ${depIdent} - Maybe a repository is missing", Warning, Decoding()))
-            None
+          case Some(r) => r
+          case None => feedback(PlainMessage(s"Could not load package dependency ${depIdent} - Maybe a repository is missing or the package is invalid", Warning, Decoding()))
+            return None
         }
       })
 
@@ -109,7 +104,7 @@ class JsonPackageEncoder extends PackageEncoder {
           case None => AddressResolver.resolve(ContentBased(meta.interfaceHash), AddressResolver.InputLoader) match {
             case Some(interSrc) => meta.copy(interface = Some(interSrc))
             case None =>
-              feedback(PlainMessage(s"Could not locate component interface with hash ${meta.interfaceHash} - Maybe a repository is missing", Error, Decoding()))
+              feedback(PlainMessage(s"Could not locate component interface with hash ${meta.interfaceHash} - Maybe a repository is missing or the package is invalid", Error, Decoding()))
               return None
           }
         }
@@ -135,9 +130,6 @@ class JsonPackageEncoder extends PackageEncoder {
         packages,
         pkg.includes
       )
-
-      //Now that everything is registered we can check the complete package
-      if(validation.value) PackageValidator.validatePackage(newPkg)
 
       //return package
       Some(newPkg)

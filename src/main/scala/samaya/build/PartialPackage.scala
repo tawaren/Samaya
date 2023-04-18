@@ -38,6 +38,7 @@ case class PartialPackage(
 
   def toLinkablePackage(placement: Directory,includes:Set[String]): LinkablePackage = {
     val digest = Blake3.newHasher()
+    //Note: we sort only for the hash not for the package to preserve deployment order
     components.map(e => e.meta.interfaceHash).sorted.foreach(h => digest.update(h.data))
     dependencies.sortBy(p => p.name).distinct.foreach(p => {
       digest.update(p.name.getBytes)

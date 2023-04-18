@@ -7,8 +7,9 @@ import samaya.structure.{Component, Interface, LinkablePackage}
 import samaya.types.{Directory, InputSource}
 
 //Todo: Make a trait and a implementation
-class DependantBuildJob(source:InputSource, deps:Set[Dependency], ctx:DependantBuildJob.Context) extends DependantJob[PartialPackage]{
+class DependantBuildJob(source:InputSource, deps:Set[Dependency], ctx:DependantBuildJob.Context) extends DependantJob[String,PartialPackage]{
   //We delay validation so errors appear in the right context
+
   lazy val dependencies: Set[String] = {
     deps.flatMap{
       case Dependency(path, sources) =>
@@ -47,7 +48,7 @@ class DependantBuildJob(source:InputSource, deps:Set[Dependency], ctx:DependantB
     ComponentBuilder.build(source, ctx.code, ctx.interface, pkg)
   }
 
-  def description():String = s"compile ${source.identifier} in ${source.location}"
+  def description():String = s"compile ${source.identifier.fullName} in ${source.location}"
 }
 
 object DependantBuildJob {

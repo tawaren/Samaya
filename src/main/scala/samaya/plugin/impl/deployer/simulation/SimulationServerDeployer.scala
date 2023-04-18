@@ -12,7 +12,7 @@ import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue, RawPluginCompan
 
 object SimulationServerDeployer extends ConfigPluginCompanion {
   val host:ConfigValue[String] = arg("host|h").default("localhost")
-  val port:ConfigValue[Int] = arg("port|p").map(_.toInt).default(6000)
+  val port:ConfigValue[Int] = arg("port|p").asInt.default(6000)
 
   val MODULE_COMMAND:Byte = 0
   val TRANSACTION_COMMAND:Byte = 1
@@ -29,7 +29,7 @@ class SimulationServerDeployer extends Deployer{
   override def matches(s: Selectors.DeployerSelector): Boolean = true
 
   def sendOverSocket(typ:Byte, meta:Array[Byte], sysId:Option[Short], data:Array[Byte]): Option[Hash] = {
-    var socket:Socket = null;
+    var socket:Socket = null
     try {
       socket = new Socket(host.value, port.value)
       val out = new DataOutputStream(socket.getOutputStream)

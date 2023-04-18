@@ -34,6 +34,12 @@ object CodeSerializer {
       super.unpack(res, src, mode, origin, stack)
     }
 
+
+    override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+      imports.addType(stack.getType(src), Some(Permission.Inspect))
+      super.inspectUnpack(fields, src, origin, stack)
+    }
+
     override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       val perm = mode match {
         case FetchMode.Copy | FetchMode.Infer => Permission.Inspect
@@ -182,7 +188,7 @@ object CodeSerializer {
     override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       out.writeByte(fetchOffset(7, mode))
       //ValueRef
-      //todo: assert size & better error handlin
+      //todo: assert size & better error handling
       out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
       //PermRef
       //todo: better absent error handling
@@ -191,7 +197,17 @@ object CodeSerializer {
     }
     //)
 
-    //[9] InspectUnpack( //OPEN
+    //[9] InspectUnpack(
+    override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+      out.writeByte(9)
+      //ValueRef
+      //todo: assert size & better error handling
+      out.writeShort(stack.getRef(src).get.asInstanceOf[Short])
+      //PermRef
+      //todo: better absent error handling
+      out.writeByte(imports.permIndex(stack.getType(src)))
+      super.inspectUnpack(fields, src, origin, stack)
+    }
 
     //[10]CopyField(
     //[11]Field(

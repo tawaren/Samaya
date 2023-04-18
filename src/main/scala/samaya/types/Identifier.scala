@@ -27,11 +27,16 @@ object Identifier {
 
   object Specific {
     def apply(name:String): Specific = {
-      val res = name.split('.')
-      if(res.length == 1) {
-        Specific(res(0),None)
+      //We treat names with only .'s special to support relative paths
+      if(name == ".." | name == ".") {
+        Specific(name,None)
       } else {
-        Specific(res(0),Some(name.drop(res(0).length+1)))
+        val res = name.split('.')
+        if(res.length == 1) {
+          Specific(res(0),None)
+        } else {
+          Specific(res(0),Some(name.drop(res(0).length+1)))
+        }
       }
     }
     def apply(name:String, extension:String): Specific = Specific(name, Some(extension))

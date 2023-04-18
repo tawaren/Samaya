@@ -44,7 +44,7 @@ trait ArityChecker extends TypeTracker{
         ctrs.get(ctr.name) match {
           //check that whe have the right amount of fields
           case Some(args) => if(args.size != fields.size) {
-            feedback(LocatedMessage(s"The case extracts ${fields.size} values but the constructor ${adt.prettyString(context,gens)}#${ctr.name} only defines ${args.size} fields", origin, Error, Checking(Priority)))
+            feedback(LocatedMessage(s"The case extracts ${fields.size} values but the constructor ${adt.prettyString(context,gens)}#${ctr.name} defines ${args.size} fields", origin, Error, Checking(Priority)))
           }
           case None => feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error, Checking(Priority)))
         }
@@ -63,7 +63,7 @@ trait ArityChecker extends TypeTracker{
         ctrs.headOption match {
           //check that whe have the right amount of fields
           case Some((name,fields)) => if(fields.size != res.size) {
-            feedback(LocatedMessage(s"The unpack extracts ${res.size} values but the constructor ${adt.prettyString(context,gens)}#$name only defines ${fields.size} fields", origin, Error, Checking(Priority)))
+            feedback(LocatedMessage(s"The unpack extracts ${res.size} values but the constructor ${adt.prettyString(context,gens)}#$name defines ${fields.size} fields", origin, Error, Checking(Priority)))
           }
           case _ =>
         }
@@ -82,7 +82,7 @@ trait ArityChecker extends TypeTracker{
         ctrs.headOption match {
           //check that whe have the right amount of fields
           case Some((name,fields)) => if(fields.size != res.size) {
-            feedback(LocatedMessage(s"The inspect unpack extracts ${res.size} values but the constructor ${adt.prettyString(context,gens)}#$name only defines ${fields.size} fields", origin, Error, Checking(Priority)))
+            feedback(LocatedMessage(s"The inspect unpack extracts ${res.size} values but the constructor ${adt.prettyString(context,gens)}#$name defines ${fields.size} fields", origin, Error, Checking(Priority)))
           }
           case _ =>
         }
@@ -112,8 +112,10 @@ trait ArityChecker extends TypeTracker{
 
   override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin:SourceId, stack: Stack):Stack = {
     res.typ.projectionExtract {
-      case adt: AdtType => if(!adt.ctrs(context).contains(ctr.name)) {
-          feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error, Checking(Priority)))
+      case adt: AdtType => adt.ctrs(context).get(ctr.name) match {
+        case None => feedback(LocatedMessage(s"Constructor ${adt.prettyString(context,gens)}#${ctr.name} does not exist", ctr.src, Error, Checking(Priority)))
+        case Some(ctrFields) if ctrFields.size != srcs.size => feedback(LocatedMessage(s"The constructor ${ctr.name} takes ${ctrFields.size} arguments but ${params.size} were provided", origin, Error, Checking(Priority)))
+        case _ =>
       }
       case _ =>
     }

@@ -16,11 +16,11 @@ class SequentialJobExecutor extends JobExecutor {
   }
 
 
-  override def executeStatefulDependantJobs[P](jobs: Map[String, DependantJob[P]], roots: Set[String]): Option[Seq[P]] = {
-    var openJobs:Map[String, DependantJob[P]] = jobs
-    var results:Map[String, P] = Map.empty
+  override def executeStatefulDependantJobs[K,P](jobs: Map[K, DependantJob[K,P]], roots: Seq[K]): Option[Seq[P]] = {
+    var openJobs:Map[K, DependantJob[K,P]] = jobs
+    var results:Map[K, P] = Map.empty
 
-    def execute(nextKey: String): Boolean = {
+    def execute(nextKey: K): Boolean = {
       val nextValue = openJobs(nextKey)
       openJobs = openJobs - nextKey
 

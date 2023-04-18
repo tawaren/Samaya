@@ -34,8 +34,13 @@ object ConfigValue {
   }
 
   implicit class StringConfigValue(val value:ConfigValue[String]){
+    def asInt:ConfigValue[Int] = value.map(_.toInt)
+    def asBool:ConfigValue[Boolean] = value.map(_.toBoolean)
+    def asDouble:ConfigValue[Double] = value.map(_.toDouble)
+
     //Todo: asInt, asBoolean, ...
   }
+
 
   trait ConfigCell[T] extends ConfigValue[T] {
     protected var _value:Option[T] = None

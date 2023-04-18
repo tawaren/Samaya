@@ -1,6 +1,5 @@
 {
     "address_resolver" : {
-        "#samaya.plugin.impl.location.file.FileAddressResolver" : {},
         "samaya.plugin.impl.location.vfs.VFSAddressResolver" : {},
         "samaya.plugin.impl.location.relative.RelativeAddressParser" : {},
         "samaya.plugin.impl.location.content.ContentAddressEncoder": {},
@@ -18,11 +17,11 @@
     },
 
     "deployer" : {
-        "#samaya.plugin.impl.deployer.simulation.SimulationServerDeployer": {
-            "host": "localhost",
+        "samaya.plugin.impl.deployer.simulation.SimulationServerDeployer": {
+            "host": "127.0.0.1",
             "port": 6000
         },
-        "samaya.plugin.impl.deployer.logonly.LogOnlyDeployer": {}
+        "#samaya.plugin.impl.deployer.logonly.LogOnlyDeployer": {}
     },
 
     "interface_resolver" : {

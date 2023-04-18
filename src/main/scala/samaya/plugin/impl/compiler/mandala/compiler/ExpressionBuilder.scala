@@ -474,12 +474,24 @@ trait ExpressionBuilder extends CompilerToolbox{
     (extracts, results, processors ++ blockCodes)
   }
 
+  def visitSingleBranch(ctx: MandalaParser.BranchContext): (Id,(Seq[AttrId], Seq[Ref], Seq[OpCode])) = {
+    val srcId = sourceIdFromContext(ctx)
+    val newName = resolveDefaultCtrName(ctx.name().getText, sourceIdFromContext(ctx))
+    //Todo: not nice for error reporting, but at least it compiles
+    (Id(newName,srcId),visitCase(ctx.patterns(), ctx.tailExp()))
+  }
+
   override def visitBranch(ctx: MandalaParser.BranchContext): (Id,(Seq[AttrId], Seq[Ref], Seq[OpCode])) = {
     (idFromToken(visitToken(ctx.name())),visitCase(ctx.patterns(), ctx.tailExp()))
   }
 
   override def visitBranches(ctx: MandalaParser.BranchesContext): ListMap[Id,(Seq[AttrId],Seq[Ref],Seq[OpCode])] = {
-    val branches = ListMap.from(ctx.b.asScala.map(visitBranch).toSeq)
+    val rawBranches = ctx.b.asScala
+    val branches = if(rawBranches.size == 1){
+      ListMap.from(rawBranches.map(visitSingleBranch).toSeq)
+    } else {
+      ListMap.from(rawBranches.map(visitBranch).toSeq)
+    }
     if(branches.size != ctx.branch().size()) {
       feedback(LocatedMessage(s"Merge branches must have different names", sourceIdFromContext(ctx), Error, Compiler()))
     }

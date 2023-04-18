@@ -294,6 +294,11 @@ object CopyDiscardInjector extends EntryTransformer {
       res.map(nStack.resolve).foldLeft(nStack)(introduceVal(_,_))
     }
 
+    override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack):Stack = {
+      val nStack = super.inspectUnpack(res, src, origin, stack)
+      res.map(nStack.resolve).foldLeft(nStack)(introduceVal(_,_, readOnly = true))
+    }
+
     override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       checkedRecord(stack.resolve(src),origin,stack,mode != FetchMode.Copy)
       val nStack = super.field(res, src, fieldName, mode, origin, stack)

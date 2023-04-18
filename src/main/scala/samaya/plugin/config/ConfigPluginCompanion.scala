@@ -10,6 +10,18 @@ trait ConfigPluginCompanion extends PluginCompanion {
     v
   }
 
+
+  private def collectKey(key:String)(main: ParameterAndOptions, base: ParameterAndOptions, plugin: ParameterAndOptions):Option[Seq[String]] = {
+    val sources = LazyList(main, base, plugin)
+    val fields = LazyList.from(key.split("\\|").map(_.trim))
+    val res = sources.flatMap(o => fields.map(o.options.get).find(_.isDefined).flatten.getOrElse(Seq.empty))
+    if(res.isEmpty){
+      None
+    } else {
+      Some(res)
+    }
+  }
+
   private def getKey(key:String)(main: ParameterAndOptions, base: ParameterAndOptions, plugin: ParameterAndOptions):Option[String] = {
     val sources = LazyList(main, base, plugin)
     val fields = LazyList.from(key.split("\\|").map(_.trim))
@@ -22,6 +34,10 @@ trait ConfigPluginCompanion extends PluginCompanion {
   //Todo: Later we need to have an option to catch fields for help generation
   def arg(key:String):ConfigValue[String] = addAndReturn((main: ParameterAndOptions, base: ParameterAndOptions, plugin: ParameterAndOptions) => {
     getKey(key)(main,base,plugin)
+  })
+
+  def collectArg(key:String):ConfigValue[Seq[String]] = addAndReturn((main: ParameterAndOptions, base: ParameterAndOptions, plugin: ParameterAndOptions) => {
+    collectKey(key)(main,base,plugin)
   })
 
   def opt(key:String):ConfigValue[Boolean] = addAndReturn((main: ParameterAndOptions, base: ParameterAndOptions, plugin: ParameterAndOptions) => {

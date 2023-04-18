@@ -34,7 +34,7 @@ module Capability {
      // 1: It ensures that the access check was made and not accidentally is omitted
      // 2: The Permission can not be extracted and thus can never escape (except by G -- which is the issuer and could just create it anyways)
      // The only reason we need Permissions as standalone data type is for the cases where we need more than one permission to achieve something
-     global(inspect,consume) local(create) temporary data Handle[persisted G, phantom P](entry:Entry[G])
+     global(inspect,consume) local(create) temporary data Handle[persisted G, phantom PD](entry:Entry[G])
 
      //Helpers to extract Ids & create Caps -- Not needed but convenient
      global function capId[G,PD](cap:Cap[G,PD]) = cap.id

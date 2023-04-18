@@ -1,7 +1,7 @@
 package samaya
 
 import samaya.compilation.ErrorManager
-import samaya.compilation.ErrorManager.{Always, Info, PlainMessage, feedback}
+import samaya.compilation.ErrorManager.{Always, Info, PlainMessage, canProduceErrors, feedback, producesErrorValue}
 import samaya.jobs.{IndependentJob, JobResultBuilder}
 import samaya.plugin.service.{AddressResolver, JobExecutor, PackageEncoder, TaskExecutor}
 import samaya.repository.BuildRepository
@@ -28,11 +28,24 @@ object ProjectUtils {
     }
   }
 
-  def processWitContextRepo[R](pkg:LinkablePackage)(f: => R): R = {
+  def getContextRepo(pkg:LinkablePackage):Set[Repository] = {
     AddressResolver.resolve(pkg.location.resolveAddress(Address()), Repository.Loader) match {
-      case Some(repo) => Repository.withRepos(Set(repo))(f)
-      case _ => f
+      case Some(repo) => Set(repo)
+      case _ => Set.empty
     }
+  }
+
+  def processWitContextRepo[R](pkg:LinkablePackage)(f: => R): R = {
+    Repository.withRepos(getContextRepo(pkg))(f)
+  }
+
+
+  def processWithArgRepos[R](repos:Seq[String])(f: => R): R = {
+    val parent = AddressResolver.provideDefault().getOrElse(throw new Exception("A"))
+    //Todo: Error instead of fail
+    val repoAddrs = repos.flatMap(AddressResolver.parsePath)
+    val resReps = repoAddrs.flatMap(a => AddressResolver.resolve(parent.resolveAddress(a), Repository.SilentLoader)).map(r => r:Repository).toSet
+    Repository.withRepos(resReps)(f)
   }
 
   def processWitContextRepo[R](dir:Directory)(f: => R): R = {
@@ -60,7 +73,8 @@ object ProjectUtils {
       case None =>
         feedback(PlainMessage("Target was not a package - trying to treat it as workspace", Info, Always))
         buildThenProcess(source,onError)(f)
-      case Some(lp) => Some(ProjectUtils.processWitContextRepo(lp)(f(lp)))
+      case Some(lp) =>
+        Some(ProjectUtils.processWitContextRepo(lp)(f(lp)))
     }
   }
 

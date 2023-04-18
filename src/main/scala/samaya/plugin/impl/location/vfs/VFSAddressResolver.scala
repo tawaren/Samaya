@@ -88,14 +88,12 @@ class VFSAddressResolver extends AddressResolver{
 
         if(elements.isEmpty) return None
         val folder = Address.Absolute(protocol, elements.init)
-
         resolveDirectory(folder) match {
           case Some(directParent) =>
             val directFolder = directParent.file
 
             if(!directFolder.exists()) return None
             if(!directFolder.isDirectory) return None
-
             elements.last match {
               case ident : Identifier.Specific =>
                 val target = directFolder.getAbsolutePath + File.separator + ident.fullName

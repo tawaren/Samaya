@@ -44,7 +44,12 @@ object PackageEncoder extends PackageEncoder with PluginProxy{
   }
 
   override def serializePackage(pkg: LinkablePackage, workspace: Option[Workspace] = None): Option[InputSource]  = {
-    select(Selectors.PackageEncoderSelector).flatMap(r => r.serializePackage(pkg, workspace))
+    select(Selectors.PackageEncoderSelector).flatMap(r => r.serializePackage(pkg, workspace)) match {
+      case Some(value) =>
+        computationCache.forcedUpdate(value, Some(pkg))
+        Some(value)
+      case None => None
+    }
   }
 
   def isPackage(source:GeneralSource): Boolean = {

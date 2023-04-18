@@ -9,6 +9,7 @@ import PermAssociation._
 import Permission._
 
 
+
 module NativeAuthenticator {
 
     global function subjectFor(senderId:Id.Public):ValidatedSubject {
@@ -24,3 +25,4 @@ transactional transaction AuthorizationFromSender(implicit context sender:Sender
 transactional transaction AuthorizationCapFromSender(implicit context sender:Sender):AuthorizationCap = NativeAuthenticator.authenticateWith(sender)
 transactional transaction SubjectFromSenderId(senderId:Id.Public):Subject = NativeAuthenticator.subjectFor(senderId).subject
 transactional transaction SubjectFromSender(implicit Sender(senderId)):Subject = NativeAuthenticator.subjectFor(<senderId>).subject
+

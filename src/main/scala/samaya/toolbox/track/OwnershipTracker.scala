@@ -117,7 +117,8 @@ trait OwnershipTracker extends TypeTracker {
     val nStack = super.inspectUnpack(res, src, origin, stack)
     val locks = lockStack.pop()
     lockStack.push(srcValOpt +: locks)
-    res.foldLeft(nStack.lock(srcValOpt)){case (s,e) => s.withOwned(e)}
+    res.foldLeft(nStack.lock(srcValOpt)){case (s,e) => s.withReadOnly(e)}
+    //res.foldLeft(nStack.lock(srcValOpt)){case (s,e) => s.withOwned(e)}
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {

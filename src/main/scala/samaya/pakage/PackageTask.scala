@@ -1,15 +1,18 @@
 package samaya.pakage
 
-import samaya.ProjectUtils.{buildIfMissing, traverseDependencies}
+import samaya.ProjectUtils.{buildIfMissing, processWitContextRepo, processWithArgRepos, traverseDependencies}
+import samaya.build.BuildTask.collectArg
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.unexpected
-import samaya.pakage.PackageTask.{TaskName, mode, source, target}
+import samaya.jobs.IndependentJob
+import samaya.pakage.PackageTask.{TaskName, mode, repos, source, target}
 import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
 import samaya.plugin.service.AddressResolver.{Create, ReCreate}
 import samaya.plugin.service.TaskExecutor.IsClass
 import samaya.plugin.service.{AddressResolver, ContentRepositoryEncoder, JobExecutor, PackageEncoder, Selectors, TaskExecutor}
 import samaya.repository.BasicRepositoryBuilder
 import samaya.structure.LinkablePackage
+import samaya.structure.types.Hash
 import samaya.types.{Address, Deep, Directory, Fresh, Identifier, InputSource, ProcessingMode, RepositoryBuilder, Shallow, Workspace}
 
 import scala.collection.mutable
@@ -31,33 +34,62 @@ class PackageTask extends TaskExecutor{
     case IsString(source) => IsDirectory[T](packaging(source, target.value, mode.value))
   }
 
+  //Todo: use a hash based deduplication
+  //      this is ok as the end result is content-addressed anyway
+  //      and if we would not then the index order would prefer one anyway
   def packaging(source:String, target:String, mode: ProcessingMode): Option[Directory] = {
     val parent = AddressResolver.provideDefault().getOrElse(throw new Exception("A"))
     val targetPath = AddressResolver.parsePath(target).flatMap(p => {
       AddressResolver.resolveDirectory(parent.resolveAddress(p), mode = Create)
     }).getOrElse(throw new Exception("Illegal arg"))
-
-    buildIfMissing(source, "Skipped packaging due to compilation error"){lp =>
-      val t0 = System.currentTimeMillis()
-      val packagePath = AddressResolver.resolveDirectory(targetPath.resolveAddress(Address(lp.name, "sar")), mode = ReCreate).getOrElse(throw new Exception("Illegal arg"))
-      val repoBuilder = new BasicRepositoryBuilder()
-      packagePackage(lp, packagePath, packagePath, mode, repoBuilder)
-      //Todo: switch the indexing mechanism
-      //      maybe have an identifier in repoBuilder
-      //      or completely replace old index system
-      ContentRepositoryEncoder.storeRepository(packagePath,repoBuilder)
-      println(s"packaging of ${packagePath} finished in ${System.currentTimeMillis()-t0} ms" )
-      packagePath
+    processWithArgRepos(repos.value) {
+      buildIfMissing(source, "Skipped packaging due to compilation error") { lp =>
+        val t0 = System.currentTimeMillis()
+        val packagePath = AddressResolver.resolveDirectory(targetPath.resolveAddress(Address(lp.name, "sar")), mode = ReCreate).getOrElse(throw new Exception("Illegal arg"))
+        val repoBuilder = new BasicRepositoryBuilder()
+        packagePackage(lp, packagePath, packagePath, mode, repoBuilder)
+        //Todo: switch the indexing mechanism
+        //      maybe have an identifier in repoBuilder
+        //      or completely replace old index system
+        ContentRepositoryEncoder.storeRepository(packagePath, repoBuilder)
+        println(s"packaging of ${packagePath} finished in ${System.currentTimeMillis() - t0} ms")
+        packagePath
+      }
     }
   }
 
+  /*
+  private def collectPackages(lp:LinkablePackage, mode:ProcessingMode, packageCollector: mutable.Map[Hash,LinkablePackage]) : Unit = {
+    if(packageCollector.contains(lp.hash)) return
+    packageCollector.put(lp.hash,lp)
+    val includes = mode match {
+      case Deep => lp.dependencies.map(_.name).toSet
+      case Fresh => lp.includes.getOrElse(Set.empty)
+      case Shallow => Set.empty[String]
+    }
+    processWitContextRepo(lp) {
+      //deploy all dependencies
+      lp.dependencies.filter(p => includes.contains(p.name))
+        .foreach(collectPackages(_, mode, packageCollector))
+    }
+  }
+
+  private def packagePackages(lp:LinkablePackage, rootDir:Directory, mode:ProcessingMode, repoBuilder:RepositoryBuilder):Unit = {
+    val pkgs = collectPackages(lp,mode,mutable.Map.empty)
+    pkgs.map(IndependentJob{
+      case (hash, pkg) => packagePackage(pkg,??,rootDir)
+    })
+  }*/
+
   //Todo: Deduplicate packages if they appear more than once in the graph
+  //we can do based on Hash
   private def navigateAndPackage(lp:LinkablePackage, parentDir:Directory, rootDir:Directory,  mode:ProcessingMode, repoBuilder:RepositoryBuilder):LinkablePackage = {
     AddressResolver.resolveDirectory(parentDir.resolveAddress(Address(lp.name)), mode = Create) match {
       case Some(packagePath) => packagePackage(lp,packagePath, rootDir,mode, repoBuilder)
       case None => unexpected("Can not generate package location", ErrorManager.Packaging())
     }
   }
+
 
   private def packagePackage(lp:LinkablePackage, pkgDir:Directory, rootDir:Directory, mode:ProcessingMode, repoBuilder:RepositoryBuilder):LinkablePackage = {
     //package all dependencies
@@ -168,4 +200,7 @@ object PackageTask extends ConfigPluginCompanion {
     "r|d|recursive|deep" -> Deep,
     "t|s|top|shallow" -> Shallow
   ).default(Fresh)
+
+  private val repos : ConfigValue[Seq[String]] = collectArg("package.repos|package.repositories|repositories|repos").default(Seq.empty)
+
 }

@@ -12,7 +12,8 @@ class ConcurrentStrongComputationCache[K,V] extends ConcurrentComputationCache[K
   //Note: We do not just forward to map.getOrElseUpdate
   //        because we want to make sure that a
   //        Virtual Thread friendly implementation is used
-  def getOrElseUpdate(k:K)(f : => V):V = map.getOrElseUpdate(k, new StrongCell[V]()).getOrElseUpdate(update(k,f))
+  override def getOrElseUpdate(k:K)(f : => V):V = map.getOrElseUpdate(k, new StrongCell[V]()).getOrElseUpdate(update(k,f))
+  override def forcedUpdate(k: K, v: V): Unit = map.put(k, new StrongCell[V](Some(v)))
 }
 
 

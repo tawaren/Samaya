@@ -228,6 +228,67 @@ trait ComponentResolver extends CompilerToolbox {
       case None => componentApplies ++ Seq.fill(expected-classVars)(TypeInference.TypeVar(src))
     }
   }
+
+  def resolveDefaultCtrName(name:String, sourceId:SourceId):String = {
+    //May be from local module scope
+    if(localEntries.contains(name)) {
+      localEntries(name) match {
+        case dt:DataDef if dt.external.isEmpty =>
+          val ctrs = dt.constructors
+          if(ctrs.size == 1) {
+            return ctrs.head.name
+          }
+        case _ =>
+      }
+    }
+
+    localAliases.find(ta => ta.name == name) match {
+      case Some(TypeAlias(_,_,typ,_)) => typ.asAdtType match {
+        case Some(adt) =>
+          val ctrs = adt.ctrs(context)
+          if(ctrs.size == 1) {
+            return ctrs.head._1
+          }
+        case None =>
+      }
+      case _ =>
+    }
+
+    val (path, comps) = resolveImport(Seq(name), None)
+    val modules = comps.flatMap(_.asModuleInterface);
+    val typeTargets = modules.flatMap(_.dataTypes.filter(dt => dt.name == name && dt.external.isEmpty))
+    val aliases = modules.flatMap{
+      case md:MandalaModule with Interface[_] => md.typeAlias.filter(ta => ta.name == name)
+      case _ => Seq.empty
+    }
+
+    //Nothing found, keep name as it is
+    if(typeTargets.isEmpty && aliases.isEmpty) {
+      feedback(LocatedMessage(s"typ ${path.mkString(".")} does not exist", sourceId, Error, Compiler(Priority)))
+      return name
+    }
+
+    //Fetch the Ctr
+    if(typeTargets.size == 1){
+      val ctrs = typeTargets.head.constructors
+      if(ctrs.size == 1) {
+        return ctrs.head.name
+      }
+    } else  {
+      aliases.foreach{
+        case TypeAlias(_,_,typ,_) => typ.asAdtType match {
+          case Some(adt) =>
+            val ctrs = adt.ctrs(context)
+            if(ctrs.size == 1) {
+              return ctrs.head._1
+            }
+          case None =>
+        }
+      }
+    }
+    name
+  }
+
   //todo: we need some unified dependency lookup model
   //The resolver algorithms
   def resolveType(importPath:Seq[String],compApplies:Option[Seq[Type]], applies:Option[Seq[Type]], sourceId:SourceId): Type = {
@@ -260,7 +321,7 @@ trait ComponentResolver extends CompilerToolbox {
       //Maybe a local Alias
       localAliases.find(ta => ta.name == start) match {
         case Some(TypeAlias(_,gens,typ,_)) =>
-          return typ.instantiate(resolveApplies(compApplies, applies, 0, gens.size, sourceId))
+          return typ.instantiate(resolveApplies(compApplies, applies, 0, gens.size, sourceId)).changeMeta(src = sourceId)
         case _ =>
       }
     }
@@ -295,7 +356,7 @@ trait ComponentResolver extends CompilerToolbox {
         case (module, dt: DataDef) if dt.external.isEmpty => AdtType.Remote(module.link, dt.index, resolveApplies(compApplies, applies, getClassVars(module), dt.generics.size, sourceId))(sourceId)
         case (module, st: SignatureDef) => SigType.Remote(module.link, st.index, resolveApplies(compApplies, applies, getClassVars(module), st.generics.size, sourceId))(sourceId)
         case _ => Type.Unknown(Set.empty)(sourceId)
-      }.head
+      }.head.changeMeta(src = sourceId)
     } else  {
       aliases.map{
         case (md, TypeAlias(_,gens,typ,_)) =>
@@ -311,7 +372,7 @@ trait ComponentResolver extends CompilerToolbox {
           }
           val newAttributes = attrs :+ Attribute(MandalaCompiler.Aliasing_Module_Attribute_Name, Attribute.Text(md.link.toString))
           glType.instantiate(resolveApplies(compApplies, applies, 0, gens.size, sourceId)).changeMeta(attributes = newAttributes)
-      }.head
+      }.head.changeMeta(src = sourceId)
     }
   }
 
@@ -370,7 +431,10 @@ trait ComponentResolver extends CompilerToolbox {
     }
 
     //did we found more than 1 candidate
-    if((funTargets.size + implTargets.size) > 1) feedback(LocatedMessage(s"${path.mkString(".")} is ambiguous (points to multiple candidates)", sourceId, Error, Compiler(Priority)))
+    if((funTargets.size + implTargets.size) > 1) {
+      feedback(LocatedMessage(s"${path.mkString(".")} is ambiguous (points to multiple candidates)", sourceId, Error, Compiler(Priority)))
+      return Func.Unknown(sourceId)
+    }
     //construct the type
     if(funTargets.nonEmpty){
       funTargets.head match {

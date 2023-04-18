@@ -24,10 +24,11 @@ trait PlainReferenceResolver extends ReferenceResolver {
       case source: InputSource => source
       case _ => return Seq.empty
     }
-    val addresses = file.read{r =>
-      Source.fromInputStream(r).getLines()
+    //Todo: Give error instead of just discarding
+    file.read{r =>
+      val addresses = Source.fromInputStream(r).getLines()
+      addresses.filterNot(_.isBlank).flatMap(AddressResolver.parsePath).toSeq
     }
-    addresses.flatMap(AddressResolver.parsePath).toSeq
   }
 
   override def resolveAll(source: GeneralSource, filter: Option[Set[ReferenceResolver.ReferenceType]]): Map[ReferenceResolver.ReferenceType, Seq[Address]] = {

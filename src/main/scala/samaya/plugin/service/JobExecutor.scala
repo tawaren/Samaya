@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
 
 trait JobExecutor extends Plugin{
   override type Selector = Selectors.JobExecutorSelector
-  def executeStatefulDependantJobs[P](jobs: Map[String, DependantJob[P]], roots: Set[String]): Option[Seq[P]]
+  def executeStatefulDependantJobs[K,P](jobs: Map[K, DependantJob[K,P]], roots: Seq[K]): Option[Seq[P]]
   def executeIndependentJobs[O,P <: JobResultBuilder[O,P]](builder:P, jobs:Iterable[IndependentJob[O]]): Unit
 }
 
@@ -18,7 +18,7 @@ object JobExecutor extends JobExecutor with PluginProxy{
   override def classTag: ClassTag[PluginType] = implicitly[ClassTag[PluginType]]
   override def category: PluginCategory[PluginType] = JobExecutorPluginCategory
 
-  override def executeStatefulDependantJobs[P](jobs: Map[String, DependantJob[P]], roots: Set[String]): Option[Seq[P]] = {
+  override def executeStatefulDependantJobs[K,P](jobs: Map[K, DependantJob[K,P]], roots: Seq[K]): Option[Seq[P]] = {
     //Todo: Better error
     select(Selectors.DependantJobSelector).flatMap(r => r.executeStatefulDependantJobs(jobs, roots))
   }

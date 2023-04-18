@@ -504,7 +504,6 @@ object ModuleSerializer {
         // link:ImplLink
         case ImplFunc.Local(offset, _) => (1.toByte, 0.toByte, offset)
         case ImplFunc.Remote(moduleHash, offset, _) => (1.toByte, imports.modIndex(moduleHash), offset)
-
         case _:Func.Unknown => unexpected("Unknown Function Reached Serializer", CodeGen())
       }
       out.writeByte(caseIdx)

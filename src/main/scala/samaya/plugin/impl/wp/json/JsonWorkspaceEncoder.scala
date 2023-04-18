@@ -4,14 +4,12 @@ import com.github.plokhotnyuk.jsoniter_scala.core._
 import JsonModel._
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager._
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
-import samaya.plugin.impl.wp.json.JsonWorkspaceEncoder.validation
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.service.AddressResolver.Create
 import samaya.plugin.service.{AddressResolver, PackageEncoder, Selectors, WorkspaceEncoder}
 import samaya.structure.LinkablePackage
 import samaya.types
 import samaya.types.{Address, Addressable, Directory, GeneralSource, InputSource, Repository}
-import samaya.validation.WorkspaceValidator
 
 //A Workspace Manager for a json description of a package
 class JsonWorkspaceEncoder extends WorkspaceEncoder {
@@ -54,17 +52,17 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
           val includes: Set[types.Workspace] = loadFromPaths(parsed.includes, types.Workspace.Loader).getOrElse(Set.empty)
 
           if(includes.size != parsed.includes.getOrElse(Set.empty).size) {
-            feedback(PlainMessage(s"Could not deserialize all includes", Warning, Builder()))
+            feedback(PlainMessage(s"Could not deserialize all includes", Warning, Decoding()))
           }
 
           val dependencies: Set[LinkablePackage] = loadFromPaths(parsed.dependencies, PackageEncoder.Loader).getOrElse(Set.empty)
           if(dependencies.size != parsed.dependencies.getOrElse(Set.empty).size) {
-            feedback(PlainMessage(s"Could not deserialize all dependencies", Warning, Builder()))
+            feedback(PlainMessage(s"Could not deserialize all dependencies", Warning, Decoding()))
           }
           cycleBreaker = oldBreaker
           (includes, dependencies)
         } else {
-          feedback(PlainMessage(s"Cyclic dependencies are not allowed. $name depends on itself", Error, Builder()))
+          feedback(PlainMessage(s"Cyclic dependencies are not allowed. $name depends on itself", Error, Decoding()))
           (Set.empty, Set.empty)
         }
 
@@ -75,21 +73,21 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
         val codeIdent = AddressResolver.parsePath(parsed.locations.code)match {
           case Some(id) => id
           case None =>
-            ErrorManager.feedback(PlainMessage("Could not parse code path", ErrorManager.Error, Builder()))
+            ErrorManager.feedback(PlainMessage("Could not parse code path", ErrorManager.Error, Decoding()))
             return None
         }
 
         val interfaceIdent = AddressResolver.parsePath(parsed.locations.interface)match {
           case Some(id) => id
           case None =>
-            ErrorManager.feedback(PlainMessage("Could not parse interface path", ErrorManager.Error, Builder()))
+            ErrorManager.feedback(PlainMessage("Could not parse interface path", ErrorManager.Error, Decoding()))
             return None
         }
 
         val packageIdent = AddressResolver.parsePath(parsed.target) match {
           case Some(id) => id
           case None =>
-            ErrorManager.feedback(PlainMessage("Could not parse package path", ErrorManager.Error, Builder()))
+            ErrorManager.feedback(PlainMessage("Could not parse package path", ErrorManager.Error, Decoding()))
             return None
         }
 
@@ -99,7 +97,7 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
             val sourceIdent = AddressResolver.parsePath(path) match {
               case Some(id) => id
               case None =>
-                ErrorManager.feedback(PlainMessage("Could not parse source path", ErrorManager.Error, Builder()))
+                ErrorManager.feedback(PlainMessage("Could not parse source path", ErrorManager.Error, Decoding()))
                 return None
 
             }
@@ -107,7 +105,7 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
             AddressResolver.resolveDirectory(workspaceLocation.resolveAddress(sourceIdent)) match {
               case Some(loc) => loc
               case None =>
-                ErrorManager.feedback(PlainMessage("Could not load source location", ErrorManager.Error, Builder()))
+                ErrorManager.feedback(PlainMessage("Could not load source location", ErrorManager.Error, Decoding()))
                 return None
             }
         }
@@ -115,34 +113,28 @@ class JsonWorkspaceEncoder extends WorkspaceEncoder {
         val packageLocation = AddressResolver.resolveDirectory(workspaceLocation.resolveAddress(packageIdent), mode = Create)  match {
           case Some(loc) => loc
           case None =>
-            ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error, Builder()))
+            ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error, Decoding()))
             return None
         }
 
         val codeLocation: Directory = AddressResolver.resolveDirectory(packageLocation.resolveAddress(codeIdent), mode = Create)  match {
           case Some(loc) => loc
           case None =>
-            ErrorManager.feedback(PlainMessage("Could not load code location", ErrorManager.Error, Builder()))
+            ErrorManager.feedback(PlainMessage("Could not load code location", ErrorManager.Error, Decoding()))
             return None
         }
 
         val interfaceLocation: Directory = AddressResolver.resolveDirectory(packageLocation.resolveAddress(interfaceIdent), mode = Create)  match {
           case Some(loc) => loc
           case None =>
-            ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error, Builder()))
+            ErrorManager.feedback(PlainMessage("Could not load interface location", ErrorManager.Error, Decoding()))
             return None
         }
 
         val workspace =  new WorkspaceImpl(name, workspaceLocation, packageLocation, includes, repos, dependencies, components, sourceLocation, codeLocation, interfaceLocation)
-
-        if(validation.value) WorkspaceValidator.validateWorkspace(workspace)
-
         Some(workspace)
       }
     }
 }
 
-object JsonWorkspaceEncoder extends ConfigPluginCompanion {
-  val validation : ConfigValue[Boolean] = opt("workspace.encoder.validation|encoder.validation|validation").default(true)
-    .warnIfFalse("Validation of workspaces is disabled", Decoding())
-}
+object JsonWorkspaceEncoder extends ConfigPluginCompanion {}

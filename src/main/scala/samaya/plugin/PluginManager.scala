@@ -20,7 +20,6 @@ import scala.jdk.CollectionConverters._
 object PluginManager {
 
   private val pluginCache:concurrent.Map[PluginCategory[_], Seq[_]] = concurrent.TrieMap.empty
-  private val pattern = """[^\s"]+|"([^"]*)"""".r
 
   private var mainArgs : ParameterAndOptions = null
   private var baseArgs : ParameterAndOptions = null
@@ -45,18 +44,24 @@ object PluginManager {
       .foreach(Using(_)(props.load))
 
     baseArgs = ParameterAndOptions(props)
-    val jsonFiles = mainClassLoader.getResources("plugin.json").asScala.map { url =>
-      loadJsonFromResource(url)
-    }
 
-    pluginConfig = jsonFiles.foldLeft(Json.obj()) { (acc, json) =>
-      acc.deepMerge(json)
-    }
+    val pluginName = mainArgs.options
+      .getOrElse("plugin-config-name",Seq.empty)
+      .headOption.getOrElse("plugin.json")
+
+    pluginConfig = (baseArgs.options ++ mainArgs.options)
+      .getOrElse("plugin-config", Seq(System.getProperty("user.dir")+File.separator+pluginName))
+      .map(new File(_))
+      .filter(f => f.isFile && f.exists())
+      .map(new FileInputStream(_))
+      .appendedAll(mainClassLoader.getResources(pluginName).asScala.map(_.openStream()))
+      .map(loadJsonFromResource)
+      .foldRight(Json.obj()) { (json, acc) =>  acc.deepMerge(json) }
 
     mainArgs
   }
 
-  def loadJsonFromResource(url:URL): Json = Using(url.openStream()){ stream =>
+  def loadJsonFromResource(in:InputStream): Json = Using(in){ stream =>
     val jsonStr: String = Source.fromInputStream(stream, StandardCharsets.UTF_8.name).mkString
     parse(jsonStr).getOrElse(Json.Null)
   }.get
