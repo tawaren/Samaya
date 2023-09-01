@@ -11,9 +11,6 @@ import core.Compare._
 import core.BitOps._
 import core.IntU128._
 
-//Todo: Something is seriously wrong here find out what
-//This fails due to Requested constructor does not exist
-//  Either we generate wrongly or miss something on Mandala side
 module Purse {
     local linear data Purse[F](f:F)
     type PurseEntry[persisted F] = Entry[Purse[F]]
@@ -30,8 +27,8 @@ module Purse {
     global function createDepositCap[F](cap:MasterCap[F]) = DepositCap[F]#(cap.id)
     global function createWithdrawCap[F](cap:MasterCap[F]) = WithdrawCap[F]#(cap.id)
 
-    local function createDepositPerm[PF](cap:Cap[PF,Master]):Perm[PF,Deposit] = createPerm(cap)
-    local function createWithdrawPerm[PF](cap:Cap[PF,Master]):Perm[PF,Withdraw] = createPerm(cap)
+    global function createDepositPerm[PF](cap:Cap[PF,Master]):Perm[PF,Deposit] = createPerm(cap)
+    global function createWithdrawPerm[PF](cap:Cap[PF,Master]):Perm[PF,Withdraw] = createPerm(cap)
 
     instance DepositPermSelect for PermAssociation[Deposit,Master] {
         implement perm[PF] with createDepositPerm[PF]

@@ -8,7 +8,6 @@ import samaya.types.Context
 
 trait Func {
   def applies:Seq[Type] = Seq.empty
-  //def generics(context:Context):Seq[Generic]
   def paramInfo(context:Context):Seq[(Type,Boolean)]
   def returnInfo(context:Context):Seq[Type]
   def isCurrentModule: Boolean
@@ -37,6 +36,7 @@ trait Func {
 }
 
 trait DefinedFunc[D <: ModuleEntry] extends Func {
+  def definingComp:Option[CompLink]
   def getPackage(context:Context): Option[Package]
   def getComponent(context:Context): Option[Component]
   def getEntry(context:Context):Option[D]
@@ -55,7 +55,6 @@ sealed trait StdFunc extends DefinedFunc[FunctionSig] {
 
 sealed trait ImplFunc extends DefinedFunc[FunctionSig] {
   def replaceContainedTypes(f: Type => Type):ImplFunc
-  //todo: Extras??
 }
 
 object Func {
@@ -94,6 +93,7 @@ object Func {
     def offset:Int
     def select(module:Module, offset:Int):Option[D]
     override def isCurrentModule = true
+    override def definingComp:Option[CompLink] = None
     override def getPackage(context: Context): Option[Package] = Some(context.pkg)
     override def getComponent(context: Context): Option[Component] = context.module
     override def getEntry(context: Context): Option[D] = context.module.flatMap(select(_, offset))
@@ -111,6 +111,7 @@ object Func {
     def offset:Int
     def select(module:Module, offset:Int):Option[D]
     override def isCurrentModule: Boolean = false
+    override def definingComp:Option[CompLink] = Some(moduleRef)
     def adaptLocals(typ:Type):Type = Type.globalizeLocals(moduleRef,typ)
     override def getPackage(context: Context): Option[Package] = context.pkg.packageOfLink(moduleRef)
     override def getComponent(context: Context): Option[Component] = context.pkg.componentByLink(moduleRef)

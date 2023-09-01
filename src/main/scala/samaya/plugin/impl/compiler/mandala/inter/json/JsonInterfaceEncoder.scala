@@ -58,6 +58,7 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
       language = inst.language,
       version = inst.version,
       classifier = inst.classifier,
+      priority = inst.priority,
       generics = generics,
       classTarget = inst.classTarget match {
         case CompLink.ByCode(_) => unexpected("Class targets should refer to classes", InterfaceGen());

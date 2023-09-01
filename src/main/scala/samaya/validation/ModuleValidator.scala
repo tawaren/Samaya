@@ -1,9 +1,10 @@
 package samaya.validation
 
-import samaya.structure.{CompiledModule, Constructor, DataDef, Field, FunctionSig, Generic, Indexed, Module, Package, Param, Result}
-import samaya.structure.types.{Accessibility, Capability, Hash, Permission, SourceId}
-import samaya.structure.types.Type.GenericType
+import samaya.structure.{CompiledModule, Constructor, DataDef, Field, FunctionSig, Generic, Indexed, Module, ModuleEntry, Package, Param, Result, SignatureDef, TypeParameterized}
+import samaya.structure.types.{Accessibility, AdtType, Capability, DefinedType, Hash, Permission, SourceId, Type}
+import samaya.structure.types.Type.{GenericType, Projected}
 import samaya.compilation.ErrorManager._
+import samaya.config.Config
 import samaya.types.Context
 
 
@@ -74,6 +75,8 @@ object ModuleValidator {
     }
   }
 
+
+
   private def validateDataType(src:SourceId, data:DataDef, context: Context):Unit = {
     processOrdered[Generic](data.generics,data.generic, g => {})
 
@@ -91,6 +94,7 @@ object ModuleValidator {
       processOrdered[Field](c.fields,c.field, field => {
         SignatureValidator.validateType(field.src, field.typ, data, context)
         SignatureValidator.validateTypeConstraints(field.typ, data.capabilities, data, context, promoteGenerics = true)
+        ReferenceValidation.validateReferences(field.typ, data, context)
         field.typ match {
           case GenericType(_,pos) =>
             data.generic(pos) match {
@@ -167,6 +171,9 @@ object ModuleValidator {
 
     processOrdered[Param](function.params,function.param, p => {
       SignatureValidator.validateType(p.src, p.typ, function, context)
+      if(!Config.forwardRef.value && function.isInstanceOf[SignatureDef]){
+        ReferenceValidation.validateReferences(p.typ, function, context)
+      }
       p.typ match {
         case GenericType(_, pos) =>
           function.generic(pos) match {
@@ -187,6 +194,9 @@ object ModuleValidator {
 
     processOrdered[Result](function.results,function.result, r => {
       SignatureValidator.validateType(r.src, r.typ, function, context)
+      if(!Config.forwardRef.value && function.isInstanceOf[SignatureDef]){
+        ReferenceValidation.validateReferences(r.typ, function, context)
+      }
     })
 
     val returnIdents = function.results.map(p => p.name).toSet

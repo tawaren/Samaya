@@ -2,10 +2,10 @@ package samaya.plugin
 
 import io.circe._
 import io.circe.parser._
-import samaya.plugin.config.{ParameterAndOptions, PluginCompanion}
+import samaya.config.{ConfigHolder, ParameterAndOptions}
+import samaya.plugin.config.PluginCompanion
 
 import java.io.{File, FileInputStream, IOException, InputStream}
-import java.net.URL
 import samaya.plugin.service.PluginCategory
 
 import java.nio.charset.StandardCharsets
@@ -16,40 +16,19 @@ import scala.reflect.ClassTag
 import scala.util.Using
 import scala.jdk.CollectionConverters._
 
-
 object PluginManager {
 
   private val pluginCache:concurrent.Map[PluginCategory[_], Seq[_]] = concurrent.TrieMap.empty
-
-  private var mainArgs : ParameterAndOptions = null
-  private var baseArgs : ParameterAndOptions = null
   private var pluginConfig : Json = null
 
-  def init(args:Array[String]):ParameterAndOptions = {
-    mainArgs = ParameterAndOptions(args)
+  def init():Unit = {
     val mainClassLoader = getClass.getClassLoader
 
-    val configName = mainArgs.options
-      .getOrElse("config-name",Seq.empty)
-      .headOption.getOrElse("config.properties")
-    val props = new Properties()
-
-    mainArgs.options
-      .getOrElse("config", Seq(System.getProperty("user.dir")+File.separator+configName))
-      .map(new File(_))
-      .filter(f => f.isFile && f.exists())
-      .map(new FileInputStream(_))
-      .appendedAll(mainClassLoader.getResources(configName).asScala.map(_.openStream()))
-      .reverse
-      .foreach(Using(_)(props.load))
-
-    baseArgs = ParameterAndOptions(props)
-
-    val pluginName = mainArgs.options
+    val pluginName = ConfigHolder.main.options
       .getOrElse("plugin-config-name",Seq.empty)
       .headOption.getOrElse("plugin.json")
 
-    pluginConfig = (baseArgs.options ++ mainArgs.options)
+    pluginConfig = (ConfigHolder.base.options ++ ConfigHolder.main.options)
       .getOrElse("plugin-config", Seq(System.getProperty("user.dir")+File.separator+pluginName))
       .map(new File(_))
       .filter(f => f.isFile && f.exists())
@@ -57,8 +36,6 @@ object PluginManager {
       .appendedAll(mainClassLoader.getResources(pluginName).asScala.map(_.openStream()))
       .map(loadJsonFromResource)
       .foldRight(Json.obj()) { (json, acc) =>  acc.deepMerge(json) }
-
-    mainArgs
   }
 
   def loadJsonFromResource(in:InputStream): Json = Using(in){ stream =>
@@ -88,7 +65,7 @@ object PluginManager {
             val comp = getCompanion(pluginClass)
             val args = pluginArgs.asObject.map(_.toMap).getOrElse(Map.empty)
             comp match {
-              case Some(comp) => comp.configure(mainArgs, baseArgs, ParameterAndOptions(args))
+              case Some(comp) => comp.configure(ConfigHolder.main, ConfigHolder.base, ParameterAndOptions(args))
               case None =>
             }
             val classObj = Class.forName(pluginClass)

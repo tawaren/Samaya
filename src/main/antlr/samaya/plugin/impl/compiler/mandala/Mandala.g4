@@ -34,7 +34,7 @@ instanceEntry: aliasDef;
 
 dataDef : accessibilities ext? capabilities DATA name generics=genericArgs? ctrs? #Data;
 functionDef : accessibilities OVERLOADED? TRANSACTIONAL? EXTERNAL? FUNCTION name generics=genericArgs? params rets? funBody? #Function;
-instanceDef : INSTANCE name generics=genericArgs? FOR compRef '{' entry=instanceEntry* '}' #Instance;
+instanceDef : priority? INSTANCE name generics=genericArgs? FOR compRef '{' entry=instanceEntry* '}' #Instance;
 aliasDef: IMPLEMENT name generics=genericArgs? WITH baseRef;
 typeAliasDef: TYPE name generics=genericArgs? EQ typeRef;
 
@@ -78,6 +78,9 @@ ctr: name fields? ;
 
 fields: '(' (f+=field) (COMMA f+=field)* ')' ;
 field: name ':' typeRef ;
+
+priority: PRIORITY '(' prio=NUM ')';
+
 
 //Function and Implement and Signature
 params: '(' (p+=param) (COMMA p+=param)* ')'
@@ -202,7 +205,7 @@ lit: HEX    #Hex
 branches: OR? (b+=branch) (OR b+=branch)*;
 
 branch: name patterns? '=>' tailExp
-      | name patterns? '{' tailExp '}'
+      | name patterns? '=>' '{' tailExp '}'
       ;
 succ: SUCCESS patterns? '=>' tailExp
     | SUCCESS patterns? '{' tailExp '}'
@@ -287,6 +290,7 @@ FUNCTION : 'function';
 SIGNATURE: 'signature';
 IMPLEMENT: 'implement';
 
+PRIORITY: 'priority';
 EXTERNAL: 'external';
 SYSTEM: 'system';
 

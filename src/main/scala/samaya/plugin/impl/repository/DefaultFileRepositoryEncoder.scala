@@ -1,7 +1,8 @@
 package samaya.plugin.impl.repository
 
 import samaya.compilation.ErrorManager.{CodeGen, PlainMessage, Warning, feedback}
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.config.ConfigValue
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.service.{AddressResolver, ContentRepositoryEncoder, Selectors}
 import samaya.types.Address.HybridAddress
 import samaya.types.Repository.AddressableRepository

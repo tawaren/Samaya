@@ -137,7 +137,7 @@ object TypeInference extends EntryTransformer {
       }
     }
 
-    protected def analyzeType(t:Type):Unit = {}
+    //protected def analyzeType(t:Type):Unit = {}
 
     protected def finalizeType(t:Type):Type = {
       resolve(t).replaceContainedTypes(finalizeType)

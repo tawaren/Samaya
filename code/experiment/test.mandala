@@ -1,0 +1,12 @@
+
+
+system module Test {
+    global external(1) data Ptr[T]
+    global data Test(ptr:Ptr[Test])
+
+    global data Ptr1[phantom T]()
+    global data Test1(ptr:Ptr1[Test1])
+
+    //Todo: Have a config flag for enabling forward reference
+    //      More precise if not flag then flag all forward refs
+}

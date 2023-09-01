@@ -3,7 +3,8 @@ package samaya.plugin.impl.inter.json
 import java.io.OutputStream
 import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, readFromStream, writeToStream}
 import samaya.compilation.ErrorManager.{InterfaceGen, InterfaceParsing, PlainMessage, Warning, feedback, unexpected}
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.config.ConfigValue
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.impl.inter.json.JsonModel.{InterfaceModule, InterfaceTransaction}
 import samaya.structure.{Component, Interface, Meta, Module, ModuleInterface, Transaction, TransactionInterface}
 import samaya.plugin.service.{InterfaceEncoder, Selectors}

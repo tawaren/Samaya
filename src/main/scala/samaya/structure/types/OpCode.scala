@@ -55,6 +55,11 @@ object OpCode {
   case class Switch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
   case class InspectSwitch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
   case class Pack(override val ret:TypedId, params:Seq[Ref], tag:Id, mode:FetchMode, id:SourceId) extends OpCode with SingleTypedResOpcodes
+  //Todo: Repeated Invoke
+  //      Constraints: Params = Returns
+  //      Must be in transactional or try
+  //      Must Specify an abort Condition
+
   case class Invoke(rets:Seq[AttrId], func:Func, params:Seq[Ref], id:SourceId) extends OpCode
   case class TryInvoke(rets:Seq[AttrId], func:Func, override val essentialParams:Seq[(Boolean,Ref)], success:(Seq[AttrId],Seq[OpCode]), failure:(Seq[AttrId],Seq[OpCode]), id:SourceId) extends OpCode with EssentialSourceOpcodes
   case class InvokeSig(rets:Seq[AttrId], func:Ref, params:Seq[Ref], id:SourceId) extends OpCode

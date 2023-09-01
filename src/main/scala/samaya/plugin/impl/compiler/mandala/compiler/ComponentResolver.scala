@@ -264,7 +264,7 @@ trait ComponentResolver extends CompilerToolbox {
 
     //Nothing found, keep name as it is
     if(typeTargets.isEmpty && aliases.isEmpty) {
-      feedback(LocatedMessage(s"typ ${path.mkString(".")} does not exist", sourceId, Error, Compiler(Priority)))
+      feedback(LocatedMessage(s"type ${path.mkString(".")} does not exist", sourceId, Error, Compiler(Priority)))
       return name
     }
 
@@ -318,6 +318,15 @@ trait ComponentResolver extends CompilerToolbox {
         }
       }
 
+      //Mandala currently only allows self references
+      // Samaya and Sanskrit would allow forward references for types
+      if(currentComponent.activeAdt != null){
+        val dt = currentComponent.activeAdt
+        if(dt.name == start && dt.external.isEmpty ){
+          return AdtType.Local(dt.index, resolveApplies(compApplies, applies, 0, dt.generics.size, sourceId))(sourceId)
+        }
+      }
+
       //Maybe a local Alias
       localAliases.find(ta => ta.name == start) match {
         case Some(TypeAlias(_,gens,typ,_)) =>
@@ -338,7 +347,7 @@ trait ComponentResolver extends CompilerToolbox {
       if(comps.isEmpty && path.init.nonEmpty) {
         feedback(LocatedMessage(s"Component ${path.init.mkString(".")} is missing in workspace", sourceId, Error, Compiler(Priority)))
       } else {
-        feedback(LocatedMessage(s"typ ${path.mkString(".")} does not exist", sourceId, Error, Compiler(Priority)))
+        feedback(LocatedMessage(s"type ${path.mkString(".")} does not exist", sourceId, Error, Compiler(Priority)))
       }
       return Type.Unknown(Set.empty)(sourceId)
     }

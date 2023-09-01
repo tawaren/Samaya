@@ -9,6 +9,7 @@ object CompLink {
   case class ByCode(hash:Hash) extends CompLink {
     override def toString: String = CODE_PREFIX+hash
   }
+
   case class ByInterface(hash:Hash) extends CompLink {
     override def toString: String = INTERFACE_PREFIX+hash
   }

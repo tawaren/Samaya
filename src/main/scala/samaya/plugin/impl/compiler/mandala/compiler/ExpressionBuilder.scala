@@ -390,9 +390,13 @@ trait ExpressionBuilder extends CompilerToolbox{
       typ.asAdtType match {
         case Some(adtType) =>
           val ctrs = adtType.ctrs(context)
-          assert(ctrs.nonEmpty)
-          if(ctrs.size != 1) feedback(LocatedMessage("A Pack for a type with multiple constructors must specify the constructor to use",srcId,Error, Compiler()))
-          Id(ctrs.head._1,srcId)
+          if(ctrs.isEmpty) {
+            feedback(LocatedMessage("Can not pack a type with no constructor",srcId,Error, Compiler()))
+            Id("Missing Constructor",srcId)
+          } else{
+            if(ctrs.size != 1) feedback(LocatedMessage("A Pack for a type with multiple constructors must specify the constructor to use",srcId,Error, Compiler()))
+            Id(ctrs.head._1,srcId)
+          }
         case None =>
           feedback(LocatedMessage("No constructor available for the specified type",srcId,Error, Compiler()))
           return (Seq(ret), producers)

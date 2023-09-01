@@ -11,6 +11,7 @@ class DefInstanceInterface(override val meta:Meta, private val inst: DefInstance
   override def version: String = inst.version
   override def classifier: Set[String] = inst.classifier
   override def generics: Seq[Generic] = inst.generics
+  override def priority: Int = inst.priority
   override def classApplies: Seq[Type] = inst.classApplies
   override def classTarget: CompLink = inst.classTarget
   override def implements: Seq[SigImplement] = inst.implements

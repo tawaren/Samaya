@@ -56,6 +56,8 @@ trait InstanceBuilder extends CompilerToolbox{
 
   override def visitTopInstance(wrapperCtx: MandalaParser.TopInstanceContext): Unit = {
     val ctx = wrapperCtx.instanceDef().asInstanceOf[InstanceContext]
+    val prioCtx = ctx.priority()
+    val priority = if (prioCtx != null) prioCtx.prio.getText.toInt else 0
     val localGenerics = withDefaultCaps(genericFunCapsDefault){
       visitGenericArgs(ctx.genericArgs())
     }
@@ -86,6 +88,7 @@ trait InstanceBuilder extends CompilerToolbox{
               }
               val inst = defInstance(
                 name,
+                priority,
                 localGenerics,
                 funClassLink,
                 classApplies,
@@ -105,6 +108,8 @@ trait InstanceBuilder extends CompilerToolbox{
   override def visitInstance(ctx: MandalaParser.InstanceContext):Unit = {
     val sourceId = sourceIdFromContext(ctx)
     val instName = visitName(ctx.name())
+    val prioCtx = ctx.priority()
+    val priority = if (prioCtx != null) prioCtx.prio.getText.toInt else 0
     val localGenerics = withDefaultCaps(genericFunCapsDefault){
       visitGenericArgs(ctx.genericArgs())
     }
@@ -138,7 +143,7 @@ trait InstanceBuilder extends CompilerToolbox{
               SigImplement(name,gen,fun, ImplFunc.Local(index, gen.map(_.asType(src)))(src), src)
             }
           }.toSeq
-          registerInstanceEntry(LocalInstanceEntry(instName,localGenerics, clazzLink, implements, classApplies, sourceId))
+          registerInstanceEntry(LocalInstanceEntry(instName,priority,localGenerics, clazzLink, implements, classApplies, sourceId))
         }
       case None =>
     }
@@ -162,9 +167,10 @@ trait InstanceBuilder extends CompilerToolbox{
     target.asStdFunc.map((name, localGenerics, _, sourceIdFromContext(ctx)))
   }
 
-  def defInstance(name:String, instanceGenerics:Seq[Generic], classTarget:CompLink, classApplies:Seq[Type], sigImplements:Seq[SigImplement], sourceId: SourceId): Instance = {
+  def defInstance(name:String, priority:Int, instanceGenerics:Seq[Generic], classTarget:CompLink, classApplies:Seq[Type], sigImplements:Seq[SigImplement], sourceId: SourceId): Instance = {
     val res = new MandalaDefInstanceCompilerOutput(
       name,
+      priority,
       instanceGenerics,
       classTarget,
       classApplies,

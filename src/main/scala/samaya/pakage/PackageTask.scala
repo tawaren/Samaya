@@ -4,9 +4,10 @@ import samaya.ProjectUtils.{buildIfMissing, processWitContextRepo, processWithAr
 import samaya.build.BuildTask.collectArg
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.unexpected
+import samaya.config.ConfigValue
 import samaya.jobs.IndependentJob
 import samaya.pakage.PackageTask.{TaskName, mode, repos, source, target}
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.service.AddressResolver.{Create, ReCreate}
 import samaya.plugin.service.TaskExecutor.IsClass
 import samaya.plugin.service.{AddressResolver, ContentRepositoryEncoder, JobExecutor, PackageEncoder, Selectors, TaskExecutor}

@@ -35,6 +35,8 @@ trait ComponentBuilder extends CompilerToolbox{
 
     override def toInterface(meta: Meta): Interface[MandalaModule] = new MandalaModuleInterface(meta, this)
 
+    var activeAdt:DataDef = null
+
     var availableEntries:Map[String,ModuleEntry] = Map.empty
     var reservedNames:Set[String] = Set.empty
     var localInstances: Seq[LocalInstanceEntry] = Seq.empty
@@ -55,6 +57,14 @@ trait ComponentBuilder extends CompilerToolbox{
     currentComponent = new ComponentBuilder(name, mode)
     val res = body
     currentComponent = oldBuilder
+    res
+  }
+
+  def withActiveAdt[T](adt:DataDef)(body: => T):T = {
+    assert(currentComponent.activeAdt == null)
+    currentComponent.activeAdt = adt
+    val res = body
+    currentComponent.activeAdt = null
     res
   }
 

@@ -5,7 +5,7 @@ import samaya.plugin.impl.compiler.mandala.MandalaCompiler
 import samaya.plugin.impl.compiler.mandala.components.clazz.{Class, SigClass}
 import samaya.plugin.impl.compiler.mandala.components.instance.{DefInstance, Instance}
 import samaya.plugin.impl.compiler.mandala.entry.SigImplement
-import samaya.structure.types.{Func, SigType, SourceId, StdFunc}
+import samaya.structure.types.{Func, Permission, SigType, SourceId, StdFunc}
 import samaya.structure.{FunctionSig, Generic, Package}
 import samaya.types.Context
 import samaya.validation.SignatureValidator
@@ -45,6 +45,10 @@ object InstanceValidator {
         for(si@SigImplement(name, generics, funTarget, implTarget, src) <- inst.implements) {
           SignatureValidator.validateFunction(funTarget, si, defContext)
           SignatureValidator.validateFunction(implTarget, si, defContext)
+
+          if(!funTarget.hasPermission(defContext, Permission.Call)){
+            feedback(LocatedMessage("instances must be implemented over globally accessible functions", src, Error, Checking()))
+          }
 
           if(generics.take(inst.generics.size) != inst.generics) {
             feedback(LocatedMessage("Generics on implementation must start with the same generics as the instance", src, Error, Checking()))

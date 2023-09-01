@@ -58,7 +58,7 @@ trait ModuleBuilder extends CompilerToolbox{
               val gImpl = Func.globalizeLocals(implInst.link,impl).asInstanceOf[ImplFunc]
               SigImplement(name,gens, gFun, gImpl,src)
           }
-          val res = defInstance(implDefName,inst.generics, inst.classTarget,globalizedClassApplies,globalizedImplements,inst.src)
+          val res = defInstance(implDefName,inst.priority,inst.generics, inst.classTarget,globalizedClassApplies,globalizedImplements,inst.src)
           build(res,inst.src)
         }
       }

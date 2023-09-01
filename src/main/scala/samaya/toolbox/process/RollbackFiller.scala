@@ -1,14 +1,11 @@
 package samaya.toolbox.process
 
-import samaya.structure.types.OpCode.{VirtualOpcode, ZeroSrcOpcodes}
 import samaya.structure.types.{SourceId, _}
 import samaya.structure.{Param, _}
 import samaya.toolbox.track.OwnershipTracker.Owned
-import samaya.toolbox.track.{OwnershipTracker, TypeTracker}
+import samaya.toolbox.track.OwnershipTracker
 import samaya.toolbox.transform.{EntryTransformer, TransformTraverser}
 import samaya.types.Context
-
-import scala.collection.immutable.ListMap
 
 object RollbackFiller extends EntryTransformer {
 

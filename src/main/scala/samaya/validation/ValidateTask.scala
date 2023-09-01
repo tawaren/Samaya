@@ -3,9 +3,10 @@ package samaya.validation
 import samaya.ProjectUtils
 import samaya.ProjectUtils.{getContextRepo, processDependencies, processWithArgRepos, traverseDependencies}
 import samaya.compilation.ErrorManager.{Checking, Error, PlainMessage, feedback}
+import samaya.config.ConfigValue
 import samaya.jobs.{IndependentJob, JobResultBuilder}
 import samaya.pakage.PackageTask.collectArg
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue, RawPluginCompanion}
+import samaya.plugin.config.{ConfigPluginCompanion, RawPluginCompanion}
 import samaya.plugin.service._
 import samaya.structure.LinkablePackage
 import samaya.types._

@@ -1,7 +1,8 @@
 package samaya.plugin.impl.validator
 
 import samaya.compilation.ErrorManager._
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.config.ConfigValue
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.impl.validator.BasicComponentValidator.validation
 import samaya.plugin.service.{ComponentValidator, Selectors}
 import samaya.structure.{CompiledModule, CompiledTransaction, Component, Module, Package, Transaction}

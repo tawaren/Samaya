@@ -6,6 +6,7 @@ import samaya.structure.types.{CompLink, ImplFunc, SourceId, StdFunc, Type}
 
 case class LocalInstanceEntry(
      name:String,
+     override val priority:Int,
      override val generics:Seq[Generic],
      override val classTarget:CompLink,
      override val implements: Seq[SigImplement],

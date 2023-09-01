@@ -10,4 +10,10 @@ trait InstInfo {
   def classTarget: CompLink
   def classApplies: Seq[Type]
   def implements: Seq[SigImplement]
+  def priority : Int
+  lazy val definingComp : Option[CompLink] = {
+    val res = implements.map(_.implTarget.definingComp).toSet
+    assert(res.size <= 1)
+    res.head
+  }
 }

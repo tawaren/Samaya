@@ -5,7 +5,8 @@ import JsonModel._
 import samaya.ProjectUtils.processWitContextRepo
 import samaya.codegen.{ModuleSerializer, NameGenerator}
 import samaya.compilation.ErrorManager.{Decoding, Error, PlainMessage, Warning, canProduceErrors, feedback}
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.config.ConfigValue
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.impl.inter.json.JsonInterfaceEncoder.format
 import samaya.plugin.service.AddressResolver.ContentExtensionLoader
 import samaya.structure.{LinkablePackage, Meta}

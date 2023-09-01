@@ -1,0 +1,102 @@
+
+---Tokens---
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt MintFHNW(u128(1000),read(auth),_):(store(accA))
+exec
+
+-- bench
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt MintFHNW(u128(1000),read(auth),_):(store(accA))
+bench_code
+--
+
+--- fails
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
+txt MintFHNW(u128(1000),read(auth),_):(store(accB))
+exec
+---
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt TransferFHNW(consume(accA),read(auth),u128(500),subject(B),_):(store(accA),store(accB))
+exec
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
+txt TransferFHNW(consume(accB),read(auth),u128(250),subject(A),_):(store(accB),store(accA2))
+exec
+
+--- fails
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
+txt TransferFHNW(consume(accB),read(auth),u128(500),subject(A),_):(store(accB),store(accA2))
+exec
+---
+
+---Purse---
+--- Sadly these can not be put into a single bundle due to Bug in Wallet ---
+
+-- combined
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt CreateFHNWPurse(subject(A),_):(assign(purseA), store(withdrawCapA), store(depositCapA))
+txt LoadFHNWPurse(consume(accA),read(auth),consume(purseA),read(depositCapA)):(assign(purseA))
+txt LoadFHNWPurse(consume(accA2),read(auth),consume(purseA),read(depositCapA)):(store(purseA))
+exec
+
+--
+
+bundle
+txt CreateFHNWPurse(subject(A),_):(store(purseA), store(withdrawCapA), store(depositCapA))
+exec
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt LoadFHNWPurse(consume(accA),read(auth),consume(purseA),read(depositCapA)):(store(purseA))
+exec
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt LoadFHNWPurse(consume(accA2),read(auth),consume(purseA),read(depositCapA)):(store(purseA))
+exec
+
+-- combined
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
+txt CreateFHNWPurse(subject(B),_):(assign(purseB), store(withdrawCapB), storeAssign(depositCapB))
+txt LoadFHNWPurse(consume(accB),read(auth),consume(purseB),read(depositCapB)):(store(purseB))
+exec
+---
+
+bundle
+txt CreateFHNWPurse(subject(B),_):(store(purseB), store(withdrawCapB), store(depositCapB))
+exec
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
+txt LoadFHNWPurse(consume(accB),read(auth),consume(purseB),read(depositCapB)):(store(purseB))
+exec
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt FHNWPurseTransfer(consume(purseA),read(withdrawCapA),read(auth),u128(500),consume(purseB),read(depositCapB)):(store(purseA), store(purseB))
+exec
+
+--- fails
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
+txt FHNWPurseTransfer(consume(purseA),read(withdrawCapA),read(auth),u128(500),consume(purseB),read(depositCapB)):(store(purseA), store(purseB))
+exec
+---
+
+--- fails
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
+txt FHNWPurseTransfer(consume(purseA),read(withdrawCapA),read(auth),u128(250),consume(purseB),read(depositCapB)):(store(purseA), store(purseB))
+exec
+---

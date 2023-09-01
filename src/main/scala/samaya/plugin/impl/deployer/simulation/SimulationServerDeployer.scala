@@ -4,11 +4,12 @@ import java.io.{ByteArrayOutputStream, DataInputStream, DataOutputStream}
 import java.net.Socket
 import java.nio.charset.StandardCharsets
 import samaya.compilation.ErrorManager._
+import samaya.config.ConfigValue
 import samaya.deploy.Deployer
 import samaya.plugin.service.Selectors
 import samaya.structure.{Interface, Module, Transaction}
 import samaya.structure.types.Hash
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue, RawPluginCompanion}
+import samaya.plugin.config.{ConfigPluginCompanion, RawPluginCompanion}
 
 object SimulationServerDeployer extends ConfigPluginCompanion {
   val host:ConfigValue[String] = arg("host|h").default("localhost")

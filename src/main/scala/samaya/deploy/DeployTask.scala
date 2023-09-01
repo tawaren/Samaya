@@ -3,8 +3,9 @@ package samaya.deploy
 import samaya.ProjectUtils.{buildIfMissing, processWitContextRepo, processWithArgRepos}
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.{Compiler, PlainMessage, canProduceErrors, feedback, producesErrorValue, unexpected}
+import samaya.config.ConfigValue
 import samaya.deploy.DeployTask.{TaskName, mode, repos, target, validation}
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.impl.compiler.mandala.validate.MandalaValidator.opt
 import samaya.plugin.service.{Selectors, TaskExecutor}
 import samaya.structure.types.Hash
@@ -115,7 +116,7 @@ object DeployTask extends ConfigPluginCompanion {
   ).default(Fresh)
 
   private val validation : ConfigValue[Boolean] = opt("deploy.validation|validation").default(true)
-    .warnIfFalse("Validation of Mandala modules and instances is disabled",ErrorManager.Deployer())
+    .warnIfFalse("Validation of packages is disabled",ErrorManager.Deployer())
 
   private val repos : ConfigValue[Seq[String]] = collectArg("deploy.repos|deploy.repositories|repositories|repos").default(Seq.empty)
 

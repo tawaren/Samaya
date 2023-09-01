@@ -13,7 +13,7 @@ class DefInstanceInterfaceImpl(override val location: JsonLocation, input:JsonMo
   override val language: String = input.language
   override val version: String = input.version
   override val classifier: Set[String] = input.classifier
-
+  override def priority: Int = input.priority
   override val generics: Seq[Generic] = {
     val genLoc = location.descendProperty("generics")
     input.generics.zipWithIndex.map(gi => GenericImpl(genLoc.descendProperty(gi._1.name), gi._1,gi._2))

@@ -22,9 +22,7 @@ object ProjectUtils {
 
     AddressResolver.resolve(parent.resolveAddress(ident), Workspace.Loader) match {
       case None => throw new Exception("Workspace not found");
-      case Some(value) =>
-        WorkspaceValidator.validateWorkspace(value)
-        value
+      case Some(value) => value
     }
   }
 

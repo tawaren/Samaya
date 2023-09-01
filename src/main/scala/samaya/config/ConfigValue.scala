@@ -1,8 +1,8 @@
-package samaya.plugin.config
+package samaya.config
 
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.{PlainMessage, Priority}
-import samaya.plugin.config.ConfigValue.ResultWrapper
+import samaya.config.ConfigValue.ResultWrapper
 
 import scala.language.implicitConversions
 

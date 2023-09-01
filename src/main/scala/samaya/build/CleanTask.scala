@@ -3,7 +3,8 @@ package samaya.build
 import samaya.ProjectUtils
 import samaya.build.CleanTask.{TaskName, target}
 import samaya.compilation.ErrorManager.canProduceErrors
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue, RawPluginCompanion}
+import samaya.config.ConfigValue
+import samaya.plugin.config.{ConfigPluginCompanion, RawPluginCompanion}
 import samaya.plugin.service.{AddressResolver, Selectors, TaskExecutor}
 import samaya.types.Workspace
 

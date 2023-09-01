@@ -15,9 +15,14 @@ trait ArityChecker extends TypeTracker{
   }
 
   override def traverseBlockStart(input: Seq[AttrId], result: Seq[Id], code: Seq[OpCode], origin: SourceId, stack: Stack): Stack = {
-    val bodyRes = code.filter(!_.isVirtual).last.rets.size;
-    if(code.filter(!_.isVirtual).last.rets.size != result.size) {
-      feedback(LocatedMessage(s"The block body returns $bodyRes values but ${result.size} values were expected", origin, Error, Checking(Priority)))
+    val nonVirtual = code.filter(!_.isVirtual)
+    if(nonVirtual.isEmpty){
+      feedback(LocatedMessage(s"The block body is empty", origin, Error, Checking(Priority)))
+    } else {
+      val bodyRes = nonVirtual.last.rets.size;
+      if(bodyRes != result.size) {
+        feedback(LocatedMessage(s"The block body returns $bodyRes values but ${result.size} values were expected", origin, Error, Checking(Priority)))
+      }
     }
     super.traverseBlockStart(input, result, code, origin, stack)
   }

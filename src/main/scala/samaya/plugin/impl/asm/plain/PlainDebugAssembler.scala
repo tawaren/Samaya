@@ -1,6 +1,7 @@
 package samaya.plugin.impl.asm.plain
 
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.config.ConfigValue
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.impl.asm.plain.PlainDebugAssembler.{Asm, format}
 
 import java.io.PrintStream

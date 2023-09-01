@@ -2,7 +2,8 @@ package samaya.plugin.impl.compiler.mandala.validate
 
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.{Builder, Compiler, PlainMessage}
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.config.ConfigValue
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.impl.compiler.mandala.components.instance.{DefInstance, ImplInstance, Instance}
 import samaya.plugin.impl.compiler.mandala.components.module.MandalaModule
 import samaya.plugin.impl.compiler.mandala.validate.MandalaValidator.validation
@@ -11,7 +12,7 @@ import samaya.structure.{CompiledModule, Component, Package}
 
 object MandalaValidator extends ConfigPluginCompanion {
   private val validation : ConfigValue[Boolean] = opt("mandala.component.validation|component.validation|validation").default(true)
-    .warnIfFalse("Validation of Mandala modules and instances is disabled",Compiler())
+    .warnIfFalse("Validation of Mandala modules, classes and instances is disabled",Compiler())
 }
 
 class MandalaValidator extends ComponentValidator {

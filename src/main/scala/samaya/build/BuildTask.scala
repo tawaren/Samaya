@@ -7,11 +7,12 @@ import samaya.build.BuildTask.{TaskName, repos, target, validation}
 import samaya.build.jobs.DependantWorkspaceCompilationJob
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager.{PlainMessage, canProduceErrors, feedback}
+import samaya.config.ConfigValue
 import samaya.plugin.service.{ContentRepositoryEncoder, JobExecutor, Selectors, TaskExecutor}
 import samaya.structure.LinkablePackage
 import samaya.types.{Repository, Workspace}
 import samaya.jobs.DependantJob
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.service.TaskExecutor.IsClass
 import samaya.repository.BuildRepository
 import samaya.validation.WorkspaceValidator
@@ -96,7 +97,7 @@ object BuildTask extends ConfigPluginCompanion {
   val target: ConfigValue[String] =  param(1).default("/")
 
   private val validation : ConfigValue[Boolean] = opt("build.validation|validation").default(true)
-    .warnIfFalse("Validation of Mandala modules and instances is disabled",ErrorManager.Builder())
+    .warnIfFalse("Validation of workspaces is disabled",ErrorManager.Builder())
 
   private val repos : ConfigValue[Seq[String]] = collectArg("build.repos|build.repositories|repositories|repos").default(Seq.empty)
 

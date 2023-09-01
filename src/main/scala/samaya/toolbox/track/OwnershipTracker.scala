@@ -15,7 +15,7 @@ trait OwnershipTracker extends TypeTracker {
 
   import OwnershipTracker._
 
-  //provide an implicit view of the stack that knows how to fetch / set types
+  //provide an implicit view of the stack that knows how to fetch ownership stati
   final implicit class OwnedStack(stack:Stack) {
     //returns None if Id does not exist
     def getStatus(id:Ref):SlotStatus = stack.getStatusInternal(id).getOrElse(Unknown)

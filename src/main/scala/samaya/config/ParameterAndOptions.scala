@@ -1,6 +1,6 @@
-package samaya.plugin.config
+package samaya.config
 
-import io.circe.{Json, JsonObject}
+import io.circe.Json
 
 import java.util.Properties
 import scala.collection.mutable
@@ -78,6 +78,8 @@ object ParameterAndOptions {
     }
     seq.result()
   }
+
+  val empty = new ParameterAndOptions(Seq.empty, Map.empty)
 
   def apply(_args:Array[String]):ParameterAndOptions = {
     val parameters = Seq.newBuilder[String]

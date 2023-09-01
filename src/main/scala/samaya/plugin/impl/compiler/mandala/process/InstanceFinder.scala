@@ -12,7 +12,9 @@ import samaya.structure.types.Type.RemoteLookup
 import samaya.structure.types.{CompLink, Func, SourceId, Type}
 import samaya.toolbox.process.TypeInference
 import samaya.types.Context
+
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 class InstanceFinder(imported:Map[CompLink,Seq[InstInfo]], localized:Map[CompLink,Seq[InstInfo]]) {
 
@@ -94,8 +96,30 @@ class InstanceFinder(imported:Map[CompLink,Seq[InstInfo]], localized:Map[CompLin
     imported ++ local ++ companion
   }
 
+  def prioritizeInstances(insts:Seq[(Seq[Type],InstInfo)]):Seq[(Seq[Type],InstInfo)] = {
+    if(insts.size <= 1) {
+      insts //This will be common so we s// speed up
+    } else {
+      val moduleMap = mutable.Map.empty[Option[CompLink], Seq[(Seq[Type],InstInfo)]]
+      val res = Seq.newBuilder[(Seq[Type],InstInfo)]
+      for(inst <- insts){
+        val key = inst._2.definingComp
+        val cur = moduleMap.getOrElse(key,Seq.empty)
+        moduleMap.put(key, cur :+ inst)
+      }
+
+      for((_, entries) <- moduleMap){
+        val highest = entries.map(_._2.priority).max
+        res.addAll(entries.filter(_._2.priority == highest))
+      }
+
+      res.result()
+    }
+  }
+
   def findAndApply(clazz:CompLink, clazzApplies:Seq[Type], functionApplies:Seq[Type], ctx:Context, src:SourceId)(f: InstInfo => Option[Func]):Option[Func] = {
-    val candidates = findInstances(clazz, clazzApplies, ctx, src).flatMap(mi =>  f(mi._2).map((mi._1,_))).toSet
+    val preCandidates = prioritizeInstances(findInstances(clazz, clazzApplies, ctx, src))
+    val candidates = preCandidates.flatMap(mi =>  f(mi._2).map((mi._1,_))).toSet
     val baseApplies = functionApplies.drop(clazzApplies.size)
     if(candidates.size == 1){
       Some(candidates.head match {
@@ -114,11 +138,12 @@ class InstanceFinder(imported:Map[CompLink,Seq[InstInfo]], localized:Map[CompLin
         case _ => "unknown"
       }
       if(candidates.isEmpty) {
+
         feedback(LocatedMessage(s"Instance resolution for class $cls failed",src,Error, Compiler()))
       } else {
         val pretty = candidates.map{
           case (matches, func) =>
-            //todo: we hav recursive pretty print -- how can we make better
+            //todo: we have recursive pretty print -- how can we make better
             val substitution = (matches ++ baseApplies).map(_.prettyString(ctx))
             func.prettyString(ctx, substitution)
         }

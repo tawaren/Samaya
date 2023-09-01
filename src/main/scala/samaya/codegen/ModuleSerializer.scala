@@ -5,9 +5,10 @@ import samaya.structure.{CompiledModule, DataDef, FunctionDef, FunctionSig, Gene
 import samaya.structure.types.Hash
 import samaya.structure.types._
 import samaya.types.Context
-import java.io.DataOutputStream
 
+import java.io.DataOutputStream
 import samaya.compilation.ErrorManager._
+import samaya.config.Config
 
 import scala.collection.mutable
 
@@ -221,8 +222,11 @@ object ModuleSerializer {
           //#[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash, Debug, Parsable, Serializable)]
           //pub struct Field {
           val field = ctr.field(i).get
-          // pub indexed:Vec<u8>     //indexes this is part of
-          out.writeByte(0)
+
+          if(Config.dataIndexes.value){
+            // pub indexed:Vec<u8>     //indexes this is part of
+            out.writeByte(0)
+          }
           // pub typ:TypeRef
           out.writeByte(collector.typeIndex(field.typ))
         }

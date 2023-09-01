@@ -1,6 +1,7 @@
 package samaya.plugin.impl.wp.dir
 
-import samaya.plugin.config.{ConfigPluginCompanion, ConfigValue}
+import samaya.config.ConfigValue
+import samaya.plugin.config.ConfigPluginCompanion
 import samaya.plugin.impl.wp.dir.ImplicitWorkSpaceEncoder.{defaultBuildDir, outputDirectory}
 import samaya.plugin.impl.wp.json.WorkspaceImpl
 import samaya.plugin.service.AddressResolver.Create

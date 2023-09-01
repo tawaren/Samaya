@@ -34,6 +34,8 @@ trait DataCompiler extends CompilerToolbox {
         visitAccessibilities(ctx.accessibilities())
       }
       val dataName = visitName(ctx.name)
+
+      //Do not change order
       registerDataDef(new DataDef {
         override val position: Int = nextPosition()
         override val index: Int = nextDataIndex()
@@ -42,11 +44,13 @@ trait DataCompiler extends CompilerToolbox {
         override val accessibility: Map[Permission, Accessibility] = access
         override val generics: Seq[Generic] = localGenerics
         override val external: Option[Short] = visitExt(ctx.ext())
-        override val constructors: Seq[Constructor] = visitCtrs(ctx.ctrs(),dataName)
         override val capabilities: Set[Capability] = withDefaultCaps(dataCapsDefault){
           visitCapabilities(ctx.capabilities())
         }
         override val src: SourceId = loc
+        override val constructors: Seq[Constructor] = withActiveAdt(this){
+          visitCtrs(ctx.ctrs(),dataName)
+        }
       })
     }
   }

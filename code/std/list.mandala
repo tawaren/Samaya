@@ -1,0 +1,160 @@
+//WIP
+
+module NodeUtils {
+    global data InspectResult[E, L] {
+        Last(e:E)
+        Full(e:E, lst:L)
+    }
+
+    global data InjectResult[L] {
+        Joint(l:L)
+        Overflow(fresh:L, old:L)
+    }
+}
+
+class NodeUtils[E,N] {
+   global function single(consume head:E):N
+   global function inspection(consume lst:N):NodeUtils.InspectResult[E, N]
+   global function insertion(consume head:E, consume tail:N):NodeUtils.InjectResult[N]
+}
+
+//Todo: If this is commented in Rest is not compiles )it should be a parse error)
+//import NodeUtils._
+
+module Node {
+    local data Node[E] {
+        One(fst:E)
+        Two(fst:E, snd:E)
+        Three(fst:E, snd:E, trd:E)
+        Four(fst:E, snd:E, trd:E, frt:E)
+    }
+
+    global function single[E](consume head:E):Node[E] = Node#One(head)
+
+    global function inspection[E](consume lst:Node[E]):NodeUtils.InspectResult[E, Node[E]] {
+        match lst with
+            | One(fst) => NodeUtils.InspectResult#Last(fst)
+            | Two(fst, snd) => NodeUtils.InspectResult#Full(fst, Node#One(snd))
+            | Three(fst, snd, trd) => NodeUtils.InspectResult#Full(fst, Node#Two(snd,trd))
+            | Four(fst, snd, trd, frt) => NodeUtils.InspectResult#Full(fst, Node#Three(snd,trd,frt))
+    }
+
+    global function insertion[E](consume head:E, consume tail:Node[E]):NodeUtils.InjectResult[Node[E]] {
+        match tail with
+            | One(fst) => NodeUtils.InjectResult#Joint(Node#Two(head, fst))
+            | Two(fst, snd) => NodeUtils.InjectResult#Joint(Node#Three(head, fst, snd))
+            | Three(fst, snd, trd) => NodeUtils.InjectResult#Joint(Node#Four(head, fst, snd, trd))
+            | Four(fst, snd, trd, frt) => NodeUtils.InjectResult#Overflow(Node#One(head), Node#Four(fst, snd, trd, frt))
+    }
+
+    priority(1) instance InspectResultForNode[E] for NodeUtils[E,Node[E]]{
+        implement single with single[E]
+        implement inspection with inspection[E]
+        implement insertion with insertion[E]
+    }
+
+    global function singleRec[E,N](consume head:E, implicit consume innerSingle:NodeUtils[E,N].single):Node[N] = Node#One(innerSingle(head))
+
+    global function inspectionRec[E,N](consume lst:Node[N], implicit consume innerInspect:NodeUtils[E,N].inspection):NodeUtils.InspectResult[E, Node[N]] {
+        match lst with
+            | One(fst) => {
+                match innerInspect(fst) with
+                    | Last(head) => NodeUtils.InspectResult#Last(head)
+                    | Full(head, tail) => NodeUtils.InspectResult#Full(head, Node#One(tail))
+            }
+            | Two(fst, snd) => {
+                match innerInspect(fst) with
+                    | Last(head) => NodeUtils.InspectResult#Full(head, Node#One(snd))
+                    | Full(head, tail) => NodeUtils.InspectResult#Full(head, Node#Two(tail, snd))
+            }
+            | Three(fst, snd, trd) => {
+                match innerInspect(fst) with
+                    | Last(head) => NodeUtils.InspectResult#Full(head, Node#Two(snd, trd))
+                    | Full(head, tail) => NodeUtils.InspectResult#Full(head, Node#Three(tail, snd, trd))
+            }
+            | Four(fst, snd, trd, frt) => {
+                match innerInspect(fst) with
+                    | Last(head) => NodeUtils.InspectResult#Full(head, Node#Three(snd, trd, frt))
+                    | Full(head, tail) => NodeUtils.InspectResult#Full(head, Node#Four(tail, snd, trd, frt))
+            }
+    }
+
+    global function insertionRec[E,N](consume head:E, consume tail:Node[N], implicit consume innerInsert:NodeUtils[E,N].insertion):NodeUtils.InjectResult[Node[N]] {
+        match tail with
+            | One(fst) => {
+                match innerInsert(head, fst) with
+                    | Joint(cur) => NodeUtils.InjectResult#Joint(Node#One(cur))
+                    | Overflow(fresh, old) => NodeUtils.InjectResult#Joint(Node#Two(fresh, old))
+            }
+            | Two(fst, snd) => {
+                match innerInsert(head, fst) with
+                    | Joint(cur) => NodeUtils.InjectResult#Joint(Node#Two(cur, snd))
+                    | Overflow(fresh, old) => NodeUtils.InjectResult#Joint(Node#Three(fresh, old, snd))
+            }
+            | Three(fst, snd, trd) => {
+                match innerInsert(head, fst) with
+                    | Joint(cur) => NodeUtils.InjectResult#Joint(Node#Three(cur, snd, trd))
+                    | Overflow(fresh, old) => NodeUtils.InjectResult#Joint(Node#Four(fresh, old, snd, trd))
+            }
+            | Four(fst, snd, trd, frt) => {
+                match innerInsert(head, fst) with
+                    | Joint(cur) => NodeUtils.InjectResult#Joint(Node#Four(cur, snd, trd, frt))
+                    | Overflow(fresh, old) => NodeUtils.InjectResult#Overflow(Node#One(fresh) ,Node#Four(old, snd, trd, frt))
+            }
+    }
+
+    priority(0) instance InspectResultForNodeRecursive[E,N] for NodeUtils[E,Node[N]]{
+        implement single with singleRec[E,N]
+        implement inspection with inspectionRec[E,N]
+        implement insertion with insertionRec[E,N]
+    }
+}
+
+module TreeList {
+    global data TreeList[N] {
+        Empty
+        Full(tree:N)
+    }
+
+    type MicroList[E] = TreeList[Node.Node[E]]
+    type ShortList[E] = TreeList[Node.Node[Node.Node[E]]]
+    type LimitedList[E] = TreeList[Node.Node[Node.Node[Node.Node[E]]]]
+    type LongList[E] = TreeList[Node.Node[Node.Node[Node.Node[Node.Node[E]]]]]
+
+    global function nil[N]():TreeList[N] = TreeList#Empty
+
+    global transactional function con[E,N](consume head:E, consume tail:TreeList[N],
+        implicit consume single:NodeUtils[E,N].single,
+        implicit consume insertion:NodeUtils[E,N].insertion
+    ):TreeList[N] {
+        match tail with
+            | Empty => TreeList#Full(single(head))
+            | Full(tree) => {
+                match insertion(head, tree) with
+                    | Joint(nTree) => TreeList#Full(nTree)
+                    | Overflow(_, _) => rollback
+            }
+    }
+
+    global transactional function headTail[E,N](consume list:TreeList[N], implicit consume inspection:NodeUtils[E,N].inspection):(E, TreeList[N]) {
+        match list with
+            | Empty => rollback
+            | Full(tree) => {
+                match inspection(tree) with
+                    | Last(head) => (head, TreeList#Empty)
+                    | Full(head, tail) => (head, TreeList#Full(tail))
+            }
+    }
+
+    global transactional function head[E,standard N](list:TreeList[N], implicit context consume inspection:NodeUtils[E,N].inspection):E {
+        let (head,_) = headTail(list) in head
+    }
+
+    global transactional function tail[affine E,relevant N](list:TreeList[N], implicit context consume inspection:NodeUtils[E,N].inspection):TreeList[N] {
+        let (_:E,tail) = headTail(list) in tail
+    }
+
+    global transactional function test[E](consume e1:E, consume e2:E):MicroList[E] = con(e1,con(e2, nil()))
+    global transactional function test2[E](consume e1:E, consume e2:E):LongList[E] = con(e1,con(e2, nil()))
+
+}
