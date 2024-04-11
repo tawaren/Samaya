@@ -65,8 +65,8 @@ trait ValueTracker extends Traverser {
   override def unproject(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = stack.push(res, origin,0)
 
   //multi value pushing methods
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = pushMany(res, origin, stack)
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = pushMany(res, origin, stack)
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = pushMany(res, origin, stack)
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = pushMany(res, origin, stack)
   override def rollback(res: Seq[AttrId], resTypes: Seq[Type], params: Seq[Ref], origin: SourceId, stack: Stack): Stack = pushMany(res, origin, stack)
   override def _return(res: Seq[AttrId], src: Seq[Ref], origin: SourceId, stack: Stack): Stack = pushMany(res, origin, stack)
   override def invoke(res: Seq[AttrId], func: Func, params: Seq[Ref], origin: SourceId, stack: Stack): Stack = pushMany(res, origin, stack)

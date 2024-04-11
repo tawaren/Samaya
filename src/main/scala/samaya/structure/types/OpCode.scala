@@ -49,16 +49,13 @@ object OpCode {
   case class Return(rets:Seq[AttrId], params:Seq[Ref], id:SourceId) extends OpCode
   case class Discard(src:Ref, id:SourceId) extends OpCode with ZeroResOpcodes with ZeroSrcOpcodes
   case class DiscardMany(params:Seq[Ref], id:SourceId) extends OpCode with ZeroResOpcodes
-  case class Unpack(rets:Seq[AttrId], override val src:Ref, mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes
-  case class InspectUnpack(rets:Seq[AttrId], override val src:Ref, id:SourceId) extends OpCode with SingleSourceOpcodes
+  case class Unpack(rets:Seq[AttrId], innerCtrTyp:Option[AdtType], override val src:Ref, mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes
+  case class InspectUnpack(rets:Seq[AttrId], innerCtrTyp:Option[AdtType], override val src:Ref, id:SourceId) extends OpCode with SingleSourceOpcodes
   case class Field(override val ret:AttrId, override val src:Ref, pos:Id, mode:FetchMode, id:SourceId) extends OpCode with SingleResOpcodes with SingleSourceOpcodes
-  case class Switch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
-  case class InspectSwitch(rets:Seq[AttrId], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
+  case class Switch(rets:Seq[AttrId], innerCtrTyp:Option[AdtType], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], mode:FetchMode, id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
+  case class InspectSwitch(rets:Seq[AttrId], innerCtrTyp:Option[AdtType], override val src:Ref, branches:ListMap[Id,(Seq[AttrId],Seq[OpCode])], id:SourceId) extends OpCode with SingleSourceOpcodes{assert(branches.nonEmpty)}
   case class Pack(override val ret:TypedId, params:Seq[Ref], tag:Id, mode:FetchMode, id:SourceId) extends OpCode with SingleTypedResOpcodes
-  //Todo: Repeated Invoke
-  //      Constraints: Params = Returns
-  //      Must be in transactional or try
-  //      Must Specify an abort Condition
+
 
   case class Invoke(rets:Seq[AttrId], func:Func, params:Seq[Ref], id:SourceId) extends OpCode
   case class TryInvoke(rets:Seq[AttrId], func:Func, override val essentialParams:Seq[(Boolean,Ref)], success:(Seq[AttrId],Seq[OpCode]), failure:(Seq[AttrId],Seq[OpCode]), id:SourceId) extends OpCode with EssentialSourceOpcodes

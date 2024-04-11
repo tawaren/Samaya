@@ -1,11 +1,13 @@
+/* Todo: Fix - it broke after update to Java-21
+
 package samaya.plugin.impl.executor.virtual
 
-import jdk.incubator.concurrent.StructuredTaskScope
 import samaya.compilation.ErrorManager
 import samaya.compilation.ErrorManager._
 import samaya.jobs.{DependantJob, IndependentJob, JobResultBuilder}
 import samaya.plugin.service.{JobExecutor, Selectors}
 
+import java.util.concurrent.StructuredTaskScope.Subtask
 import java.util.concurrent._
 import scala.util.Using
 
@@ -17,7 +19,7 @@ class VirtualThreadJobExecutor extends JobExecutor {
   override def matches(s: Selectors.JobExecutorSelector): Boolean = true
 
   class ParallelJobRunner[K,P](jobs:Map[K, DependantJob[K,P]]) {
-    val tasks :CompletableFuture[Map[K, Future[Option[P]]]] = new CompletableFuture()
+    val tasks :CompletableFuture[Map[K, Subtask[Option[P]]]] = new CompletableFuture()
     case class JobTask(key:K, job:DependantJob[K,P]) extends Callable[Option[P]] {
       override def call(): Option[P] = {
         val depsBuilder = Seq.newBuilder[P]
@@ -49,14 +51,14 @@ class VirtualThreadJobExecutor extends JobExecutor {
             case Some(task) => task.get() match {
               case Some(res) => resBuilder.addOne(res)
               case None =>
-                scope.join
+                scope.join()
                 scope.throwIfFailed()
                 return None
             }
             case None => unexpected("No task for dependency " + name + " available", Always)
           }
         }
-        scope.join
+        scope.join()
         scope.throwIfFailed()
         Some(resBuilder.result())
       }.get
@@ -81,3 +83,4 @@ class VirtualThreadJobExecutor extends JobExecutor {
     }
   }
 }
+*/

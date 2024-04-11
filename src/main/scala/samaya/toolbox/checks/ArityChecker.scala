@@ -58,8 +58,12 @@ trait ArityChecker extends TypeTracker{
     super.caseStart(fields, src, ctr, mode, origin, stack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src).projectionExtract {
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
+    typ.projectionExtract {
       case adt:AdtType =>
         val ctrs = adt.ctrs(context)
         if(ctrs.size != 1) {
@@ -74,11 +78,15 @@ trait ArityChecker extends TypeTracker{
         }
       case _ =>
     }
-    super.unpack(res, src, mode, origin, stack)
+    super.unpack(res, innerCtrTyp, src, mode, origin, stack)
   }
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src).projectionExtract {
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
+    typ.projectionExtract {
       case adt:AdtType =>
         val ctrs = adt.ctrs(context)
         if(ctrs.size != 1) {
@@ -93,7 +101,7 @@ trait ArityChecker extends TypeTracker{
         }
       case _ =>
     }
-    super.inspectUnpack(res, src, origin, stack)
+    super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {

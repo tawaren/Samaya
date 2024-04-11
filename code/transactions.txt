@@ -1,102 +1,84 @@
 
 ---Tokens---
 
-bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt MintFHNW(u128(1000),read(auth),_):(store(accA))
-exec
-
--- bench
-bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt MintFHNW(u128(1000),read(auth),_):(store(accA))
-bench_code
---
-
---- fails
-bundle
-txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
-txt MintFHNW(u128(1000),read(auth),_):(store(accB))
-exec
----
+exec InitFix(inject):(store(accA))
 
 bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt TransferFHNW(consume(accA),read(auth),u128(500),subject(B),_):(store(accA),store(accB))
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt TransferFix(consume(accA),read(auth),u128(4000),subject(B),inject):(store(accA),store(accB1))
 exec
 
 bundle
-txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
-txt TransferFHNW(consume(accB),read(auth),u128(250),subject(A),_):(store(accB),store(accA2))
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt TransferFix(consume(accA),read(auth),u128(4000),subject(B),inject):(store(accA),store(accB2))
 exec
 
 --- fails
 bundle
-txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
-txt TransferFHNW(consume(accB),read(auth),u128(500),subject(A),_):(store(accB),store(accA2))
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt TransferFix(consume(accA),read(auth),u128(4000),subject(B),inject):(store(accA),store(accB2))
 exec
 ---
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(auth))
+txt JoinFix(consume(accB1),consume(accB2),read(auth)):(store(accB))
+exec
+
 
 ---Purse---
---- Sadly these can not be put into a single bundle due to Bug in Wallet ---
+exec FixPurseCreate(subject(A),inject):(store(purseA),store(withdrawA),store(depositA))
 
--- combined
-
-bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt CreateFHNWPurse(subject(A),_):(assign(purseA), store(withdrawCapA), store(depositCapA))
-txt LoadFHNWPurse(consume(accA),read(auth),consume(purseA),read(depositCapA)):(assign(purseA))
-txt LoadFHNWPurse(consume(accA2),read(auth),consume(purseA),read(depositCapA)):(store(purseA))
-exec
-
---
+exec FixPurseCreate(subject(B),inject):(store(purseB),store(withdrawB),store(depositB))
 
 bundle
-txt CreateFHNWPurse(subject(A),_):(store(purseA), store(withdrawCapA), store(depositCapA))
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt UnlockFix(consume(accA),read(auth)):(assign(tokens))
+txt FixPurseDeposit(consume(tokens),consume(purseA),copy(depositA)):(store(purseA))
 exec
 
 bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt LoadFHNWPurse(consume(accA),read(auth),consume(purseA),read(depositCapA)):(store(purseA))
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(auth))
+txt UnlockFix(consume(accB),read(auth)):(assign(tokens))
+txt FixPurseDeposit(consume(tokens),consume(purseB),copy(depositB)):(store(purseB))
 exec
 
 bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt LoadFHNWPurse(consume(accA2),read(auth),consume(purseA),read(depositCapA)):(store(purseA))
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(auth))
+txt FixPurseWithdraw(consume(purseB),copy(withdrawB),read(auth),u128(5000)):(store(purseB),assign(tokens))
+txt FixPurseDeposit(consume(tokens),consume(purseA),copy(depositA)):(store(purseA))
 exec
 
--- combined
-bundle
-txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
-txt CreateFHNWPurse(subject(B),_):(assign(purseB), store(withdrawCapB), storeAssign(depositCapB))
-txt LoadFHNWPurse(consume(accB),read(auth),consume(purseB),read(depositCapB)):(store(purseB))
-exec
----
 
-bundle
-txt CreateFHNWPurse(subject(B),_):(store(purseB), store(withdrawCapB), store(depositCapB))
-exec
-
-bundle
-txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
-txt LoadFHNWPurse(consume(accB),read(auth),consume(purseB),read(depositCapB)):(store(purseB))
-exec
-
-bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt FHNWPurseTransfer(consume(purseA),read(withdrawCapA),read(auth),u128(500),consume(purseB),read(depositCapB)):(store(purseA), store(purseB))
-exec
 
 --- fails
 bundle
-txt AuthorizationPermFromEdDsa(pk(A),sig(A),_):(assign(auth))
-txt FHNWPurseTransfer(consume(purseA),read(withdrawCapA),read(auth),u128(500),consume(purseB),read(depositCapB)):(store(purseA), store(purseB))
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(auth))
+txt FixPurseWithdraw(consume(purseB),copy(depositB),read(auth),u128(5000)):(store(purseB),assign(tokens))
+txt FixPurseDeposit(consume(tokens),consume(purseA),copy(depositA)):(store(purseA))
 exec
 ---
 
---- fails
+-- Kitten --
+
 bundle
-txt AuthorizationPermFromEdDsa(pk(B),sig(B),_):(assign(auth))
-txt FHNWPurseTransfer(consume(purseA),read(withdrawCapA),read(auth),u128(250),consume(purseB),read(depositCapB)):(store(purseA), store(purseB))
+txt AuthorizationPermFromEdDsa(pk(C),sig(C),inject):(assign(auth))
+txt MintKitten(data(0xcceb5af8159645de0a1ac95a6ce49fa9dc924094),subject(A),read(auth),inject):(store(kitten1))
 exec
----
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt TransferKitten(consume(kitten1),read(auth),subject(B),inject):(store(kitten1))
+exec
+
+
+-- Sell --
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(authA))
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(authB))
+txt TransferKitten(consume(kitten1),read(authB),subject(A),inject):(store(kitten1))
+txt FixPurseWithdraw(consume(purseA),copy(withdrawA),read(authA),u128(7000)):(store(purseA),assign(pay))
+txt FixPurseDeposit(consume(pay),consume(purseB),copy(depositB)):(store(purseB))
+exec
+

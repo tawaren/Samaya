@@ -102,9 +102,9 @@ trait OwnershipTracker extends TypeTracker {
     super.discard(trg, origin, nStack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     val srcValOpt = stack.resolve(src)
-    val nStack = super.unpack(res, src, mode, origin, stack)
+    val nStack = super.unpack(res, innerCtrTyp, src, mode, origin, stack)
     mode match {
       //we just assume the infere will end up as copy (is better as just not putting anything)
       case FetchMode.Copy | FetchMode.Infer => res.foldLeft(nStack){case (s,e) => s.withOwned(e)}
@@ -112,9 +112,9 @@ trait OwnershipTracker extends TypeTracker {
     }
   }
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
     val srcValOpt = stack.resolve(src)
-    val nStack = super.inspectUnpack(res, src, origin, stack)
+    val nStack = super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
     val locks = lockStack.pop()
     lockStack.push(srcValOpt +: locks)
     res.foldLeft(nStack.lock(srcValOpt)){case (s,e) => s.withReadOnly(e)}

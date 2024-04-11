@@ -9,7 +9,6 @@ import scala.collection.immutable.ListMap
 // This tracker tracks the active ids and assosiated values
 // It does only check the bare minimum of constraints needed to provide its functionality
 // All the checking is done by the frameState (see their for details)
-//todo: make helper fun for ctrs that extend with unknown
 abstract class ViewTraverser extends Traverser {
 
   def traverse(): Unit = {
@@ -48,11 +47,11 @@ abstract class ViewTraverser extends Traverser {
       case OpCode.Fetch(res, src, mode, id) => fetch(res, src, mode, id, stack)
       case OpCode.Discard(trg, id) => discard(trg, id,stack)
       case OpCode.DiscardMany(trgs, id) => trgs.foldLeft(stack){ (s, v) => discard(v,id,s)}
-      case OpCode.Unpack(res, src, mode, id) => unpack(res, src, mode, id, stack)
-      case OpCode.InspectUnpack(res, src, id) => inspectUnpack(res, src, id, stack)
+      case OpCode.Unpack(res, typ, src, mode, id) => unpack(res, typ, src, mode, id, stack)
+      case OpCode.InspectUnpack(res, typ, src, id) => inspectUnpack(res, typ, src, id, stack)
       case OpCode.Field(res, src, fieldName, mode, id) => field(res, src, fieldName, mode, id, stack)
-      case OpCode.Switch(res, src, branches, mode, id) => branchLocal(res, src, branches, Some(mode), id, stack)
-      case OpCode.InspectSwitch(res, src, branches, id) => branchLocal(res, src, branches, None, id, stack)
+      case OpCode.Switch(res, typ, src, branches, mode, id) => branchLocal(res, typ, src, branches, Some(mode), id, stack)
+      case OpCode.InspectSwitch(res, typ, src, branches, id) => branchLocal(res, typ, src, branches, None, id, stack)
       case OpCode.Pack(res, src, ctr, mode, id) => pack(res,src,ctr,mode,id,stack)
       case OpCode.Invoke(res, func, param, id) => invoke(res, func, param, id, stack)
       case OpCode.InvokeSig(res, src, param, id) => invokeSig(res, src, param, id, stack)
@@ -73,11 +72,11 @@ abstract class ViewTraverser extends Traverser {
     letAfter(res, block, origin, fState)
   }
 
-  private def branchLocal(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: Option[FetchMode], origin: SourceId, stack: State) = {
+  private def branchLocal(res: Seq[AttrId], typ:Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: Option[FetchMode], origin: SourceId, stack: State) = {
     val newState = if(mode.isDefined) {
-      switchBefore(res, src, branches, mode.get, origin, stack)
+      switchBefore(res, typ, src, branches, mode.get, origin, stack)
     } else {
-      inspectSwitchBefore(res, src, branches, origin, stack)
+      inspectSwitchBefore(res, typ, src, branches, origin, stack)
     }
 
     val branchStates = branches.zipWithIndex.map { case ((ctrName, (intro, code)), idx) =>
@@ -94,9 +93,9 @@ abstract class ViewTraverser extends Traverser {
     }
 
     if(mode.isDefined) {
-      switchAfter(res, src, branches, mode.get, origin, fState)
+      switchAfter(res, typ, src, branches, mode.get, origin, fState)
     } else {
-      inspectSwitchAfter(res, src, branches, origin, fState)
+      inspectSwitchAfter(res, typ, src, branches, origin, fState)
     }
   }
 

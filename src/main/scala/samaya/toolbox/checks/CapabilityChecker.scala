@@ -47,26 +47,32 @@ trait CapabilityChecker extends TypeTracker{
     super.fetch(res, src, mode, origin, stack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    val typ = stack.getType(src)
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
     mode match {
       case FetchMode.Copy => if(!typ.hasCap(context,Capability.Copy)) {
         feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the unpack opcode must have the copy capability", origin, Error, Checking(Priority)))
       }
       case _ =>
     }
-    super.unpack(res, src, mode, origin, stack)
+    super.unpack(res, innerCtrTyp, src, mode, origin, stack)
   }
 
-  override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    val typ = stack.getType(src)
+  override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
     mode match {
       case FetchMode.Copy => if(!typ.hasCap(context,Capability.Copy)) {
         feedback(LocatedMessage(s"The value with type ${typ.prettyString(context, gens)} copied with the switch opcode must have the copy capability", origin, Error, Checking(Priority)))
       }
       case _ =>
     }
-    super.switchBefore(res, src, branches, mode, origin,stack)
+    super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, stack)
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {

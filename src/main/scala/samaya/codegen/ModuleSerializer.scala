@@ -134,7 +134,7 @@ object ModuleSerializer {
     for((f,i) <- module.functions.zipWithIndex) {
       //todo real error
       assert(f.index == i)
-      serializeFunction(out, f, context, false)
+      serializeFunction(out, f, context, isTransaction = false)
     }
 
     ////A Module has Implementations
@@ -218,13 +218,17 @@ object ModuleSerializer {
         //  pub fields:Vec<Field>
         val fields = ctr.fields.length
         out.writeByte(fields)
-        for(i <- 0 until fields) {
+        for(j <- 0 until fields) {
           //#[derive(Ord, PartialOrd, Eq, PartialEq, Clone, Hash, Debug, Parsable, Serializable)]
           //pub struct Field {
-          val field = ctr.field(i).get
+          val field = ctr.field(j).get
 
+          // pub indexed:Vec<u8>
           if(Config.dataIndexes.value){
-            // pub indexed:Vec<u8>     //indexes this is part of
+            // Even if enabled we do not support yet
+            out.writeByte(0)
+          } else {
+            // If indexes disabled, the target expects a empty Vector
             out.writeByte(0)
           }
           // pub typ:TypeRef

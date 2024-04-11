@@ -65,13 +65,13 @@ trait PositionTracker extends ValueTracker {
     nStack.withPos(res,stack.stackSize())
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    val nStack = super.unpack(res, src, mode, origin, stack)
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    val nStack = super.unpack(res, innerCtrTyp, src, mode, origin, stack)
     placeMany(res, stack.stackSize(), nStack)
   }
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
-    val nStack = super.inspectUnpack(res, src, origin, stack)
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    val nStack = super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
     placeMany(res, stack.stackSize(), nStack)
   }
 

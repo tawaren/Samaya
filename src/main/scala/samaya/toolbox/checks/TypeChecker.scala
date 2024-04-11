@@ -141,25 +141,44 @@ trait TypeChecker extends TypeTracker{
     super.unproject(res, src, origin, stack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     stack.getType(src).projectionExtract {
-      case _: AdtType =>
-      case typ =>
-        if(!typ.isUnknown){
-        feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error, Checking(Priority)))
+      case adt: AdtType => innerCtrTyp match {
+        case Some(t) => if(adt != t || t.isUnknown) {
+          feedback(LocatedMessage(s"Type ${adt.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error, Checking(Priority)))
+        }
+        case None =>
+      }
+      case oTyp => innerCtrTyp match {
+        case Some(t) => if(oTyp != t || t.isUnknown) {
+          feedback(LocatedMessage(s"Type ${oTyp.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error, Checking(Priority)))
+        }
+        case None => if(!oTyp.isUnknown) {
+          feedback(LocatedMessage(s"Type ${oTyp.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error, Checking(Priority)))
+        }
       }
     }
-    super.unpack(res, src, mode, origin, stack)
+    super.unpack(res, innerCtrTyp, src, mode, origin, stack)
   }
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
     stack.getType(src).projectionExtract {
-      case _: AdtType =>
-      case typ => if(!typ.isUnknown){
-        feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be deconstructed with a inspect unpack instruction", origin, Error, Checking(Priority)))
+      case adt: AdtType => innerCtrTyp match {
+        case Some(t) => if(adt != t || t.isUnknown) {
+          feedback(LocatedMessage(s"Type ${adt.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error, Checking(Priority)))
+        }
+        case None =>
+      }
+      case oTyp => innerCtrTyp match {
+        case Some(t) => if(oTyp != t || t.isUnknown) {
+          feedback(LocatedMessage(s"Type ${oTyp.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error, Checking(Priority)))
+        }
+        case None => if(!oTyp.isUnknown) {
+          feedback(LocatedMessage(s"Type ${oTyp.prettyString(context,gens)} can not be deconstructed with a unpack instruction", origin, Error, Checking(Priority)))
+        }
       }
     }
-    super.inspectUnpack(res, src, origin, stack)
+    super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
   }
 
 
@@ -173,24 +192,50 @@ trait TypeChecker extends TypeTracker{
     super.field(res, src, fieldName, mode, origin, stack)
   }
 
-  override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src).projectionExtract {
-      case _: AdtType =>
+  override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    val ctrType = stack.getType(src).projectionExtract {
+      case srcType => innerCtrTyp match {
+        case Some(t) => if(t != srcType){
+          feedback(LocatedMessage(s"Type ${srcType.prettyString(context,gens)} does not match expected type ${t.prettyString(context,gens)}", origin, Error, Checking(Priority)))
+          t
+        } else {
+          t
+        }
+        case None => srcType
+      }
+    }
+    ctrType match {
+      case adt: AdtType => if(!branches.keys.map(_.name).forall(adt.ctrs(context).contains)){
+        feedback(LocatedMessage(s"Type ${adt.prettyString(context,gens)} can not be deconstructed with a switch instruction useing the constructors ${branches.keys.map(_.name)}", origin, Error, Checking(Priority)))
+      }
       case typ => if(!typ.isUnknown){
         feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be deconstructed with a switch instruction", origin, Error, Checking(Priority)))
       }
     }
-    super.switchBefore(res, src, branches, mode, origin, stack)
+    super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, stack)
   }
 
-  override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src).projectionExtract{
-      case _: AdtType =>
+  override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+    val ctrType = stack.getType(src).projectionExtract {
+      case srcType => innerCtrTyp match {
+        case Some(t) => if(t != srcType){
+          feedback(LocatedMessage(s"Type ${srcType.prettyString(context,gens)} does not match expected type ${t.prettyString(context,gens)}", origin, Error, Checking(Priority)))
+          t
+        } else {
+          t
+        }
+        case None => srcType
+      }
+    }
+    ctrType match {
+      case adt: AdtType => if(!branches.keys.map(_.name).forall(adt.ctrs(context).contains)){
+        feedback(LocatedMessage(s"Type ${adt.prettyString(context,gens)} can not be deconstructed with a switch instruction useing the constructors ${branches.keys.map(_.name)}", origin, Error, Checking(Priority)))
+      }
       case typ => if(!typ.isUnknown) {
         feedback(LocatedMessage(s"Type ${typ.prettyString(context,gens)} can not be inspected", origin, Error, Checking(Priority)))
       }
     }
-    super.inspectSwitchBefore(res, src, branches, origin, stack)
+    super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, stack)
   }
 
   override def rollback(res: Seq[AttrId], resTypes: Seq[Type], params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {

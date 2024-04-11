@@ -50,11 +50,11 @@ abstract class TransformTraverser extends Transformer {
       case ((acc, nStack), code@OpCode.Return(res, src, id)) => transform(nStack,acc,code, _return(res, src, id, _))
       case ((acc, nStack), code@OpCode.Discard(trg, id)) => transform(nStack,acc,code, discard(trg, id, _))
       case ((acc, nStack), code@OpCode.DiscardMany(trgs, id)) => transform(nStack,acc,code, trgs.foldLeft(_) { (s, v) => discard(v, id, s) })
-      case ((acc, nStack), code@OpCode.Unpack(res, src, mode, id)) => transform(nStack,acc,code,unpack(res, src, mode, id, _))
-      case ((acc, nStack), code@OpCode.InspectUnpack(res, src, id)) => transform(nStack,acc,code,inspectUnpack(res, src, id, _))
+      case ((acc, nStack), code@OpCode.Unpack(res, typ, src, mode, id)) => transform(nStack,acc,code,unpack(res, typ, src, mode, id, _))
+      case ((acc, nStack), code@OpCode.InspectUnpack(res, typ, src, id)) => transform(nStack,acc,code,inspectUnpack(res, typ, src, id, _))
       case ((acc, nStack), code@OpCode.Field(res, src, pos, mode, id)) => transform(nStack,acc,code,field(res, src, pos, mode, id, _))
-      case ((acc, nStack), OpCode.Switch(res, src, branches, mode, id)) => transformLocal(nStack,acc, transformBranchLocal(res, src, branches, Some(mode), id, _))
-      case ((acc, nStack), OpCode.InspectSwitch(res, src, branches, id)) => transformLocal(nStack,acc, transformBranchLocal(res, src, branches, None, id, _))
+      case ((acc, nStack), OpCode.Switch(res, typ, src, branches, mode, id)) => transformLocal(nStack,acc, transformBranchLocal(res, typ, src, branches, Some(mode), id, _))
+      case ((acc, nStack), OpCode.InspectSwitch(res, typ, src, branches, id)) => transformLocal(nStack,acc, transformBranchLocal(res, typ, src, branches, None, id, _))
       case ((acc, nStack), code@OpCode.Pack(res, src, tag, mode, id)) => transform(nStack,acc,code,pack(res, src, tag, mode, id, _))
       case ((acc, nStack), code@OpCode.Invoke(res, func, param, id)) => transform(nStack,acc,code,invoke(res, func, param, id, _))
       case ((acc, nStack), OpCode.TryInvoke(res, src, branches, success, failure, id)) => transformLocal(nStack,acc, transformTryInvokeLocal(res, Left(src), branches, success, failure, id, _))
@@ -74,11 +74,11 @@ abstract class TransformTraverser extends Transformer {
     (OpCode.Let(res, code, origin), letAfter(res, code, origin, fState))
   }
 
-  private def transformBranchLocal(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: Option[FetchMode], origin: SourceId, stack: State): (OpCode with OpCode.SingleSourceOpcodes, State) = {
+  private def transformBranchLocal(res: Seq[AttrId], typ:Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: Option[FetchMode], origin: SourceId, stack: State): (OpCode with OpCode.SingleSourceOpcodes, State) = {
     val (isInspect, newState) = if(mode.isDefined) {
-      (false, switchBefore(res, src, branches, mode.get, origin, stack))
+      (false, switchBefore(res, typ, src, branches, mode.get, origin, stack))
     } else {
-      (true, inspectSwitchBefore(res, src, branches, origin, stack))
+      (true, inspectSwitchBefore(res, typ, src, branches, origin, stack))
     }
 
     val branchStates = branches.zipWithIndex.map { case ((ctrName, (intro, code)), idx) =>
@@ -99,9 +99,9 @@ abstract class TransformTraverser extends Transformer {
     }
 
     if(!isInspect) {
-      (OpCode.Switch(res, src, nBranches, mode.get, origin), switchAfter(res, src, nBranches, mode.get, origin, fState))
+      (OpCode.Switch(res, typ, src, nBranches, mode.get, origin), switchAfter(res, typ, src, nBranches, mode.get, origin, fState))
     } else {
-      (OpCode.InspectSwitch(res, src, nBranches, origin), inspectSwitchAfter(res, src, nBranches, origin, fState))
+      (OpCode.InspectSwitch(res, typ, src, nBranches, origin), inspectSwitchAfter(res, typ, src, nBranches, origin, fState))
     }
   }
 

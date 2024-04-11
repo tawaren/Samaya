@@ -7,7 +7,7 @@ import core.Id
 // And thus we can do things like send tokens to whoever owns an asset
 // And whoever can access the Asset, can access the Assets Private Id and thus can access the tokens
 module Asset {
-   global(inspect) local linear data Asset[T](id:Id.Private, assetData:T)
+   local linear data Asset[T](id:Id.Private, assetData:T)
 
    guarded[T] transactional function mint[T](consume assetData:T, implicit consume gen:IdGenerator):(res:Asset[T], newGen:IdGenerator){
     let (id, newGen) = uniqueID(gen) in (Asset#(id, assetData), newGen)
@@ -15,8 +15,7 @@ module Asset {
 
    //We return assetData, so that it we are not restricted to affine assetData
    guarded[T] function burn[T](consume ass1:Asset[T]):T = let Asset(id, assetData) = ass1 in assetData
-
-   global function getId[T](ass1:Asset[T]):Id.Private = ass1.id
+   global function getId[T](ass1:Asset[T]):Id.Public = <ass1.id>
    global function getData[relevant T](ass1:Asset[T]):T = ass1.assetData
 
 }

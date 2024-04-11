@@ -163,24 +163,40 @@ object TypeInference extends EntryTransformer {
       super.unproject(res, src, origin, infStack)
     }
 
-    override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       val infStack = eagerInference(src, stack)
-      super.switchBefore(res, src, branches, mode, origin, infStack)
+      innerCtrTyp match {
+        case Some(eTyp) => infStack.getType(src).projectionExtract(t => unify(t, eTyp))
+        case None =>
+      }
+      super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, infStack)
     }
 
-    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+    override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
       val infStack = eagerInference(src, stack)
-      super.inspectSwitchBefore(res, src, branches, origin, infStack)
+      innerCtrTyp match {
+        case Some(eTyp) => infStack.getType(src).projectionExtract(t => unify(t, eTyp))
+        case None =>
+      }
+      super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, infStack)
     }
 
-    override def unpack(fields: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def unpack(fields: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       val infStack = eagerInference(src, stack)
-      super.unpack(fields, src, mode, origin, infStack)
+      innerCtrTyp match {
+        case Some(eTyp) => infStack.getType(src).projectionExtract(t => unify(t, eTyp))
+        case None =>
+      }
+      super.unpack(fields, innerCtrTyp, src, mode, origin, infStack)
     }
 
-    override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    override def inspectUnpack(fields: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
       val infStack = eagerInference(src, stack)
-      super.inspectUnpack(fields, src, origin, infStack)
+      innerCtrTyp match {
+        case Some(eTyp) => infStack.getType(src).projectionExtract(t => unify(t, eTyp))
+        case None =>
+      }
+      super.inspectUnpack(fields, innerCtrTyp, src, origin, infStack)
     }
 
     override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {

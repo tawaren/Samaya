@@ -145,26 +145,26 @@ class ImplicitInjector(instancesFinder:InstanceFinder)  extends EntryTransformer
       nStack
     }
 
-    override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: State): State = {
-      val nStack = super.unpack(res,src,mode,origin,stack)
+    override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): State = {
+      val nStack = super.unpack(res, innerCtrTyp, src, mode, origin, stack)
       recordAll(res, nStack)
       nStack
     }
 
-    override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: State): State = {
-      val nStack = super.inspectUnpack(res,src,origin,stack)
+    override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): State = {
+      val nStack = super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
       recordAll(res, nStack)
       nStack
     }
 
-    override def switchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: State): State = {
-      val nStack = super.switchAfter(res,src,branches,mode,origin,stack)
+    override def switchAfter(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): State = {
+      val nStack = super.switchAfter(res, innerCtrTyp, src, branches, mode, origin, stack)
       recordAll(res, nStack)
       nStack
     }
 
-    override def inspectSwitchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: State): State = {
-      val nStack = super.inspectSwitchAfter(res,src,branches,origin,stack)
+    override def inspectSwitchAfter(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): State = {
+      val nStack = super.inspectSwitchAfter(res, innerCtrTyp, src, branches, origin, stack)
       recordAll(res, nStack)
       nStack
     }

@@ -25,19 +25,19 @@ object CodeSerializer {
       super.lit(res, value, origin, stack)
     }
 
-    override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       val perm = mode match {
         case FetchMode.Copy | FetchMode.Infer => Permission.Inspect
         case FetchMode.Move => Permission.Consume
       }
       imports.addType(stack.getType(src), Some(perm))
-      super.unpack(res, src, mode, origin, stack)
+      super.unpack(res, innerCtrTyp, src, mode, origin, stack)
     }
 
 
-    override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    override def inspectUnpack(fields: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
       imports.addType(stack.getType(src), Some(Permission.Inspect))
-      super.inspectUnpack(fields, src, origin, stack)
+      super.inspectUnpack(fields, innerCtrTyp, src, origin, stack)
     }
 
     override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
@@ -49,14 +49,14 @@ object CodeSerializer {
       super.field(res, src, fieldName, mode, origin, stack)
     }
 
-    override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       imports.addType(stack.getType(src), Some(Permission.Consume))
-      super.switchBefore(res, src, branches, mode, origin, stack)
+      super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, stack)
     }
 
-    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+    override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
       imports.addType(stack.getType(src), Some(Permission.Inspect))
-      super.inspectSwitchBefore(res, src, branches, origin, stack)
+      super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, stack)
     }
 
     override def pack(res: TypedId, srcs: Seq[Ref], ctr: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
@@ -179,13 +179,11 @@ object CodeSerializer {
     }
     //)
 
-
-
     // --[6]DiscardMany(Vec<ValueRef>)-- <| Not used
 
     //[7]CopyUnpack(
     //[8]Unpack(
-    override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       out.writeByte(fetchOffset(7, mode))
       //ValueRef
       //todo: assert size & better error handling
@@ -193,12 +191,12 @@ object CodeSerializer {
       //PermRef
       //todo: better absent error handling
       out.writeByte(imports.permIndex(stack.getType(src)))
-      super.unpack(res, src, mode, origin, stack)
+      super.unpack(res, innerCtrTyp, src, mode, origin, stack)
     }
     //)
 
     //[9] InspectUnpack(
-    override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    override def inspectUnpack(fields: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
       out.writeByte(9)
       //ValueRef
       //todo: assert size & better error handling
@@ -206,7 +204,7 @@ object CodeSerializer {
       //PermRef
       //todo: better absent error handling
       out.writeByte(imports.permIndex(stack.getType(src)))
-      super.inspectUnpack(fields, src, origin, stack)
+      super.inspectUnpack(fields, innerCtrTyp, src, origin, stack)
     }
 
     //[10]CopyField(
@@ -230,7 +228,7 @@ object CodeSerializer {
 
     //[12]CopySwitch(
     //[13]Switch(
-    override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       out.writeByte(fetchOffset(12, mode))
       //ValueRef
       //todo: assert size & better error handling
@@ -240,12 +238,12 @@ object CodeSerializer {
       out.writeByte(imports.permIndex(stack.getType(src)))
       //Vec<Exp> -- we only write size, the expressions are written by traverser
       out.writeByte(branches.size)
-      super.switchBefore(res, src, ListMap.empty, mode, origin, stack)
+      super.switchBefore(res, innerCtrTyp, src, ListMap.empty, mode, origin, stack)
     }
     //)
 
     //[14]InspectSwitch(
-    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+    override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
       out.writeByte(14)
       //ValueRef
       //todo: assert size & better error handling
@@ -255,7 +253,7 @@ object CodeSerializer {
       out.writeByte(imports.permIndex(stack.getType(src)))
       //Vec<Exp> -- we only write size, the expressions are written by traverser
       out.writeByte(branches.size)
-      super.inspectSwitchBefore(res, src, branches, origin, stack)
+      super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, stack)
     }
     //)
 

@@ -306,10 +306,11 @@ trait ExpressionBuilder extends CompilerToolbox{
   def visitUnpackPattern(ctx: PatternsContext, inputRef:Ref): (Set[String], Seq[OpCode]) = {
     val (ids, binds, processors) = visitPatterns(ctx)
     val sourceId = sourceIdFromContext(ctx)
+    //Todo: Scan avaiable types for Ctr's and ifere type in the future (will need Ctr indexing)
     val unpackCode = if(inspectModeOn) {
-      OpCode.InspectUnpack(ids,inputRef, sourceId)
+      OpCode.InspectUnpack(ids, None, inputRef, sourceId)
     } else {
-      OpCode.Unpack(ids,inputRef, FetchMode.Infer, sourceId)
+      OpCode.Unpack(ids, None, inputRef, FetchMode.Infer, sourceId)
     }
     (binds, unpackCode +: processors)
   }
@@ -520,7 +521,8 @@ trait ExpressionBuilder extends CompilerToolbox{
     val arg = args.headOption.getOrElse(freshIdFromContext(ctx))
     val branches =  ListMap(Id("True",inSrc) -> (Seq.empty, inCase), Id("False", condSrc) -> (Seq.empty, Seq(rollback)))
     val retIds = getExpReturns(ctx,inRets.size)
-    (retIds, producers :+ OpCode.Switch(retIds.map(idAttr),arg,branches,FetchMode.Infer,sourceIdFromContext(ctx)))
+    //Todo: Figure out how to refer to boolean type (or use indexed ctrs)
+    (retIds, producers :+ OpCode.Switch(retIds.map(idAttr), None, arg,branches,FetchMode.Infer,sourceIdFromContext(ctx)))
 
   }
 
@@ -542,7 +544,8 @@ trait ExpressionBuilder extends CompilerToolbox{
     val branches =  ListMap(Id("True",thenSrc) -> (Seq.empty, thenCase), Id("False", elseScr) -> (Seq.empty, elseCase))
     val returns = thenRets.size.max(elseRets.size)
     val retIds = getExpReturns(ctx,returns)
-    (retIds, producers :+ OpCode.Switch(retIds.map(idAttr),arg,branches,FetchMode.Infer,sourceIdFromContext(ctx)))
+    //Todo: indexed ctrs or figure out how to address boolean type
+    (retIds, producers :+ OpCode.Switch(retIds.map(idAttr), None, arg,branches,FetchMode.Infer,sourceIdFromContext(ctx)))
 
   }
 
@@ -563,7 +566,8 @@ trait ExpressionBuilder extends CompilerToolbox{
     val branches = branchInfo.map(b => (b._1, (b._2._1, b._2._3)))
     val returns = branchInfo.map(_._2._2.size).max
     val retIds = getExpReturns(ctx,returns)
-    (retIds, producers :+ OpCode.Switch(retIds.map(idAttr),arg,branches,FetchMode.Infer,sourceIdFromContext(ctx)))
+    //Todo: Infere switch from ctrs (needs ctr index in pkgs)
+    (retIds, producers :+ OpCode.Switch(retIds.map(idAttr), None, arg,branches,FetchMode.Infer,sourceIdFromContext(ctx)))
   }
 
   override def visitInspect(ctx: MandalaParser.InspectContext): (Seq[Id], Seq[OpCode]) = {
@@ -583,7 +587,8 @@ trait ExpressionBuilder extends CompilerToolbox{
     val branches = branchInfo.map(b => (b._1, (b._2._1, b._2._3)))
     val returns = branchInfo.map(_._2._2.size).max
     val retIds = getExpReturns(ctx,returns)
-    (retIds, producers :+ OpCode.InspectSwitch(retIds.map(idAttr),arg,branches,sourceIdFromContext(ctx)))
+    //Todo: Infere switch from ctrs (needs ctr index in pkgs)
+    (retIds, producers :+ OpCode.InspectSwitch(retIds.map(idAttr),None, arg,branches,sourceIdFromContext(ctx)))
   }
 
   //We need special exception here as baseRef can refer to a value

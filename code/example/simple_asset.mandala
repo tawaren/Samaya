@@ -1,0 +1,13 @@
+import std.core.sys.Sys._
+import std.core.Id
+
+module Asset {
+   global(inspect) local linear data Asset[T](id:Id.Private, assetData:T)
+
+   guarded[T] transactional function mint[T](consume assetData:T, implicit consume gen:IdGenerator):(res:Asset[T], newGen:IdGenerator){
+    let (id, newGen) = uniqueID(gen) in (Asset#(id, assetData), newGen)
+   }
+
+   //...
+
+}

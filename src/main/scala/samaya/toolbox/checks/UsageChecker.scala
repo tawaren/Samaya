@@ -85,23 +85,23 @@ trait UsageChecker extends OwnershipTracker{
     super.discard(trg,origin,stack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     stack.getStatus(src) match {
       case Borrowed if mode == FetchMode.Move => feedback(LocatedMessage(s"Can not move unpack a borrowed value", origin, Error, Checking(Priority)))
       case Locked(_, lockPos) => feedback(LocatedMessage(s"Can not unpack locked value (value was locked at: ${useInfo(lockPos)})", origin, Error, Checking(Priority)))
       case Consumed(consumePos) => feedback(LocatedMessage(s"Can not unpack consumed value (value was consumed at: ${useInfo(consumePos)})", origin, Error, Checking(Priority)))
       case _ =>
     }
-    super.unpack(res, src, mode, origin, stack)
+    super.unpack(res, innerCtrTyp, src, mode, origin, stack)
   }
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
     stack.getStatus(src) match {
       case Locked(_, lockPos) => feedback(LocatedMessage(s"Can not inspect unpack locked value (value was locked at: ${useInfo(lockPos)})", origin, Error, Checking(Priority)))
       case Consumed(consumePos) => feedback(LocatedMessage(s"Can not inspect unpack consumed value (value was consumed at: ${useInfo(consumePos)})", origin, Error, Checking(Priority)))
       case _ =>
     }
-    super.inspectUnpack(res, src, origin, stack)
+    super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
   }
 
 
@@ -116,23 +116,23 @@ trait UsageChecker extends OwnershipTracker{
   }
 
 
-  override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     stack.getStatus(src) match {
       case Borrowed if mode == FetchMode.Move => feedback(LocatedMessage(s"Can not move switch on a borrowed value", origin, Error, Checking(Priority)))
       case Locked(_, lockPos) => feedback(LocatedMessage(s"Can not switch on a locked value (value was locked at: ${useInfo(lockPos)})", origin, Error, Checking(Priority)))
       case Consumed(consumePos) => feedback(LocatedMessage(s"Can not switch on a consumed value (value was consumed at: ${useInfo(consumePos)})", origin, Error, Checking(Priority)))
       case _ =>
     }
-    super.switchBefore(res, src, branches, mode, origin, stack)
+    super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, stack)
   }
 
-  override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+  override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
     stack.getStatus(src) match {
       case Locked(_, lockPos) => feedback(LocatedMessage(s"Can not inspect a locked value (value was locked at: ${useInfo(lockPos)})", origin, Error, Checking(Priority)))
       case Consumed(consumePos) => feedback(LocatedMessage(s"Can not inspect a consumed value (value was consumed at: ${useInfo(consumePos)})", origin, Error, Checking(Priority)))
       case _ =>
     }
-    super.inspectSwitchBefore(res, src, branches, origin, stack)
+    super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, stack)
   }
 
   override def pack(res:TypedId, srcs:Seq[Ref], ctr:Id, mode:FetchMode, origin:SourceId, stack: Stack): Stack = {

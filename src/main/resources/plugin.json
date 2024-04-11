@@ -30,8 +30,8 @@
     },
 
     "job_executor" : {
-        "samaya.plugin.impl.executor.virtual.VirtualThreadJobExecutor" : {},
-        "#samaya.plugin.impl.executor.sequential.SequentialJobExecutor" : {}
+        "#samaya.plugin.impl.executor.virtual.VirtualThreadJobExecutor" : {},
+        "samaya.plugin.impl.executor.sequential.SequentialJobExecutor" : {}
     },
 
     "language_compiler" : {

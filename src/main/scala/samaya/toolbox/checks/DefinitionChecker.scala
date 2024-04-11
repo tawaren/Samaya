@@ -111,8 +111,12 @@ trait DefinitionChecker extends TypeTracker{
     super.field(res, src, fieldName, mode, origin, stack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src).projectionExtract {
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
+    typ.projectionExtract {
       case adt: AdtType => for(ctr <- adt.ctrs(context).values; ((name,field), idx) <- ctr.zipWithIndex){
         if(field.isUnknown) {
           val src = res.lift(idx).map(_.id.src).getOrElse(origin)
@@ -121,11 +125,15 @@ trait DefinitionChecker extends TypeTracker{
       }
       case _ =>
     }
-    super.unpack(res, src, mode, origin, stack)
+    super.unpack(res, innerCtrTyp, src, mode, origin, stack)
   }
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
-    stack.getType(src).projectionExtract {
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
+    typ.projectionExtract {
       case adt: AdtType => for(ctr <- adt.ctrs(context).values; ((name,field), idx) <- ctr.zipWithIndex){
         if(field.isUnknown) {
           val src = res.lift(idx).map(_.id.src).getOrElse(origin)
@@ -134,7 +142,7 @@ trait DefinitionChecker extends TypeTracker{
       }
       case _ =>
     }
-    super.inspectUnpack(res, src, origin, stack)
+    super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
   }
 
   override def letAfter(res: Seq[AttrId], block: Seq[OpCode], origin: SourceId, stack: Stack): Stack = {
@@ -146,22 +154,22 @@ trait DefinitionChecker extends TypeTracker{
     super.letAfter(res, block, origin, stack)
   }
 
-  override def switchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def switchAfter(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     for((id,idx) <- res.zipWithIndex) {
       if(stack.getType(id).isUnknown){
         feedback(LocatedMessage(s"The ${indexToString(idx+1)} value returned by the switch opcode has unknown type", id.src, Error, Checking(Priority)))
       }
     }
-    super.switchAfter(res, src, branches, mode, origin, stack)
+    super.switchAfter(res, innerCtrTyp, src, branches, mode, origin, stack)
   }
 
-  override def inspectSwitchAfter(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+  override def inspectSwitchAfter(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
     for((id,idx) <- res.zipWithIndex) {
       if(stack.getType(id).isUnknown){
         feedback(LocatedMessage(s"The ${indexToString(idx+1)} value returned by the inspect opcode has unknown type", id.src, Error, Checking(Priority)))
       }
     }
-    super.inspectSwitchAfter(res, src, branches, origin, stack)
+    super.inspectSwitchAfter(res, innerCtrTyp, src, branches, origin, stack)
   }
 
   override def rollback(res: Seq[AttrId], resTypes: Seq[Type], params: Seq[Ref], origin: SourceId, stack: Stack): Stack = {

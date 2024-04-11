@@ -39,16 +39,16 @@ trait IdAvailabilityChecker extends ValueTracker{
     super.fetch(res, src, mode, origin, stack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     checkDuplicates(origin,res)
     stack.checkId(src)
-    super.unpack(res, src, mode, origin, stack)
+    super.unpack(res, innerCtrTyp, src, mode, origin, stack)
   }
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
     checkDuplicates(origin,res)
     stack.checkId(src)
-    super.inspectUnpack(res, src, origin, stack)
+    super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
@@ -104,16 +104,16 @@ trait IdAvailabilityChecker extends ValueTracker{
     super.discard(trg, origin, stack)
   }
 
-  override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     checkDuplicates(origin,res)
     stack.checkId(src)
-    super.switchBefore(res, src, branches, mode, origin, stack)
+    super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, stack)
   }
 
-  override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
+  override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Stack = {
     checkDuplicates(origin,res)
     stack.checkId(src)
-    super.inspectSwitchBefore(res, src, branches, origin, stack)
+    super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, stack)
   }
 
   override def project(res: AttrId, src: Ref, origin: SourceId, stack: Stack): Stack = {

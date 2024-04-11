@@ -1,6 +1,6 @@
 package samaya.toolbox.checks
 
-import samaya.structure.types.{AttrId, Const, DefinedFunc, FetchMode, Func, Id, OpCode, Permission, Ref, SourceId, Type, TypedId}
+import samaya.structure.types.{AdtType, AttrId, Const, DefinedFunc, FetchMode, Func, Id, OpCode, Permission, Ref, SourceId, Type, TypedId}
 import samaya.compilation.ErrorManager._
 import samaya.structure.FunctionSig
 import samaya.toolbox.track.TypeTracker
@@ -47,8 +47,11 @@ trait AccessibilityChecker extends TypeTracker{
     super.lit(res, value, origin, stack)
   }
 
-  override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): State = {
-    val typ = stack.getType(src)
+  override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): State = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
     mode match {
       case FetchMode.Move => if(!isSystem && !typ.hasPermission(context, Permission.Consume)){
         if(!typ.isUnknown) {
@@ -66,37 +69,46 @@ trait AccessibilityChecker extends TypeTracker{
         }
       }
     }
-    super.unpack(res, src, mode, origin, stack)
+    super.unpack(res, innerCtrTyp, src, mode, origin, stack)
   }
 
 
-  override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
-      val typ = stack.getType(src)
+  override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
+      val typ = innerCtrTyp match {
+        case Some(t) => t
+        case None => stack.getType(src)
+      }
       if(!isSystem && !typ.hasPermission(context, Permission.Inspect)){
         if(!typ.isUnknown) {
           feedback(LocatedMessage(s"Inspect permission for type ${typ.prettyString(context,gens)} is missing (required for copy unpack opcode)", origin, Error, Checking(Priority)))
         }
       }
-      super.inspectUnpack(res, src, origin, stack)
+      super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
   }
 
-  override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): State = {
-    val typ = stack.getType(src)
+  override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): State = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
     if(!isSystem && !typ.hasPermission(context, Permission.Consume)){
       if(!typ.isUnknown) {
       }
     }
-    super.switchBefore(res, src, branches, mode, origin, stack)
+    super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, stack)
   }
 
-  override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): State = {
-    val typ = stack.getType(src)
+  override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): State = {
+    val typ = innerCtrTyp match {
+      case Some(t) => t
+      case None => stack.getType(src)
+    }
     if(!isSystem && !typ.hasPermission(context, Permission.Inspect)){
       if(!typ.isUnknown) {
         feedback(LocatedMessage(s"Inspect permission for type ${typ.prettyString(context,gens)} is missing (required for inspect opcode)", origin, Error, Checking(Priority)))
       }
     }
-    super.inspectSwitchBefore(res, src, branches, origin, stack)
+    super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, stack)
   }
 
   override def field(res: AttrId, src: Ref, fieldName: Id, mode: FetchMode, origin: SourceId, stack: Stack): State = {

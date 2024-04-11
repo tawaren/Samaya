@@ -88,27 +88,27 @@ trait TypeTracker extends ValueTracker {
     nStack.withType(res,nType)
   }
 
-  override def unpack(fields: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+  override def unpack(fields: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
     val nType = stack.getType(stack.resolve(src))
     val argTypes = nType.projectionSeqMap {
       case adt:AdtType => adt.ctrs(context).headOption.map(_._2.values.toSeq).getOrElse(Seq.empty).padTo(fields.size, Type.Unknown(Set.empty)(origin))
       case _ => Seq.fill(fields.size)(Type.Unknown(Set.empty)(origin))
     }
 
-    val nStack = super.unpack(fields, src, mode, origin, stack)
+    val nStack = super.unpack(fields, innerCtrTyp, src, mode, origin, stack)
     fields.zip(argTypes).foldLeft(nStack){
       case (s, (id,cType)) => s.withType(id,cType)
     }
   }
 
-  override def inspectUnpack(fields: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack): Stack = {
+  override def inspectUnpack(fields: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack): Stack = {
     val nType = stack.getType(stack.resolve(src))
     val argTypes = nType.projectionSeqMap {
       case adt:AdtType => adt.ctrs(context).headOption.map(_._2.values.toSeq).getOrElse(Seq.empty).padTo(fields.size, Type.Unknown(Set.empty)(origin))
       case _ => Seq.fill(fields.size)(Type.Unknown(Set.empty)(origin))
     }
 
-    val nStack = super.inspectUnpack(fields, src, origin, stack)
+    val nStack = super.inspectUnpack(fields, innerCtrTyp, src, origin, stack)
     fields.zip(argTypes).foldLeft(nStack){
       case (s, (id,cType)) => s.withType(id,cType)
     }

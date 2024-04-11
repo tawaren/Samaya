@@ -288,14 +288,14 @@ object CopyDiscardInjector extends EntryTransformer {
       introduceVal(nStack,nStack.resolve(res))
     }
 
-    override def unpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def unpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       checkedRecord(stack.resolve(src),origin,stack,mode != FetchMode.Copy)
-      val nStack = super.unpack(res, src, mode, origin, stack)
+      val nStack = super.unpack(res, innerCtrTyp, src, mode, origin, stack)
       res.map(nStack.resolve).foldLeft(nStack)(introduceVal(_,_))
     }
 
-    override def inspectUnpack(res: Seq[AttrId], src: Ref, origin: SourceId, stack: Stack):Stack = {
-      val nStack = super.inspectUnpack(res, src, origin, stack)
+    override def inspectUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, origin: SourceId, stack: Stack):Stack = {
+      val nStack = super.inspectUnpack(res, innerCtrTyp, src, origin, stack)
       res.map(nStack.resolve).foldLeft(nStack)(introduceVal(_,_, readOnly = true))
     }
 
@@ -385,15 +385,15 @@ object CopyDiscardInjector extends EntryTransformer {
       nStack
     }
 
-    override def switchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
+    override def switchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Stack = {
       checkedRecord(stack.resolve(src),origin,stack, mode != FetchMode.Copy)
-      val nStack = super.switchBefore(res, src, branches, mode, origin, stack)
+      val nStack = super.switchBefore(res, innerCtrTyp, src, branches, mode, origin, stack)
       newScope(branches.size)
       nStack
     }
 
-    override def inspectSwitchBefore(res: Seq[AttrId], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: Stack): Stack = {
-      val nStack = super.inspectSwitchBefore(res, src, branches, origin, state)
+    override def inspectSwitchBefore(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, branches: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, state: Stack): Stack = {
+      val nStack = super.inspectSwitchBefore(res, innerCtrTyp, src, branches, origin, state)
       newScope(branches.size)
       nStack
     }
@@ -501,18 +501,18 @@ object CopyDiscardInjector extends EntryTransformer {
     //override def transformDiscard(trg: Id, origin: CodeId, stack: Stack): Option[Seq[OpCode]] = super.transformDiscard(trg, origin, stack)
     //override def transformDiscardMany(trg: Seq[Id], origin: CodeId, stack: Stack): Option[Seq[OpCode]] = super.transformDiscardMany(trg, origin, stack)
 
-    override def transformUnpack(res: Seq[AttrId], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
+    override def transformUnpack(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       if(ignoreOpcodes.contains(origin)) return None
       //ignore non inferable access
       if(mode != FetchMode.Infer) return None
 
       if(lookup.lastUsagesOfValue(stack.resolve(src)).contains(origin)) {
         //we are the last use, do a Move
-        Some(Seq(OpCode.Unpack(res,src,FetchMode.Move,origin)))
+        Some(Seq(OpCode.Unpack(res,innerCtrTyp,src,FetchMode.Move,origin)))
       } else {
         //we are not the last use, do a Copy (Note if it is not copiable this leads to an error later on)
         //  but if we wod do a move instead it would lead to an error on the last move opcode later on
-        Some(Seq(OpCode.Unpack(res,src,FetchMode.Copy,origin)))
+        Some(Seq(OpCode.Unpack(res,innerCtrTyp,src,FetchMode.Copy,origin)))
       }
     }
 
@@ -530,17 +530,17 @@ object CopyDiscardInjector extends EntryTransformer {
       }
     }
 
-    override def transformSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] =  {
+    override def transformSwitch(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] =  {
       if(ignoreOpcodes.contains(origin)) return None
       //ignore non inferable access
       if(mode != FetchMode.Infer) return None
       if(lookup.lastUsagesOfValue(stack.resolve(src)).contains(origin)) {
         //we are the last use, do a Move
-        Some(Seq(OpCode.Switch(res,src,bodies,FetchMode.Move,origin)))
+        Some(Seq(OpCode.Switch(res,innerCtrTyp,src,bodies,FetchMode.Move,origin)))
       } else {
         //we are not the last use, do a Copy (Note if it is not copiable this leads to an error later on)
         //  but if we wod do a move instead it would lead to an error on the last move opcode later on
-        Some(Seq(OpCode.Switch(res,src,bodies,FetchMode.Copy,origin)))
+        Some(Seq(OpCode.Switch(res,innerCtrTyp,src,bodies,FetchMode.Copy,origin)))
       }
     }
 

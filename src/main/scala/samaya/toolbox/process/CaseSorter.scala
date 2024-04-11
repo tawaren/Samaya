@@ -54,7 +54,7 @@ object CaseSorter extends EntryTransformer {
 
 
   class CaseSorter(override val entry: Either[FunctionDef, ImplementDef], override val context: Context) extends TransformTraverser with TypeTracker {
-    override def transformSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
+    override def transformSwitch(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], mode: FetchMode, origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       val branches = stack.getType(src).projectionExtract {
         case adt:AdtType =>
           var builder = ListMap.newBuilder[Id,  (Seq[AttrId], Seq[OpCode])]
@@ -67,10 +67,10 @@ object CaseSorter extends EntryTransformer {
           newBodies ++ bodies.filter(kv => !newBodies.contains(kv._1))
         case _ => bodies
       }
-      Some(List(OpCode.Switch(res,src,branches,mode, origin)))
+      Some(List(OpCode.Switch(res,innerCtrTyp,src,branches,mode, origin)))
     }
 
-    override def transformInspectSwitch(res: Seq[AttrId], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
+    override def transformInspectSwitch(res: Seq[AttrId], innerCtrTyp: Option[AdtType], src: Ref, bodies: ListMap[Id, (Seq[AttrId], Seq[OpCode])], origin: SourceId, stack: Stack): Option[Seq[OpCode]] = {
       val branches = stack.getType(src).projectionExtract {
         case adt:AdtType =>
           var builder = ListMap.newBuilder[Id,  (Seq[AttrId], Seq[OpCode])]
@@ -83,7 +83,7 @@ object CaseSorter extends EntryTransformer {
           newBodies ++ bodies.filter(kv => !newBodies.contains(kv._1))
         case _ => bodies
       }
-      Some(List(OpCode.InspectSwitch(res,src,branches, origin)))
+      Some(List(OpCode.InspectSwitch(res,innerCtrTyp,src,branches, origin)))
     }
   }
 }

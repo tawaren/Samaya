@@ -10,6 +10,6 @@ object Config extends ConfigCompanion {
   val verbose = opt("v|verbose")
 
   //features
-  val forwardRef = opt("forward_ref").default(true)
+  val forwardRef = opt("forward_ref").default(false)
   val dataIndexes = opt("data_indexes").default(false)
 }
