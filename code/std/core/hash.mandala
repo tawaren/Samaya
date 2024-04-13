@@ -1,6 +1,0 @@
-import sys.Data.Hash
-
-class Hash[T] {
-   guarded[T](define) function hash(op:T):Hash
-   guarded[T](define) function joinHash(op1:T, op2:T):Hash
-}
