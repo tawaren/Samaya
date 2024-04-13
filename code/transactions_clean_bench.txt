@@ -1,0 +1,63 @@
+bundle
+txt InitFix(inject):(store(accA),store(initT))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt TransferFix(consume(accA),read(auth),u128(4000),subject(B),inject):(store(accA),store(accB1))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt TransferFix(consume(accA),read(auth),u128(4000),subject(B),inject):(store(accA),store(accB2))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(auth))
+txt JoinFix(consume(accB1),consume(accB2),read(auth)):(store(accB))
+bench_code
+
+bundle
+txt FixPurseCreate(subject(A),inject):(store(purseA),store(withdrawA),store(depositA))
+bench_code
+
+bundle
+txt FixPurseCreate(subject(B),inject):(store(purseB),store(withdrawB),store(depositB))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt UnlockFix(consume(accA),read(auth)):(assign(tokens))
+txt FixPurseDeposit(consume(tokens),consume(purseA),read(depositA)):(store(purseA))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(auth))
+txt UnlockFix(consume(accB),read(auth)):(assign(tokens))
+txt FixPurseDeposit(consume(tokens),consume(purseB),read(depositB)):(store(purseB))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(auth))
+txt FixPurseWithdraw(consume(purseB),read(withdrawB),read(auth),u128(5000)):(store(purseB),assign(tokens))
+txt FixPurseDeposit(consume(tokens),consume(purseA),read(depositA)):(store(purseA))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(C),sig(C),inject):(assign(auth))
+txt MintKitten(data(0xcceb5af8159645de0a1ac95a6ce49fa9dc924094),subject(A),read(auth),inject):(store(kitten1))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(auth))
+txt TransferKitten(consume(kitten1),read(auth),subject(B),inject):(store(kitten1))
+bench_code
+
+bundle
+txt AuthorizationPermFromEdDsa(pk(A),sig(A),inject):(assign(authA))
+txt AuthorizationPermFromEdDsa(pk(B),sig(B),inject):(assign(authB))
+txt TransferKitten(consume(kitten1),read(authB),subject(A),inject):(store(kitten1))
+txt FixPurseWithdraw(consume(purseA),read(withdrawA),read(authA),u128(7000)):(store(purseA),assign(pay))
+txt FixPurseDeposit(consume(pay),consume(purseB),read(depositB)):(store(purseB))
+bench_code
+

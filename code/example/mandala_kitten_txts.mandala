@@ -1,0 +1,28 @@
+import std.Asset._
+import std.Asset.mint as assetMint
+import std.Option._
+import std.Subject._
+import std.core.sys.Ids.idFromData
+import std.EdDsaAuthenticator._
+import std.core.sys.EdDsa
+import std.core.sys.Sys._
+import std.core.Data20.Data20
+import std.SubjectLock._
+import std.core.Equal._
+import std.core.Id
+import std.core.Id._
+import MandalaKitten._
+
+transactional transaction MintKitten(dna:Data20, to:Subject, auth:Authorization, context consume gen:IdGenerator):(asset:Entry[Locked[Asset[Kitten]]]) {
+    let (newAsset, newGen) = mintKitten(dna, auth) in
+    let (storageLoc, _) = uniqueID(newGen) in
+    lockEntry(to,storageLoc,newAsset)
+}
+
+
+transactional transaction TransferKitten(consume kittenEntry:Entry[Locked[Asset[Kitten]]],  auth:Authorization, to:Subject, context consume gen:IdGenerator):
+                                  (kittenSent:Entry[Locked[Asset[Kitten]]]) {
+  let (senderLoc, from, kitten) = unlockEntry(kittenEntry, auth) in
+  let (receiverLoc, _) = uniqueID(gen) in
+  lockEntry(to,receiverLoc,kitten)
+}

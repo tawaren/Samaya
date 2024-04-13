@@ -21,7 +21,7 @@ module FixToken {
     local linear data Inited()
 
     //Replace with a Subject for which you have the needed Authentication Material
-    global function initialOwner() = Subject#(idFromData(0xbf124d79a46c3761412995bcc3359045bf21870b))
+    global function initialOwner() = Subject#(idFromData(0xfe101df1f61a2facede83909190cffd71ab18e61))
     global function totalSupply():U128 = 10000
 
     global transactional function init(consume gen:IdGenerator):(Entry[Locked[Token[Fix]]], Entry[Inited]) {
@@ -32,36 +32,4 @@ module FixToken {
         let initOnceEntry = Entry#(initOnceId, Inited#()) in
         (ownedTokens, initOnceEntry)
     }
-}
-
-import FixToken._
-
-transactional transaction InitFix(consume gen:IdGenerator):(coins:Entry[Locked[Token[Fix]]], blocker:Entry[Inited]) {
-    init(gen)
-}
-
-transactional transaction TransferFix(consume coins:Entry[Locked[Token[Fix]]], auth:Authorization, amount:U128, to:Subject, context consume gen:IdGenerator):
-                                  (coinsChange:Entry[Locked[Token[Fix]]], coinsSent:Entry[Locked[Token[Fix]]]) {
-  let (senderLoc, from, allTokens) = unlockEntry(coins, auth) in
-  let (receiverLoc, _) = uniqueID(gen) in
-  let (rem,send) = split(allTokens, amount) in
-  let changeEntry = lockEntry(from,senderLoc,rem) in
-  let receiverEntry = lockEntry(to,receiverLoc,send) in
-  (changeEntry, receiverEntry)
-}
-
-transactional transaction JoinFix(consume coinsA:Entry[Locked[Token[Fix]]], consume coinsB:Entry[Locked[Token[Fix]]], auth:Authorization):
-                                  (coins:Entry[Locked[Token[Fix]]]) {
-  let (loc, from, tokensA) = unlockEntry(coinsA, auth) in
-  let (_, _, tokensB) = unlockEntry(coinsB, auth) in
-  let allTokens = merge(tokensA, tokensB) in
-  lockEntry(from,loc,allTokens)
-}
-
-transactional transaction UnlockFix(
-    consume coins:Entry[Locked[Token[Fix]]],
-    auth:Authorization
-):(tokens:Token[Fix]) {
-  let (_, _, tokens) = unlockEntry(coins, auth) in
-  tokens
 }

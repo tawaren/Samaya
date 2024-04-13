@@ -16,25 +16,9 @@ module MandalaKitten {
     //Data Type for Our Asset
     local data Kitten(dna:Data20)
 
-    global function authoritySubject() = Subject#(idFromData(0xdf797acae07febf43fef6585f87c0529a9580330))
+    global function authoritySubject() = Subject#(idFromData(0x691c10d418e0361147611cc2d76f8d349fdd21ff))
 
     global transactional function mintKitten(dna:Data20, auth:Authorization, implicit context consume gen:IdGenerator):(Asset[Kitten],IdGenerator) {
         ensure checkAuthorization(authoritySubject(),auth) in assetMint(Kitten#(dna))
     }
-}
-
-import MandalaKitten._
-
-transactional transaction MintKitten(dna:Data20, to:Subject, auth:Authorization, context consume gen:IdGenerator):(asset:Entry[Locked[Asset[Kitten]]]) {
-    let (newAsset, newGen) = mintKitten(dna, auth) in
-    let (storageLoc, _) = uniqueID(newGen) in
-    lockEntry(to,storageLoc,newAsset)
-}
-
-
-transactional transaction TransferKitten(consume kittenEntry:Entry[Locked[Asset[Kitten]]],  auth:Authorization, to:Subject, context consume gen:IdGenerator):
-                                  (kittenSent:Entry[Locked[Asset[Kitten]]]) {
-  let (senderLoc, from, kitten) = unlockEntry(kittenEntry, auth) in
-  let (receiverLoc, _) = uniqueID(gen) in
-  lockEntry(to,receiverLoc,kitten)
 }

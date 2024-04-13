@@ -10,7 +10,7 @@ import std.core.sys.Sys._
 import std.core.IntU128.U128
 import FixToken._
 
-transactional transaction CreateFixPurse(owner:Subject, context consume gen:IdGenerator):(
+transactional transaction FixPurseCreate(owner:Subject, context consume gen:IdGenerator):(
         purse:PurseEntry[Token[Fix]],
         master:Entry[Locked[WithdrawCap[Token[Fix]]]],
         deposit:Public[DepositCap[Token[Fix]]]
