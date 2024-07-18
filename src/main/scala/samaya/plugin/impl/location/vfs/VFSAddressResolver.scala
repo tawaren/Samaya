@@ -20,7 +20,7 @@ object VFSAddressResolver {
   val HttpsProtocol:String = "https"
   //private val FtpProtocol:String = "ftp"
   //private val FtpsProtocol:String = "ftps"
-  //Todo: Add Html & Ftp
+  //Todo: Add Ftp
   object SupportedProtocol {
     def unapply(protocol:String):Option[String] = protocol match {
       case FileProtocol => Some(protocol)
