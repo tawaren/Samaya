@@ -1,7 +1,7 @@
 package samaya.codegen
 
 
-import samaya.structure.{CompiledModule, DataDef, FunctionDef, FunctionSig, Generic, ImplementDef, ModuleEntry, Package, SignatureDef, TypeParameterized}
+import samaya.structure.{CompiledModule, Module, DataDef, FunctionDef, FunctionSig, Generic, ImplementDef, ModuleEntry, Package, SignatureDef, TypeParameterized}
 import samaya.structure.types.Hash
 import samaya.structure.types._
 import samaya.types.Context
@@ -103,6 +103,8 @@ object ModuleSerializer {
     //#[ByteSize]
     //pub byte_size:Option<usize>,
     val context = Context(module,pkg)
+    //Is this a system module
+    out.writeBoolean(module.mode != Module.Normal)
     ////A Module has compiler specific meta information (Not of concern to Sanskrit)
     //pub meta: LargeVec<u8>
     out.writeShort(meta.data.length)
