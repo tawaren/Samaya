@@ -1,9 +1,10 @@
 package samaya.plugin.impl.compiler.mandala.components.instance
 
+import samaya.plugin.impl.compiler.mandala.components.MandalaComponent
 import samaya.structure.types.{CompLink, Type}
 import samaya.structure.{Component, Generic, Interface, Meta, TypeParameterized}
 
-trait Instance extends Component with TypeParameterized {
+trait Instance extends MandalaComponent with TypeParameterized {
   def classTarget:CompLink
   def classApplies:Seq[Type]
   def toInterface(meta: Meta): Interface[Instance]

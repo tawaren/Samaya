@@ -3,7 +3,7 @@ package samaya.plugin.impl.pkg.json
 import com.github.plokhotnyuk.jsoniter_scala.core._
 import JsonModel._
 import samaya.ProjectUtils.processWitContextRepo
-import samaya.codegen.{ModuleSerializer, NameGenerator}
+import samaya.codegen.{ComponentSerializer, ModuleSerializer, NameGenerator}
 import samaya.compilation.ErrorManager.{Decoding, Error, PlainMessage, Warning, canProduceErrors, feedback}
 import samaya.config.ConfigValue
 import samaya.plugin.config.ConfigPluginCompanion
@@ -141,9 +141,9 @@ class JsonPackageEncoder extends PackageEncoder {
     //get the byte code File - we need to add the extension in case debug files are present
     val codeSource = codeLoc match {
       //todo: at least check here that the hash is right - unless checked in validation
-      case Some(codeLoc) => AddressResolver.resolve(codeLoc.resolveAddress(Address(NameGenerator.generateCodeName(link.name,  link.info.classifier))), ContentExtensionLoader(AddressResolver.InputLoader,  ModuleSerializer.codeExtension))
+      case Some(codeLoc) => AddressResolver.resolve(codeLoc.resolveAddress(Address(NameGenerator.generateCodeName(link.name,  link.info.classifier))), ContentExtensionLoader(AddressResolver.InputLoader,  ComponentSerializer.generateExtensionName(link.info.classifier)))
       //Todo: Make this the default and the other the fallback
-      case None => link.hash.code.flatMap(code => AddressResolver.resolve(ContentBased(Hash.fromString(code)), ContentExtensionLoader(AddressResolver.InputLoader,  ModuleSerializer.codeExtension)))
+      case None => link.hash.code.flatMap(code => AddressResolver.resolve(ContentBased(Hash.fromString(code)), ContentExtensionLoader(AddressResolver.InputLoader,  ComponentSerializer.generateExtensionName(link.info.classifier))))
     }
 
     //get the source File

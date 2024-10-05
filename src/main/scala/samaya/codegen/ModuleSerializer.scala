@@ -16,7 +16,10 @@ import scala.collection.mutable
 //Serializes a Module interface without the body
 object ModuleSerializer {
 
-  val codeExtension = "sans"
+  val baseExtension = "sans"
+  val modExtension = "mod."+baseExtension
+  val funExtension = "txt."+baseExtension
+
 
   object ImportCollector {
     final val FUN = true

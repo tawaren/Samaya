@@ -6,6 +6,11 @@
         "samaya.plugin.impl.location.hybrid.HybridAddressResolver" : {}
     },
 
+    "component_type_resolver" : {
+        "samaya.plugin.impl.codegen.BasicComponentTypeResolver" : {},
+        "samaya.plugin.impl.compiler.mandala.codegen.MandalaComponentTypeResolver" : {}
+    },
+
     "component_validator" : {
         "samaya.plugin.impl.validator.BasicComponentValidator" : {},
         "samaya.plugin.impl.compiler.mandala.validate.MandalaValidator" : {}

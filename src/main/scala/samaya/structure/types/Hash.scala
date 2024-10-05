@@ -6,8 +6,6 @@ import samaya.types.InputSource
 import ky.korins.blake3.{Blake3, Hasher}
 import org.apache.commons.codec.binary.Hex
 
-
-
 case class Hash(data:Array[Byte]) {
   override def toString:String = Hex.encodeHexString(data)
   def canEqual(other: Any): Boolean = other.isInstanceOf[Hash]
@@ -20,7 +18,6 @@ case class Hash(data:Array[Byte]) {
     val state = Seq(data)
     state.map(util.Arrays.hashCode).foldLeft(0)((a, b) => 31 * a + b)
   }
-
 }
 
 object Hash {

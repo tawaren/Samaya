@@ -42,15 +42,19 @@ object Selectors {
   case object ModuleDeployerSelector extends DeployerSelector
   case object TransactionDeployerSelector extends DeployerSelector
 
-  sealed trait AddressSelector
+  sealed trait ComponentTypeSelector
+  case class ByClassifier(classifiers:Set[String]) extends ComponentTypeSelector
+  case class ByComponent(component:Component) extends ComponentTypeSelector
   //A Location resolution Task description intended for selecting the appropriate plugin
   sealed trait LookupMode
   case object LocationLookupMode extends LookupMode
   case object SourceLookupMode extends LookupMode
   case object SinkLookupMode extends LookupMode
 
+  sealed trait AddressSelector
   case class Lookup(path:Address, mode:LookupMode) extends AddressSelector
   //todo: add mode
+
   case class Delete(dir:Directory) extends AddressSelector
   case class List(parent:Directory) extends AddressSelector
   case class SerializeAddress(target: ContentAddressable, mode:SerializerMode) extends AddressSelector

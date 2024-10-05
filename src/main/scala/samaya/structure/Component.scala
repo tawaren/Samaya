@@ -26,6 +26,19 @@ trait Component {
 
 
 object Component {
-    val MODULE_CLASSIFIER = "module"
-    val TRANSACTION_CLASSIFIER = "transaction"
+    trait ComponentType{
+        def classifier:String
+        def extension:String
+    }
+
+    case object MODULE extends ComponentType {
+        override def classifier: String = "module"
+        override def extension: String = "mod.sans"
+    }
+
+    case object TRANSACTION extends ComponentType {
+        override def classifier: String = "transaction"
+        override def extension: String = "txt.sans"
+    }
+
 }

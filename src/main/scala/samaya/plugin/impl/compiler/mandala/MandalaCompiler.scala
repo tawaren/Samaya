@@ -26,8 +26,8 @@ object MandalaCompiler {
   val SigClass_Classifier:Set[String] = BaseClassifiers ++ Set("class", "signatures")
   val DefInstance_Classifier:Set[String]  = BaseClassifiers ++ Set("instance", "definitions")
     //We can use standard Serializer deserializer for these so we add the corresponding classifier
-  val ImplInstance_Classifier:Set[String]  = BaseClassifiers ++ Set(Component.MODULE_CLASSIFIER, "instance", "implements")
-  val Transaction_Classifier:Set[String]  = BaseClassifiers ++ Set(Component.TRANSACTION_CLASSIFIER)
+  val ImplInstance_Classifier:Set[String]  = BaseClassifiers ++ Set(Component.MODULE.classifier, "instance", "implements")
+  val Transaction_Classifier:Set[String]  = BaseClassifiers ++ Set(Component.TRANSACTION.classifier)
 
   val Implicit_Attribute_Name = "implicit"
   val Context_Attribute_Name = "context"

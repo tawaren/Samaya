@@ -24,8 +24,8 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
 
   override def matches(s: Selectors.InterfaceSelector): Boolean =  {
     def check(classifiers:Set[String]) = {
-      classifiers.contains(Component.TRANSACTION_CLASSIFIER) ||
-        classifiers.contains(Component.MODULE_CLASSIFIER)
+      classifiers.contains(Component.TRANSACTION.classifier) ||
+        classifiers.contains(Component.MODULE.classifier)
     }
     s match {
       case Selectors.InterfaceDecoderSelector(_,_,classifier,InterfaceExtension(Json)) => check(classifier)
@@ -36,9 +36,9 @@ class JsonInterfaceEncoder extends InterfaceEncoder {
   }
 
   override def deserializeInterface(language:String, version:String, classifier:Set[String], file:InputSource, meta:Meta): Option[Interface[Component]] = {
-    if(classifier.contains(Component.MODULE_CLASSIFIER)) {
+    if(classifier.contains(Component.MODULE.classifier)) {
       deserializeModuleInterface(file, meta)
-    } else if(classifier.contains(Component.TRANSACTION_CLASSIFIER)) {
+    } else if(classifier.contains(Component.TRANSACTION.classifier)) {
       deserializeTransactionInterface(file, meta)
     } else {
       None

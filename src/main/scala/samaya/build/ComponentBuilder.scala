@@ -69,7 +69,7 @@ object ComponentBuilder {
   //Todo: detect if uncompilable and skip
   private def produce[P <: PartialPackage](code:Directory, cmp:Component, sourceHash:Hash, pkg:P): Option[InputSource] = {
     if(cmp.isVirtual) return None
-    val out = AddressResolver.resolveSink(code, Identifier.Specific(NameGenerator.generateCodeName(cmp.name,cmp.classifier),ModuleSerializer.codeExtension)) match {
+    val out = AddressResolver.resolveSink(code, Identifier.Specific(NameGenerator.generateCodeName(cmp.name,cmp.classifier), ComponentSerializer.generateExtensionName(cmp))) match {
       case Some(value) => value
       case None => throw new Exception("Code file output could not be written");//todo: error
     }
