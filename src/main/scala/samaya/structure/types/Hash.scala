@@ -3,8 +3,8 @@ package samaya.structure.types
 import java.io.{FilterInputStream, FilterOutputStream, InputStream, OutputStream}
 import java.util
 import samaya.types.InputSource
-import ky.korins.blake3.{Blake3, Hasher}
 import org.apache.commons.codec.binary.Hex
+import samaya.toolbox.Crypto
 
 case class Hash(data:Array[Byte]) {
   override def toString:String = Hex.encodeHexString(data)
@@ -29,12 +29,12 @@ object Hash {
 
   //Helper to directly Hash an InputStream
   def fromInputSource(input: InputSource): Hash = {
-    val digest = Blake3.newHasher()
+    val digest = Crypto.newHasher()
     input.read { in =>
-      val digestStream = new Blake3InputStream(in, digest)
+      val digestStream = new HashedInputStream(in, digest)
       while (digestStream.read() > -1) {}
       digestStream.close()
-      fromBytes(digest.done(Hash.byteLen))
+      fromBytes(digest.finalize(Hash.byteLen))
     }
   }
 
@@ -63,7 +63,7 @@ object Hash {
   }
 }
 
-class Blake3InputStream(stream: InputStream, digest:Hasher) extends FilterInputStream(stream) {
+class HashedInputStream(stream: InputStream, digest:Crypto.Hasher) extends FilterInputStream(stream) {
   override def read: Int = {
     val ch = in.read
     if (ch != -1) digest.update(Array(ch.toByte))
@@ -75,10 +75,10 @@ class Blake3InputStream(stream: InputStream, digest:Hasher) extends FilterInputS
     if (result != -1) digest.update(b.slice(off, off+result))
     result
   }
-  override def toString: String = "[Digest Input Stream] " + digest.toString
+  override def toString: String = "[Digest Input Stream] " + digest
 }
 
-class Blake3OutputStream(stream: OutputStream, digest:Hasher) extends FilterOutputStream(stream) {
+class HashedOutputStream(stream: OutputStream, digest:Crypto.Hasher) extends FilterOutputStream(stream) {
 
   override def write(b: Int): Unit = {
     out.write(b)
@@ -90,5 +90,5 @@ class Blake3OutputStream(stream: OutputStream, digest:Hasher) extends FilterOutp
     digest.update(b.slice(off,off+len))
   }
 
-  override def toString: String = "[Digest Output Stream] " + digest.toString
+  override def toString: String = "[Digest Output Stream] " + digest
 }

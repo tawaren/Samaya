@@ -1,15 +1,15 @@
 package samaya.validation
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataOutputStream, InputStream, OutputStream}
-import ky.korins.blake3.Blake3
 import samaya.codegen.ComponentSerializer
 import samaya.compilation.ErrorManager
 import samaya.structure.{Component, Interface, LinkablePackage, Meta}
 import samaya.structure.types.Hash
 import samaya.compilation.ErrorManager._
 import samaya.plugin.service.{AddressResolver, ComponentValidator, InterfaceEncoder, LanguageCompiler}
+import samaya.toolbox.Crypto
 import samaya.types.Address.ContentBased
-import samaya.types.{Address, Directory, Identifier, InputSource, OutputTarget}
+import samaya.types.{Directory, Identifier, InputSource}
 
 import scala.collection.mutable
 import scala.util.Using
@@ -154,7 +154,7 @@ object PackageValidator {
 
   //validate the 3 different hashes for the 3 different categories
   private def validatePackageHash(pkg: LinkablePackage): Unit = {
-    val digest = Blake3.newHasher()
+    val digest = Crypto.newHasher()
     pkg.components.map(e => e.meta.interfaceHash).sorted.distinct.foreach(h => digest.update(h.data))
 
     pkg.dependencies.sortBy(p => p.name).distinct.foreach(p => {
@@ -162,7 +162,7 @@ object PackageValidator {
       digest.update(p.hash.data)
     })
 
-    if(pkg.hash != Hash.fromBytes(digest.done(Hash.byteLen))){
+    if(pkg.hash != Hash.fromBytes(digest.finalize(Hash.byteLen))){
       feedback(PlainMessage(s"Integrity for package ${pkg.location} violated", Error, Checking()))
     }
   }

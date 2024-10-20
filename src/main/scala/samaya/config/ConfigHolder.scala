@@ -1,8 +1,5 @@
 package samaya.config
 
-import io.circe.Json
-import samaya.plugin.PluginManager.{getClass, loadJsonFromResource}
-
 import java.io.{File, FileInputStream}
 import java.util.Properties
 import scala.util.Using

@@ -1,8 +1,8 @@
 package samaya.build
 
-import ky.korins.blake3.Blake3
 import samaya.structure.types.{CompLink, Hash}
 import samaya.structure.{Component, Interface, LinkablePackage, Package}
+import samaya.toolbox.Crypto
 import samaya.types.Directory
 
 case class PartialPackage(
@@ -37,7 +37,7 @@ case class PartialPackage(
   }
 
   def toLinkablePackage(placement: Directory,includes:Set[String]): LinkablePackage = {
-    val digest = Blake3.newHasher()
+    val digest = Crypto.newHasher()
     //Note: we sort only for the hash not for the package to preserve deployment order
     components.map(e => e.meta.interfaceHash).sorted.foreach(h => digest.update(h.data))
     dependencies.sortBy(p => p.name).distinct.foreach(p => {
@@ -48,7 +48,7 @@ case class PartialPackage(
     new LinkablePackage(
       false,
       placement,
-      Hash.fromBytes(digest.done(Hash.byteLen)),
+      Hash.fromBytes(digest.finalize(Hash.byteLen)),
       name,
       components,
       dependencies,
